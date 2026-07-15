@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Variables de entorno (contiene credenciales, nunca se sube)
+.env
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
