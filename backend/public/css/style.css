@@ -122,3 +122,79 @@ tbody tr:hover { background-color: #f9fafb; }
     cursor: pointer;
 }
 .btn-secondary { background-color: #e5e7eb; color: #1f2937; }
+
+.search-bar {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    margin: 0.5rem 0 1rem 0;
+    flex-wrap: wrap;
+}
+.search-bar input,
+.search-bar button,
+.search-bar a {
+    margin: 0;
+    vertical-align: middle;
+}
+.search-bar input[type="text"] {
+    height: 2.4rem;
+    padding: 0 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 220px;
+    max-width: 320px;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+.search-bar .btn-primary, .search-bar .btn-secondary {
+    height: 2.4rem;
+    padding: 0 1.1rem;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.form-box {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    max-width: 480px;
+    margin-top: 1rem;
+}
+.form-box label { margin-top: 1rem; font-size: 0.85rem; font-weight: 600; }
+.form-box input, .form-box select {
+    margin-top: 0.3rem;
+    padding: 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+.form-box .btn-primary, .form-box .btn-secondary {
+    margin-top: 1.5rem;
+}
+.form-actions {
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 1.5rem;
+}
+.form-actions .btn-primary, .form-actions .btn-secondary {
+    margin-top: 0;
+}
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+.btn-danger:hover { background-color: #b91c1c; }
+.checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem;
+}
+.checkbox-label input { width: auto; margin: 0; }
+
+.alert ul { margin-left: 1.2rem; }
