@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+
+<h1>Bienvenido, <%= usuario.nombres %></h1>
+<p>Rol: <strong><%= usuario.nombre_rol %></strong></p>
+
+<div class="cards-grid">
+    <div class="card">
+        <h3>Estudiantes activos</h3>
+        <p class="card-number"><%= totalEstudiantes %></p>
+    </div>
+    <div class="card">
+        <h3>Materias</h3>
+        <p class="card-number"><%= totalMaterias %></p>
+    </div>
+    <div class="card">
+        <h3>Periodos academicos</h3>
+        <p class="card-number"><%= totalPeriodos %></p>
+    </div>
+    <div class="card">
+        <h3>Calificaciones registradas</h3>
+        <p class="card-number"><%= totalCalificaciones %></p>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
