@@ -129,12 +129,15 @@ DECLARE
 
     v_estudiante RECORD;
     v_promedio   NUMERIC(4,2);
+    v_contador   INTEGER := 0;
 BEGIN
     OPEN cur_estudiantes;
 
     LOOP
         FETCH cur_estudiantes INTO v_estudiante;
         EXIT WHEN NOT FOUND;
+
+        v_contador := v_contador + 1;
 
         BEGIN
             v_promedio := fn_promedio_general(v_estudiante.id_estudiante, p_periodo);
@@ -151,7 +154,7 @@ BEGIN
 
     CLOSE cur_estudiantes;
 
-    IF NOT FOUND THEN
+    IF v_contador = 0 THEN
         RAISE EXCEPTION 'No hay estudiantes matriculados en el periodo %', p_periodo;
     END IF;
 END;
