@@ -19,8 +19,8 @@ router.get('/estudiantes', requireAuth, async (req, res) => {
                     r.nombres AS rep_nombres, r.apellidos AS rep_apellidos
              FROM estudiantes e
              JOIN representantes r ON r.id_representante = e.id_representante
-             WHERE (e.nombres ILIKE $1 OR e.apellidos ILIKE $1 OR e.cedula ILIKE $1)
-             ORDER BY e.apellidos, e.nombres`,
+WHERE (e.nombres ILIKE $1 OR e.apellidos ILIKE $1 OR e.cedula ILIKE $1
+                    OR (e.nombres || ' ' || e.apellidos) ILIKE $1)             ORDER BY e.apellidos, e.nombres`,
             [`%${busqueda}%`]
         );
 
