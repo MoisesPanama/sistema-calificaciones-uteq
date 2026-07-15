@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+
+<h1>Registrar Calificación</h1>
+
+<% if (typeof exito !== 'undefined' && exito) { %>
+  <div class="alert alert-exito">
+    Calificación registrada correctamente.
+  </div>
+<% } %>
+
+<% if (errores && errores.length > 0) { %>
+  <div class="alert alert-error">
+    <ul>
+      <% errores.forEach(function(err) { %>
+        <li><%= err %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="form-box">
+  <form action="/calificaciones/nueva" method="GET">
+    <label for="id_periodo_filtro">Periodo</label>
+    <select id="id_periodo_filtro" name="id_periodo" onchange="this.form.submit()">
+      <option value="">-- Selecciona un periodo --</option>
+      <% periodos.forEach(function(periodo) { %>
+        <option
+          value="<%= periodo.id_periodo %>"
+          <%= String(idPeriodoSeleccionado) === String(periodo.id_periodo) ? 'selected' : '' %>
+        >
+          <%= periodo.nombre %>
+        </option>
+      <% }); %>
+    </select>
+  </form>
+</div>
+
+<% if (idPeriodoSeleccionado) { %>
+  <div class="form-box">
+    <form action="/calificaciones" method="POST">
+      <input type="hidden" name="id_periodo" value="<%= idPeriodoSeleccionado %>">
+
+      <label for="id_estudiante">Estudiante</label>
+      <select id="id_estudiante" name="id_estudiante" required>
+        <option value="">-- Selecciona un estudiante --</option>
+        <% estudiantes.forEach(function(est) { %>
+          <option value="<%= est.id_estudiante %>">
+            <%= est.apellidos %> <%= est.nombres %>
+          </option>
+        <% }); %>
+      </select>
+
+      <label for="id_materia">Materia</label>
+      <select id="id_materia" name="id_materia" required>
+        <option value="">-- Selecciona una materia --</option>
+        <% materias.forEach(function(materia) { %>
+          <option value="<%= materia.id_materia %>"><%= materia.nombre %></option>
+        <% }); %>
+      </select>
+
+      <label for="id_tipo_evaluacion">Tipo de evaluación</label>
+      <select id="id_tipo_evaluacion" name="id_tipo_evaluacion" required>
+        <option value="">-- Selecciona un tipo --</option>
+        <% tiposEvaluacion.forEach(function(tipo) { %>
+          <option value="<%= tipo.id_tipo_evaluacion %>"><%= tipo.nombre %></option>
+        <% }); %>
+      </select>
+
+      <label for="valor">Calificación (0 a 10)</label>
+      <input type="number" id="valor" name="valor" min="0" max="10" step="0.01" required>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+<% } else { %>
+  <p>Selecciona un periodo para ver los estudiantes matriculados.</p>
+<% } %>
+
+<%- include('../partials/footer') %>

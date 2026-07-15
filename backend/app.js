@@ -47,6 +47,7 @@ app.use('/', require('./routes/dashboard'));
 app.use('/', require('./routes/estudiantes'));
 app.use('/', require('./routes/materias'));
 app.use('/', require('./routes/periodos'));
+app.use('/', require('./routes/calificaciones'));
 
 // Ruta raiz: redirige segun si hay sesion o no
 app.get('/', (req, res) => {
