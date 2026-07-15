@@ -44,6 +44,7 @@ app.use(inyectarUsuario);
 // Rutas
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/dashboard'));
+app.use('/', require('./routes/estudiantes'));
 
 // Ruta raiz: redirige segun si hay sesion o no
 app.get('/', (req, res) => {
