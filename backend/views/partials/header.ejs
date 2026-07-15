@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Calificaciones - UTEQ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <% if (usuario) { %>
+    <header class="header">
+        <div class="header-brand">Sistema de Calificaciones - UTEQ</div>
+        <nav class="header-nav">
+            <a href="/dashboard">Inicio</a>
+            <a href="/estudiantes">Estudiantes</a>
+            <a href="/materias">Materias</a>
+            <a href="/periodos">Periodos</a>
+            <a href="/calificaciones/nueva">Registrar Nota</a>
+            <a href="/calificaciones/consulta">Consultar Notas</a>
+            <a href="/reportes">Reportes</a>
+            <% if (usuario.nombre_rol === 'administrador') { %>
+                <a href="/auditoria">Auditoria</a>
+            <% } %>
+        </nav>
+        <div class="header-user">
+            <span><%= usuario.nombres %> (<%= usuario.nombre_rol %>)</span>
+            <form action="/logout" method="POST">
+                <button type="submit" class="btn-logout">Cerrar sesion</button>
+            </form>
+        </div>
+    </header>
+    <% } %>
+    <main class="main-content">

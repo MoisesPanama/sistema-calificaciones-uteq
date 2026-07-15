@@ -1,0 +1,42 @@
+<%- include('../partials/header') %>
+
+<h1>Estudiantes</h1>
+
+<form action="/estudiantes" method="GET" class="search-bar">
+    <input type="text" name="q" placeholder="Buscar por nombre, apellido o cedula..." value="<%= busqueda %>">
+    <button type="submit" class="btn-primary">Buscar</button>
+    <a href="/estudiantes/nuevo" class="btn-secondary">+ Nuevo estudiante</a>
+</form>
+
+<% if (estudiantes.length === 0) { %>
+    <p>No se encontraron estudiantes.</p>
+<% } else { %>
+<table>
+    <thead>
+        <tr>
+            <th>Cedula</th>
+            <th>Nombres</th>
+            <th>Apellidos</th>
+            <th>Fecha nacimiento</th>
+            <th>Representante</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% estudiantes.forEach(function(est) { %>
+        <tr>
+            <td><%= est.cedula %></td>
+            <td><%= est.nombres %></td>
+            <td><%= est.apellidos %></td>
+            <td><%= new Date(est.fecha_nacimiento).toLocaleDateString('es-EC') %></td>
+            <td><%= est.rep_nombres %> <%= est.rep_apellidos %></td>
+            <td><%= est.activo ? 'Activo' : 'Inactivo' %></td>
+            <td><a href="/estudiantes/<%= est.id_estudiante %>/editar">Editar</a></td>
+        </tr>
+        <% }); %>
+    </tbody>
+</table>
+<% } %>
+
+<%- include('../partials/footer') %>
