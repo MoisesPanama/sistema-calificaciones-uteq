@@ -50,6 +50,7 @@ app.use('/', require('./routes/periodos'));
 app.use('/', require('./routes/calificaciones'));
 app.use('/', require('./routes/consulta'));
 app.use('/', require('./routes/reportes'));
+app.use('/', require('./routes/auditoria'));
 
 // Ruta raiz: redirige segun si hay sesion o no
 app.get('/', (req, res) => {
