@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+
+<h1>Reporte de Promedios por Periodo</h1>
+
+<div class="form-box">
+  <form action="/reportes" method="GET">
+    <label for="id_periodo">Periodo</label>
+    <select id="id_periodo" name="id_periodo" onchange="this.form.submit()">
+      <option value="">-- Selecciona un periodo --</option>
+      <% periodos.forEach(function(periodo) { %>
+        <option
+          value="<%= periodo.id_periodo %>"
+          <%= String(idPeriodoSeleccionado) === String(periodo.id_periodo) ? 'selected' : '' %>
+        >
+          <%= periodo.nombre %>
+        </option>
+      <% }); %>
+    </select>
+  </form>
+</div>
+
+<% if (idPeriodoSeleccionado) { %>
+  <% if (mensajeSinDatos) { %>
+    <div class="alert alert-error">
+      <%= mensajeSinDatos %>
+    </div>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Nombres</th>
+          <th>Apellidos</th>
+          <th>Promedio general</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% reporte.forEach(function(fila) { %>
+          <tr>
+            <td><%= fila.nombres %></td>
+            <td><%= fila.apellidos %></td>
+            <td><%= fila.promedio !== null ? fila.promedio : 'Sin calificaciones' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+<% } %>
+
+<%- include('../partials/footer') %>
