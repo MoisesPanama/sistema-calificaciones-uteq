@@ -105,6 +105,20 @@ psql -U postgres -d calificaciones_uteq -f database/06_sesiones.sql
 > `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
 > antes de ejecutarlo.
 
+### 3.1. Configurar el search_path a nivel de base de datos
+
+Este paso es obligatorio y no está incluido en los scripts anteriores.
+Sin él, el sistema falla con errores de "no existe la relación" al
+intentar usarlo:
+
+```bash
+psql -U postgres -d calificaciones_uteq -c "ALTER DATABASE calificaciones_uteq SET search_path TO colegio, public;"
+```
+
+> **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
+> `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
+> antes de ejecutarlo.
+
 ### 4. Configurar variables de entorno
 
 ```bash
