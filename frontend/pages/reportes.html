@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Reporte de Promedios por Periodo</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="form-box">
+      <label for="sel-periodo">Periodo</label>
+      <select id="sel-periodo"></select>
+      <label for="sel-curso">Curso</label>
+      <select id="sel-curso"><option value="">-- Todos los cursos --</option></select>
+      <label for="sel-mat">Materia (promedio específico)</label>
+      <select id="sel-mat"><option value="">-- Promedio general --</option></select>
+    </div>
+    <div id="resultado"></div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    function q() {
+      const p = new URLSearchParams();
+      if (document.getElementById('sel-periodo').value) p.set('id_periodo', document.getElementById('sel-periodo').value);
+      if (document.getElementById('sel-curso').value) p.set('id_curso', document.getElementById('sel-curso').value);
+      if (document.getElementById('sel-mat').value) p.set('id_materia', document.getElementById('sel-mat').value);
+      return p.toString();
+    }
+    async function cargar(first = false) {
+      const d = await apiGet('/reportes/?' + q());
+      document.getElementById('info-periodo').innerHTML =
+        `Periodo activo (fijo): <strong>${esc(d.periodoActivo?.nombre || '—')}</strong>`;
+      if (first) {
+        document.getElementById('sel-periodo').innerHTML =
+          d.periodos.map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === d.idPeriodo ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
+        document.getElementById('sel-mat').innerHTML = '<option value="">-- Promedio general --</option>' +
+          d.materias.map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
+      }
+      document.getElementById('sel-curso').innerHTML = '<option value="">-- Todos los cursos --</option>' +
+        d.cursos.map(c => `<option value="${c.id_curso}" ${String(c.id_curso) === d.idCurso ? 'selected' : ''}>${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+      const div = document.getElementById('resultado');
+      if (d.mensajeSinDatos) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinDatos)}</div>`; return; }
+      const conMat = !!d.idMateria;
+      div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th><th>Curso</th>` +
+        (conMat ? '<th>Promedio materia</th>' : '') + '<th>Promedio general</th><th>Escala</th></tr></thead><tbody>' +
+        d.reporte.map(f => `<tr><td>${esc(f.nombres)}</td><td>${esc(f.apellidos)}</td><td>${esc(f.curso || '—')}</td>` +
+          (conMat ? `<td>${f.promedio_materia != null ? esc(f.promedio_materia) : 'Sin calificaciones'}</td>` : '') +
+          `<td>${f.promedio_general != null ? esc(f.promedio_general) : 'Sin calificaciones'}</td><td>${esc(f.escala || '')}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+    (async () => {
+      if (!await initPage()) return;
+      await cargar(true).catch(showError);
+      document.getElementById('sel-periodo').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
+    })();
+  </script>
+</body>
+</html>

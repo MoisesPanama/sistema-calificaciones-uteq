@@ -6,13 +6,14 @@
 #
 # Hace todo, en orden, y es re-ejecutable sin romper nada:
 #   1. Verifica Node 20+, npm y psql en el PATH.
-#   2. npm install en backend/ (unicas descargas: dependencias npm).
+#   2. npm install en backend/ y frontend/ (unicas descargas: dependencias npm).
 #   3. Crea backend/.env desde .env.example si no existe.
 #   4. Crea rol app_uteq + base de datos (pide UNA vez el
 #      password del superusuario postgres, solo si falta algo).
 #   5. Ejecuta database/01..09 en orden (solo si la BD esta vacia).
 #   6. Fija search_path + asigna passwords del seed (bcrypt).
-#   7. Levanta el servidor (npm run dev -> http://localhost:3000).
+#   7. Levanta la API (http://localhost:3000) y el
+#      frontend (http://localhost:5173) a la vez.
 #
 # Requisitos previos (lo unico a instalar a mano, una vez):
 #   Node.js 20+, PostgreSQL 18 y Git.
@@ -21,6 +22,7 @@
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Backend = Join-Path $Root 'backend'
+$Frontend = Join-Path $Root 'frontend'
 
 function Write-Step([string]$m) {
     Write-Host ''
@@ -53,7 +55,9 @@ Write-Host 'OK: node, npm y psql disponibles.'
 # ---------- 2. Dependencias ----------
 Write-Step 'Instalando dependencias (npm install)'
 & npm install --prefix $Backend
-if (-not $?) { throw 'npm install fallo.' }
+if (-not $?) { throw 'npm install fallo en backend.' }
+& npm install --prefix $Frontend
+if (-not $?) { throw 'npm install fallo en frontend.' }
 
 # ---------- 3. .env ----------
 Write-Step 'Configurando .env'
@@ -155,9 +159,22 @@ try {
 }
 
 # ---------- 7. Levantar ----------
-Write-Step 'Todo listo. Levantando el servidor'
-Write-Host 'URL:      http://localhost:PORT'.Replace('PORT', $AppPort)
+Write-Step 'Todo listo. Levantando API + frontend'
+Write-Host 'API:      http://localhost:PORT'.Replace('PORT', $AppPort)
+Write-Host 'Frontend: http://localhost:5173 (abre pages/login.html)'
 Write-Host 'Usuarios: admin@uteq.edu.ec / admin123 (admin)'
 Write-Host '          carla.vera@uteq.edu.ec / profesor123 (profesora)'
 Write-Host '          jorge.mendoza@uteq.edu.ec / profesor123 (profesor)'
-& npm run dev --prefix $Backend
+Write-Host ''
+Write-Host 'La API corre en segundo plano (job "api-uteq"); el frontend corre al frente.'
+Write-Host 'Para detener todo: Ctrl+C aqui y luego Stop-Job api-uteq; Remove-Job api-uteq.'
+$apiJob = Start-Job -Name 'api-uteq' -ScriptBlock {
+    Set-Location -LiteralPath $using:Backend
+    & npm run dev
+}
+try {
+    & npm run dev --prefix $Frontend
+} finally {
+    Stop-Job -Name 'api-uteq' -ErrorAction SilentlyContinue | Out-Null
+    Remove-Job -Name 'api-uteq' -ErrorAction SilentlyContinue | Out-Null
+}

@@ -1,6 +1,5 @@
 // =========================================================
-// routes/auth.js
-// Login y logout del sistema
+// routes/auth.js — POST /api/auth/login, POST /logout, GET /me
 // =========================================================
 
 const express = require('express');
@@ -8,20 +7,12 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 
-// GET /login -> muestra el formulario de inicio de sesion
-router.get('/login', (req, res) => {
-    if (req.session.usuario) {
-        return res.redirect('/dashboard');
-    }
-    res.render('login', { error: null });
-});
-
-// POST /login -> valida credenciales y crea la sesion
+// POST /api/auth/login { email, password } -> { usuario }
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
     if (!email || !password) {
-        return res.render('login', { error: 'Debes ingresar email y contrasena.' });
+        return res.status(400).json({ error: 'Debes ingresar email y contrasena.' });
     }
 
     try {
@@ -35,18 +26,18 @@ router.post('/login', async (req, res) => {
         );
 
         if (resultado.rows.length === 0) {
-            return res.render('login', { error: 'Credenciales invalidas.' });
+            return res.status(401).json({ error: 'Credenciales invalidas.' });
         }
 
         const usuario = resultado.rows[0];
 
         if (!usuario.activo) {
-            return res.render('login', { error: 'Este usuario esta inactivo.' });
+            return res.status(403).json({ error: 'Este usuario esta inactivo.' });
         }
 
         const passwordValida = await bcrypt.compare(password, usuario.password_hash);
         if (!passwordValida) {
-            return res.render('login', { error: 'Credenciales invalidas.' });
+            return res.status(401).json({ error: 'Credenciales invalidas.' });
         }
 
         req.session.usuario = {
@@ -57,18 +48,30 @@ router.post('/login', async (req, res) => {
             nombre_rol: usuario.nombre_rol
         };
 
-        res.redirect('/dashboard');
+        res.json({ usuario: req.session.usuario });
 
     } catch (error) {
         console.error('Error en login:', error.message);
-        res.render('login', { error: 'Ocurrio un error al iniciar sesion.' });
+        res.status(500).json({ error: 'Ocurrio un error al iniciar sesion.' });
     }
 });
 
-// POST /logout -> destruye la sesion
+// GET /api/auth/me -> sesion actual (el frontend lo usa como guard)
+router.get('/me', (req, res) => {
+    if (!req.session.usuario) {
+        return res.status(401).json({ error: 'No autenticado.' });
+    }
+    res.json({ usuario: req.session.usuario });
+});
+
+// POST /api/auth/logout -> destruye la sesion
 router.post('/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.redirect('/login');
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'No se pudo cerrar sesion.' });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ ok: true });
     });
 });
 
