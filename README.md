@@ -9,6 +9,25 @@ y calificaciones, calculando promedios mediante funciones y procedimientos
 almacenados de PostgreSQL, con soporte de triggers de validación y
 auditoría automática de cambios.
 
+## Inicio rápido (un solo comando)
+
+Requisitos previos (lo único a instalar a mano, una vez): Node.js 20+,
+PostgreSQL 18 en ejecución, y Git.
+
+```powershell
+git clone https://github.com/MoisesPanama/sistema-calificaciones-uteq.git
+cd sistema-calificaciones-uteq
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+Eso instala dependencias, crea el `.env`, el rol/base de datos, ejecuta las
+migraciones `01..09`, asigna las passwords de prueba y levanta el servidor en
+`http://localhost:3000`. El script es re-ejecutable: si la BD ya existe, la conserva.
+
+> En VS Code también puedes usar la tarea **Setup y levantar proyecto**
+> (Terminal → Run Task…). Si `psql` pide password de superusuario, es solo la
+> primera vez (para crear rol/BD).
+
 ## Integrantes del equipo
 
 - Moises Panama — Backend, base de datos, interfaces de gestión
