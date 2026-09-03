@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Auditoría del Sistema</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div id="resultado"><p>Cargando...</p></div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    (async () => {
+      if (!await initPage({ adminOnly: true })) return;
+      try {
+        const { registros } = await apiGet('/auditoria/');
+        const div = document.getElementById('resultado');
+        if (registros.length === 0) { div.innerHTML = '<p>No hay registros de auditoría todavía.</p>'; return; }
+        div.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tabla</th><th>Operación</th><th>ID registro</th>
+          <th>Usuario (app)</th><th>Usuario (BD)</th><th>Datos anteriores</th><th>Datos nuevos</th></tr></thead><tbody>` +
+          registros.map(r => `<tr><td>${new Date(r.fecha_evento).toLocaleString('es-EC')}</td>
+            <td>${esc(r.tabla_afectada)}</td><td>${esc(r.operacion)}</td><td>${esc(r.id_registro)}</td>
+            <td>${r.usuario_nombres ? esc(r.usuario_nombres + ' ' + r.usuario_apellidos) : '—'}</td>
+            <td>${esc(r.usuario_bd)}</td>
+            <td><pre>${esc(r.datos_anteriores ? JSON.stringify(r.datos_anteriores, null, 2) : '—')}</pre></td>
+            <td><pre>${esc(r.datos_nuevos ? JSON.stringify(r.datos_nuevos, null, 2) : '—')}</pre></td></tr>`).join('') +
+          '</tbody></table>';
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

@@ -3,9 +3,31 @@
     "tasks": [
         {
             "label": "Setup y levantar proyecto",
-            "detail": "Instala dependencias, crea BD, ejecuta migraciones y levanta el servidor",
+            "detail": "Instala dependencias (backend+frontend), crea BD, ejecuta migraciones y levanta API + frontend",
             "type": "shell",
             "command": "powershell -ExecutionPolicy Bypass -File ${workspaceFolder}/setup.ps1",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Levantar backend (API)",
+            "detail": "API REST en http://localhost:3000",
+            "type": "shell",
+            "command": "npm run dev --prefix ${workspaceFolder}/backend",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Levantar frontend",
+            "detail": "UI estatica en http://localhost:5173 (pages/login.html)",
+            "type": "shell",
+            "command": "npm run dev --prefix ${workspaceFolder}/frontend",
             "presentation": {
                 "reveal": "always",
                 "panel": "new"

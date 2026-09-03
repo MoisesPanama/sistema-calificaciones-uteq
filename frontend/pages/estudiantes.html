@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estudiantes - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Estudiantes</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="search-bar">
+      <input type="text" id="q" placeholder="Buscar por nombre, apellido o cedula...">
+      <button class="btn-primary" id="btn-buscar">Buscar</button>
+      <a href="estudiante-form.html" class="btn-secondary">+ Nuevo estudiante</a>
+    </div>
+    <div id="resultado"></div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    async function cargar(q = '') {
+      try {
+        const { estudiantes } = await apiGet('/estudiantes/?q=' + encodeURIComponent(q));
+        const div = document.getElementById('resultado');
+        if (estudiantes.length === 0) { div.innerHTML = '<p>No se encontraron estudiantes.</p>'; return; }
+        div.innerHTML = `<table><thead><tr>
+          <th>Cedula</th><th>Nombres</th><th>Apellidos</th><th>Fecha nacimiento</th>
+          <th>Representante</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>` +
+          estudiantes.map(e => `<tr><td>${esc(e.cedula)}</td><td>${esc(e.nombres)}</td>
+            <td>${esc(e.apellidos)}</td><td>${new Date(e.fecha_nacimiento).toLocaleDateString('es-EC')}</td>
+            <td>${esc(e.rep_nombres)} ${esc(e.rep_apellidos)}</td>
+            <td>${e.activo ? 'Activo' : 'Inactivo'}</td>
+            <td><a href="estudiante-form.html?id=${e.id_estudiante}">Editar</a></td></tr>`).join('') +
+          '</tbody></table>';
+      } catch (err) { showError(err.message); }
+    }
+    (async () => {
+      if (!await initPage()) return;
+      document.getElementById('q').value = qs('q') || '';
+      await cargar(qs('q') || '');
+      document.getElementById('btn-buscar').onclick = () => cargar(document.getElementById('q').value);
+      document.getElementById('q').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') cargar(e.target.value);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Consulta de Calificaciones</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="form-box">
+      <label for="sel-periodo">Periodo</label>
+      <select id="sel-periodo"></select>
+      <label for="sel-est">Estudiante</label>
+      <select id="sel-est"><option value="">-- Selecciona un estudiante --</option></select>
+      <label for="sel-mat" id="lbl-mat" style="display:none">Materia (ver promedio específico)</label>
+      <select id="sel-mat" style="display:none"><option value="">-- Todas las materias --</option></select>
+    </div>
+    <div id="resultado"></div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    function q() {
+      const p = new URLSearchParams();
+      if (document.getElementById('sel-periodo').value) p.set('id_periodo', document.getElementById('sel-periodo').value);
+      if (document.getElementById('sel-est').value) p.set('id_estudiante', document.getElementById('sel-est').value);
+      if (document.getElementById('sel-mat').value) p.set('id_materia', document.getElementById('sel-mat').value);
+      return p.toString();
+    }
+    async function cargar(rebuild = false) {
+      const d = await apiGet('/consulta/?' + q());
+      document.getElementById('info-periodo').innerHTML =
+        `Periodo activo (fijo): <strong>${esc(d.periodoActivo?.nombre || '—')}</strong>`;
+      if (rebuild || !document.getElementById('sel-periodo').options.length) {
+        document.getElementById('sel-periodo').innerHTML =
+          d.periodos.map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === d.idPeriodo ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
+      }
+      const se = document.getElementById('sel-est');
+      const cur = se.value || d.idEstudiante;
+      se.innerHTML = '<option value="">-- Selecciona un estudiante --</option>' +
+        d.estudiantes.map(e => `<option value="${e.id_estudiante}" ${String(e.id_estudiante) === String(cur) ? 'selected' : ''}>${esc(e.apellidos)} ${esc(e.nombres)}</option>`).join('');
+      const sm = document.getElementById('sel-mat');
+      if (d.materiasFiltro.length > 0) {
+        document.getElementById('lbl-mat').style.display = 'block';
+        sm.style.display = 'block';
+        sm.innerHTML = '<option value="">-- Todas las materias --</option>' +
+          d.materiasFiltro.map(m => `<option value="${m.id_materia}" ${String(m.id_materia) === d.idMateria ? 'selected' : ''}>${esc(m.nombre)}</option>`).join('');
+      } else { document.getElementById('lbl-mat').style.display = 'none'; sm.style.display = 'none'; }
+      const div = document.getElementById('resultado');
+      if (!d.idEstudiante) { div.innerHTML = ''; return; }
+      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      div.innerHTML =
+        (d.promedioMateriaSel != null ? `<div class="form-box"><h2>Promedio en la materia seleccionada: ${esc(d.promedioMateriaSel)} — ${esc(d.escalaMateriaSel)}</h2><p><small>Aprueba con 7.00 o más.</small></p></div>` : '') +
+        d.materias.map(m => `<table><thead><tr><th colspan="2">${esc(m.nombre)}</th></tr>
+          <tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead><tbody>` +
+          m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('') +
+          `<tr><td><strong>Promedio de la materia</strong></td><td><strong>${esc(m.promedio)}</strong> (${esc(m.escala)})</td></tr></tbody></table>`).join('') +
+        `<div class="form-box"><h2>Promedio general del periodo: ${esc(d.promedioGeneral)}</h2></div>`;
+    }
+    (async () => {
+      if (!await initPage()) return;
+      await cargar(true).catch(showError);
+      document.getElementById('sel-periodo').onchange = () => cargar(true).catch(showError);
+      document.getElementById('sel-est').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
+    })();
+  </script>
+</body>
+</html>

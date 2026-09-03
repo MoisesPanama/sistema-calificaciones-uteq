@@ -20,9 +20,10 @@ cd sistema-calificaciones-uteq
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-Eso instala dependencias, crea el `.env`, el rol/base de datos, ejecuta las
-migraciones `01..09`, asigna las passwords de prueba y levanta el servidor en
-`http://localhost:3000`. El script es re-ejecutable: si la BD ya existe, la conserva.
+Eso instala dependencias (backend + frontend), crea el `.env`, el rol/base de datos, ejecuta las
+migraciones `01..09`, asigna las passwords de prueba y levanta **dos servidores**: la API en
+`http://localhost:3000` y el frontend en `http://localhost:5173` (abre `pages/login.html`).
+El script es re-ejecutable: si la BD ya existe, la conserva.
 
 > En VS Code también puedes usar la tarea **Setup y levantar proyecto**
 > (Terminal → Run Task…). Si `psql` pide password de superusuario, es solo la
@@ -39,9 +40,9 @@ migraciones `01..09`, asigna las passwords de prueba y levanta el servidor en
 | Componente         | Tecnología           |
 |---------------------|-----------------------|
 | Base de datos        | PostgreSQL 18          |
-| Backend               | Node.js + Express 5     |
-| Motor de vistas        | EJS (renderizado en servidor) |
-| Autenticación           | express-session + connect-pg-simple + bcrypt |
+| Backend               | Node.js + Express 5 — **API REST JSON** (`/api/*`, sin vistas) |
+| Frontend              | HTML + CSS + JS vanilla (carpeta `frontend/`, fetch con sesión por cookie) |
+| Autenticación           | express-session + connect-pg-simple + bcrypt (cookie; CORS con credenciales) |
 | Control de versiones     | Git + GitHub |
 
 ## Características principales
@@ -191,16 +192,21 @@ SESSION_SECRET=una_clave_secreta_cualquiera
 ### 5. Instalar dependencias
 
 ```bash
-npm install
+npm install --prefix backend
+npm install --prefix frontend
 ```
 
-### 6. Ejecutar el servidor
+### 6. Ejecutar (dos terminales)
 
 ```bash
-npm run dev
+# Terminal 1 — API
+npm run dev --prefix backend   # http://localhost:3000
+
+# Terminal 2 — frontend
+npm run dev --prefix frontend  # http://localhost:5173 -> pages/login.html
 ```
 
-El sistema estará disponible en `http://localhost:3000`.
+El sistema se usa desde `http://localhost:5173/pages/login.html`.
 
 ## Usuarios de prueba
 
@@ -214,34 +220,48 @@ El sistema estará disponible en `http://localhost:3000`.
 
 ```
 sistema-calificaciones-uteq/
-├── database/
-│   ├── 01_schema.sql
-│   ├── 02_functions_procedures.sql
-│   ├── 03_triggers_audit.sql
-│   ├── 04_roles_permissions.sql
-│   ├── 05_seed_data.sql
-│   └── 06_sesiones.sql
-└── backend/
-    ├── app.js
-    ├── config/
-    │   └── db.js
-    ├── middleware/
-    │   └── auth.js
-    ├── routes/
-    │   ├── auth.js
-    │   ├── dashboard.js
-    │   ├── estudiantes.js
-    │   ├── materias.js
-    │   ├── periodos.js
-    │   ├── calificaciones.js
-    │   ├── consulta.js
-    │   ├── reportes.js
-    │   └── auditoria.js
-    ├── views/
-    └── public/
-        └── css/
-            └── style.css
+├── database/              # migraciones SQL 01..09
+├── backend/               # API REST JSON (Express, sin vistas)
+│   ├── app.js             # CORS + sesion + montaje /api/*
+│   ├── config/db.js
+│   ├── middleware/auth.js # 401/403 JSON + auditoria
+│   ├── helpers/contexto.js
+│   ├── routes/            # auth, dashboard, estudiantes, materias,
+│   │                      # periodos, calificaciones, consulta,
+│   │                      # reportes, auditoria, catalogos
+│   └── scripts/seed-passwords.js
+└── frontend/              # UI estatica (sin build)
+    ├── index.html         # redirige a pages/login.html
+    ├── css/style.css
+    ├── js/                # config (API_BASE), api (fetch), layout (header/guard)
+    └── pages/             # login, dashboard, estudiantes, estudiante-form,
+                           # materias, periodos, calificaciones, consulta,
+                           # reportes, auditoria
 ```
+
+### API (prefijo `/api`, sesión por cookie, `credentials: include`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/auth/login` | Inicia sesión `{email,password}` |
+| GET | `/api/auth/me` | Sesión actual (guard del frontend) |
+| POST | `/api/auth/logout` | Cierra sesión |
+| GET | `/api/dashboard/` | Contadores generales |
+| GET/POST | `/api/estudiantes/` | Listado (`?q=`) / crear |
+| GET | `/api/estudiantes/representantes` | Select del formulario |
+| GET/PUT | `/api/estudiantes/:id` | Obtener / actualizar |
+| GET/POST | `/api/materias/` | Listado / crear |
+| GET/POST | `/api/periodos/` | Listado + periodo activo / crear |
+| POST | `/api/periodos/:id/activar` | Fijar periodo activo (solo admin) |
+| GET | `/api/calificaciones/contexto` | Materias, cursos, tipos, estudiantes y notas |
+| POST | `/api/calificaciones/lote` | Guardado masivo transaccional |
+| POST | `/api/calificaciones/` | Registro individual |
+| GET | `/api/consulta/` | Notas + promedios por estudiante |
+| GET | `/api/reportes/` | Reporte con cursor explícito |
+| GET | `/api/auditoria/` | Panel de auditoría (solo admin) |
+| GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
+| GET | `/api/catalogos/cursos` | Cursos por periodo |
+| GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
 
 ## Interfaces del sistema
 

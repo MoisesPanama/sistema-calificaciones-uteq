@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Periodos - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Gestión de Periodos Académicos</h1>
+    <p class="periodo-fijo" id="info-activo"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="search-bar"><button class="btn-secondary" id="btn-modal">+ Nuevo Periodo</button></div>
+    <div id="tabla"></div>
+    <div class="modal-fondo" id="modalPeriodo">
+      <div class="modal-caja">
+        <h2>Nuevo Periodo</h2>
+        <form id="form-per" class="form-box">
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" required>
+          <label for="fecha_inicio">Fecha de inicio</label>
+          <input type="date" id="fecha_inicio" required>
+          <label for="fecha_fin">Fecha de fin</label>
+          <input type="date" id="fecha_fin" required>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    let rol = '';
+    async function cargar() {
+      const { periodos, periodoActivo } = await apiGet('/periodos/');
+      document.getElementById('info-activo').innerHTML =
+        `Periodo activo (fijo): <strong>${periodoActivo ? esc(periodoActivo.nombre) : 'Ninguno'}</strong>. ` +
+        'Todo el sistema opera sobre este periodo. Solo puede haber <strong>un periodo activo</strong> a la vez.';
+      document.getElementById('tabla').innerHTML =
+        `<table><thead><tr><th>Nombre</th><th>Fecha inicio</th><th>Fecha fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>` +
+        periodos.map(p => `<tr><td>${esc(p.nombre)}</td>
+          <td>${new Date(p.fecha_inicio).toLocaleDateString('es-EC')}</td>
+          <td>${new Date(p.fecha_fin).toLocaleDateString('es-EC')}</td>
+          <td>${p.activo ? 'Activo (fijo)' : 'Inactivo'}</td>
+          <td>${p.activo ? 'En uso'
+            : (rol === 'administrador'
+              ? `<button class="btn-primary" data-activar="${p.id_periodo}">Activar</button>` : '—')}</td></tr>`).join('') +
+        '</tbody></table>';
+      document.querySelectorAll('[data-activar]').forEach(b => b.onclick = async () => {
+        try {
+          const r = await apiPost(`/periodos/${b.dataset.activar}/activar`, {});
+          showOk(r.mensaje);
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
+    }
+    (async () => {
+      const usuario = await initPage();
+      if (!usuario) return;
+      rol = usuario.nombre_rol;
+      await cargar().catch(showError);
+      const modal = document.getElementById('modalPeriodo');
+      document.getElementById('btn-modal').onclick = () => modal.classList.add('activo');
+      document.getElementById('btn-cerrar').onclick = () => modal.classList.remove('activo');
+      document.getElementById('form-per').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await apiPost('/periodos/', {
+            nombre: document.getElementById('nombre').value,
+            fecha_inicio: document.getElementById('fecha_inicio').value,
+            fecha_fin: document.getElementById('fecha_fin').value
+          });
+          modal.classList.remove('activo');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
+    })();
+  </script>
+</body>
+</html>
