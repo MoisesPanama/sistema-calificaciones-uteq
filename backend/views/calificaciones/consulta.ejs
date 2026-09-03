@@ -2,11 +2,14 @@
 
 <h1>Consulta de Calificaciones</h1>
 
+<p class="periodo-fijo">
+  Periodo activo (fijo): <strong><%= periodoActivo ? periodoActivo.nombre : '—' %></strong>
+</p>
+
 <div class="form-box">
   <form action="/calificaciones/consulta" method="GET">
     <label for="id_periodo">Periodo</label>
     <select id="id_periodo" name="id_periodo" onchange="this.form.submit()">
-      <option value="">-- Selecciona un periodo --</option>
       <% periodos.forEach(function(periodo) { %>
         <option
           value="<%= periodo.id_periodo %>"
@@ -17,16 +20,29 @@
       <% }); %>
     </select>
 
-    <% if (idPeriodoSeleccionado) { %>
-      <label for="id_estudiante">Estudiante</label>
-      <select id="id_estudiante" name="id_estudiante" onchange="this.form.submit()">
-        <option value="">-- Selecciona un estudiante --</option>
-        <% estudiantes.forEach(function(est) { %>
+    <label for="id_estudiante">Estudiante</label>
+    <select id="id_estudiante" name="id_estudiante" onchange="this.form.submit()">
+      <option value="">-- Selecciona un estudiante --</option>
+      <% estudiantes.forEach(function(est) { %>
+        <option
+          value="<%= est.id_estudiante %>"
+          <%= String(idEstudianteSeleccionado) === String(est.id_estudiante) ? 'selected' : '' %>
+        >
+          <%= est.apellidos %> <%= est.nombres %>
+        </option>
+      <% }); %>
+    </select>
+
+    <% if (idEstudianteSeleccionado && materiasFiltro && materiasFiltro.length > 0) { %>
+      <label for="id_materia">Materia (ver promedio específico)</label>
+      <select id="id_materia" name="id_materia" onchange="this.form.submit()">
+        <option value="">-- Todas las materias --</option>
+        <% materiasFiltro.forEach(function(m) { %>
           <option
-            value="<%= est.id_estudiante %>"
-            <%= String(idEstudianteSeleccionado) === String(est.id_estudiante) ? 'selected' : '' %>
+            value="<%= m.id_materia %>"
+            <%= String(idMateriaSeleccionada) === String(m.id_materia) ? 'selected' : '' %>
           >
-            <%= est.apellidos %> <%= est.nombres %>
+            <%= m.nombre %>
           </option>
         <% }); %>
       </select>
@@ -40,6 +56,13 @@
       <%= mensajeSinNotas %>
     </div>
   <% } else { %>
+    <% if (promedioMateriaSel !== null && promedioMateriaSel !== undefined) { %>
+      <div class="form-box">
+        <h2>Promedio en la materia seleccionada: <%= promedioMateriaSel %> — <%= escalaMateriaSel %></h2>
+        <p><small>Aprueba con 7.00 o más (sin redondeo).</small></p>
+      </div>
+    <% } %>
+
     <% materias.forEach(function(materia) { %>
       <table>
         <thead>
@@ -60,7 +83,7 @@
           <% }); %>
           <tr>
             <td><strong>Promedio de la materia</strong></td>
-            <td><strong><%= materia.promedio %></strong></td>
+            <td><strong><%= materia.promedio %></strong> (<%= materia.escala %>)</td>
           </tr>
         </tbody>
       </table>

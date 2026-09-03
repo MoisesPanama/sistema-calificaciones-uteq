@@ -56,16 +56,44 @@ Esquema `colegio`, normalizado (1FN–3FN), con las siguientes tablas:
 
 | Objeto | Tipo | Descripción |
 |--------|------|-------------|
-| `fn_promedio_materia` | Función | Promedio ponderado por peso de tipo de evaluación |
+| `fn_promedio_materia` | Función | Promedio anual por materia con fórmula oficial (80% parciales + 20% examen por ciclo, ponderado por peso); con fallback ponderado legacy |
 | `fn_promedio_general` | Función | Promedio general del estudiante en un periodo |
-| `sp_registrar_calificacion` | Procedimiento | Valida rango 0–10 e inserta/actualiza (upsert) una calificación |
+| `fn_promedio_parcial` / `fn_promedio_ciclo` | Funciones | Promedio de un parcial (insumos formativos) y de un ciclo/quimestre (80/20) |
+| `fn_escala_cualitativa` | Función | Escala oficial (Domina/Alcanza/Próximo/No alcanza) |
+| `fn_insumos_faltantes` | Función | Control de mínimo 2 insumos formativos por parcial |
+| `sp_registrar_calificacion` | Procedimiento | Valida rango 0–10, matrícula y asignación docente; inserta/actualiza (upsert) con contexto parcial/ciclo |
 | `sp_reporte_promedios_periodo` | Función (cursor) | Recorre estudiantes matriculados y devuelve su promedio, tolerando errores individuales |
+| `sp_reporte_promedios_curso_materia` | Función (cursor) | Reporte filtrable por curso y materia, con promedio específico + general + escala |
 
 ### Triggers
 
 - `trg_validar_calificacion` — valida rango 0–10 antes de insertar/actualizar.
-- Auditoría genérica sobre `calificaciones`, `usuarios` y `matriculas`
+- `trg_solo_un_periodo_activo` — garantiza un único periodo activo (periodo fijo).
+- `trg_validar_profesor_materia` — un profesor solo califica sus materias asignadas.
+- `trg_validar_matricula_calificacion` — exige matrícula previa (auto-crea el detalle).
+- `trg_actualizar_promedio_matricula` — recalcula promedio/estado del detalle por materia.
+- Auditoría genérica sobre `calificaciones`, `usuarios`, `matriculas`,
+  `matricula_materias`, `profesor_materia_periodo`, `cursos` y `ciclos_evaluativos`
   (registra usuario de la app, operación, y datos antes/después).
+
+## Modelo escalable (desde migración 07–09)
+
+- **Periodo fijo:** solo un `periodos_academicos.activo = TRUE` (índice parcial +
+  trigger). Todo opera sobre el activo; al activar otro, cursos/materias/promedios
+  empiezan de cero porque todo filtra por periodo.
+- **Cursos/paralelos** (`cursos`: nombre + paralelo + periodo + tutor).
+- **Ciclos evaluativos configurables** (`ciclos_evaluativos`: nombre renombrable,
+  tipo quimestre/trimestre/bimestre/semestre/otro, orden, peso) con
+  **parciales de N variable** (`parciales`). Por defecto: 2 quimestres × 3 parciales.
+- **Tipos de evaluación** con `categoria` (diagnóstica/formativa/sumativa),
+  `es_examen` (examen quimestral = 20%), `cuenta_para_promedio` y parcial asociado.
+  Mínimo **2 insumos formativos por parcial** (`fn_insumos_faltantes`).
+- **Matrícula por materia** (`matricula_materias`: matrícula, materia, promedio
+  calculado por trigger, estado cursando/aprobado/sin_notas).
+- **Una materia en un curso/periodo = un solo profesor** (índice único +
+  validación en SP y trigger; el admin puede todo).
+- **Fórmula oficial Ecuador:** parcial = promedio de insumos; quimestre = 80%
+  parciales + 20% examen; anual = promedio de ciclos; aprueba con 7 (escala incluida).
 
 ## Requisitos previos
 
@@ -99,6 +127,9 @@ psql -U postgres -d calificaciones_uteq -f database/03_triggers_audit.sql
 psql -U postgres -d calificaciones_uteq -f database/04_roles_permissions.sql
 psql -U postgres -d calificaciones_uteq -f database/05_seed_data.sql
 psql -U postgres -d calificaciones_uteq -f database/06_sesiones.sql
+psql -U postgres -d calificaciones_uteq -f database/07_periodo_activo_cursos_ciclos.sql
+psql -U postgres -d calificaciones_uteq -f database/08_tipos_matricula_detalle.sql
+psql -U postgres -d calificaciones_uteq -f database/09_funciones_formula_oficial.sql
 ```
 
 > **Nota:** `04_roles_permissions.sql` crea el usuario de conexión

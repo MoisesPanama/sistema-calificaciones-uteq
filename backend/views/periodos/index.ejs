@@ -2,6 +2,16 @@
 
 <h1>Gestión de Periodos Académicos</h1>
 
+<p class="periodo-fijo">
+  Periodo activo (fijo): <strong><%= periodoActivo ? periodoActivo.nombre : 'Ninguno' %></strong>.
+  Todo el sistema (materias, cursos, notas, promedios) opera sobre este periodo.
+  Solo puede haber <strong>un periodo activo</strong> a la vez.
+</p>
+
+<% if (typeof exito !== 'undefined' && exito) { %>
+  <div class="alert alert-exito"><%= exito %></div>
+<% } %>
+
 <% if (errores && errores.length > 0) { %>
   <div class="alert alert-error">
     <ul>
@@ -23,6 +33,7 @@
       <th>Fecha inicio</th>
       <th>Fecha fin</th>
       <th>Estado</th>
+      <th>Acción</th>
     </tr>
   </thead>
   <tbody>
@@ -31,7 +42,20 @@
         <td><%= periodo.nombre %></td>
         <td><%= new Date(periodo.fecha_inicio).toLocaleDateString('es-EC') %></td>
         <td><%= new Date(periodo.fecha_fin).toLocaleDateString('es-EC') %></td>
-        <td><%= periodo.activo ? 'Activo' : 'Inactivo' %></td>
+        <td><%= periodo.activo ? 'Activo (fijo)' : 'Inactivo' %></td>
+        <td>
+          <% if (!periodo.activo) { %>
+            <% if (usuario && usuario.nombre_rol === 'administrador') { %>
+              <form action="/periodos/<%= periodo.id_periodo %>/activar" method="POST" style="display:inline">
+                <button type="submit" class="btn-primary">Activar</button>
+              </form>
+            <% } else { %>
+              —
+            <% } %>
+          <% } else { %>
+            En uso
+          <% } %>
+        </td>
       </tr>
     <% }); %>
   </tbody>
