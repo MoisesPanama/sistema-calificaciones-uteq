@@ -50,6 +50,36 @@ router.post('/', requireAuth, async (req, res) => {
     }
 });
 
+// POST /api/periodos/:id/editar
+router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req, res) => {
+    const { nombre, fecha_inicio, fecha_fin } = req.body || {};
+    const errores = [];
+    if (!nombre || String(nombre).trim() === '') errores.push('El nombre del periodo es obligatorio.');
+    if (!fecha_inicio) errores.push('La fecha de inicio es obligatoria.');
+    if (!fecha_fin) errores.push('La fecha de fin es obligatoria.');
+    if (errores.length > 0) {
+        return res.status(400).json({ error: errores.join(' '), errores });
+    }
+
+    try {
+        await setUsuarioAuditoria(req.session.usuario.id_usuario);
+        const r = await pool.query(
+            'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
+            [nombre, fecha_inicio, fecha_fin, req.params.id]
+        );
+        if (r.rows.length === 0) {
+            return res.status(404).json({ error: 'Periodo no encontrado.' });
+        }
+        res.json({ ok: true, mensaje: 'Periodo actualizado correctamente.' });
+    } catch (error) {
+        console.error('Error al editar periodo:', error.message);
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Ya existe un periodo registrado con ese nombre.' });
+        }
+        res.status(500).json({ error: 'No se pudo editar el periodo.' });
+    }
+});
+
 // POST /api/periodos/:id/activar -> fija el periodo activo (solo admin).
 // El trigger trg_solo_un_periodo_activo desactiva los demas.
 router.post('/:id/activar', requireAuth, requireRole('administrador'), async (req, res) => {

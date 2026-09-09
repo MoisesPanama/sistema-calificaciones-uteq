@@ -18,7 +18,24 @@
     <p class="alert alert-error" id="error" style="display:none"></p>
     <div class="search-bar"><button class="btn-secondary" id="btn-modal">+ Nuevo Periodo</button></div>
     <div id="tabla"></div>
-    <div class="modal-fondo" id="modalPeriodo">
+    <div class="modal-fondo" id="modalEditar">
+      <div class="modal-caja">
+        <h2>Editar Periodo</h2>
+        <form id="form-editar" class="form-box">
+          <input type="hidden" id="ed-id">
+          <label for="ed-nombre">Nombre</label>
+          <input type="text" id="ed-nombre" required>
+          <label for="ed-fecha_inicio">Fecha de inicio</label>
+          <input type="date" id="ed-fecha_inicio" required>
+          <label for="ed-fecha_fin">Fecha de fin</label>
+          <input type="date" id="ed-fecha_fin" required>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar-editar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
       <div class="modal-caja">
         <h2>Nuevo Periodo</h2>
         <form id="form-per" class="form-box">
@@ -61,7 +78,9 @@
           <td><span class="${badge(p.estado)}">${p.estado}</span></td>
           <td>${p.activo ? 'En uso'
             : (rol === 'administrador'
-              ? `<button class="btn-primary" data-activar="${p.id_periodo}">Activar</button>` : '—')}</td></tr>`).join('') +
+              ? `<button class="btn-primary" data-activar="${p.id_periodo}">Activar</button>` : '—')}</td>
+          <td>${rol === 'administrador'
+            ? `<button class="btn-secondary" data-editar='${JSON.stringify(p)}'>Editar</button>` : '—'}</td></tr>`).join('') +
         '</tbody></table>';
       document.querySelectorAll('[data-activar]').forEach(b => b.onclick = async () => {
         try {
@@ -69,6 +88,14 @@
           showOk(r.mensaje);
           await cargar();
         } catch (err) { showError(err.message); }
+      });
+      document.querySelectorAll('[data-editar]').forEach(b => b.onclick = async () => {
+        const p = JSON.parse(b.dataset.editar);
+        document.getElementById('ed-nombre').value = p.nombre;
+        document.getElementById('ed-fecha_inicio').value = p.fecha_inicio.split('T')[0];
+        document.getElementById('ed-fecha_fin').value = p.fecha_fin.split('T')[0];
+        document.getElementById('ed-id').value = p.id_periodo;
+        document.getElementById('modalEditar').classList.add('activo');
       });
     }
     (async () => {
@@ -79,6 +106,23 @@
       const modal = document.getElementById('modalPeriodo');
       document.getElementById('btn-modal').onclick = () => modal.classList.add('activo');
       document.getElementById('btn-cerrar').onclick = () => modal.classList.remove('activo');
+      const modalEditar = document.getElementById('modalEditar');
+      document.getElementById('btn-cerrar-editar').onclick = () => modalEditar.classList.remove('activo');
+      modalEditar.addEventListener('click', (e) => { if (e.target === modalEditar) modalEditar.classList.remove('activo'); });
+      document.getElementById('form-editar').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const id = document.getElementById('ed-id').value;
+          await apiPost(`/periodos/${id}/editar`, {
+            nombre: document.getElementById('ed-nombre').value,
+            fecha_inicio: document.getElementById('ed-fecha_inicio').value,
+            fecha_fin: document.getElementById('ed-fecha_fin').value
+          });
+          modalEditar.classList.remove('activo');
+          showOk('Periodo actualizado correctamente.');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
       document.getElementById('form-per').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
