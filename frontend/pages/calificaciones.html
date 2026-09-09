@@ -23,7 +23,7 @@
       <select id="sel-curso"><option value="">-- Todos mis cursos --</option></select>
     </div>
     <div id="tabla"></div>
-    <p><small>Las celdas vacías no se guardan (conservan la nota anterior). Aprueba con 7. Cada parcial pide mínimo 2 insumos formativos.</small></p>
+    <p><small>Las celdas vacias no se guardan (conservan la nota anterior). Aprueba con 7.</small></p>
     </main>
   </div>
 </div>
@@ -32,6 +32,8 @@
   <script src="../js/layout.js"></script>
   <script>
     let ctx = null;
+    let hayCambiosSinGuardar = false;
+
     function params() {
       const p = new URLSearchParams();
       if (ctx) p.set('id_periodo', ctx.idPeriodo);
@@ -41,6 +43,21 @@
       if (c) p.set('id_curso', c);
       return p.toString();
     }
+
+    function marcarCambios() {
+      hayCambiosSinGuardar = true;
+    }
+
+    function limpiarCambios() {
+      hayCambiosSinGuardar = false;
+    }
+
+    function confirmarSalida(e) {
+      if (!hayCambiosSinGuardar) return;
+      e.preventDefault();
+      e.returnValue = '';
+    }
+
     async function cargar(first = false) {
       const data = await apiGet('/calificaciones/contexto?' + params());
       ctx = data;
@@ -58,7 +75,9 @@
         }
       }
       renderTabla(data);
+      limpiarCambios();
     }
+
     function renderTabla(data) {
       const div = document.getElementById('tabla');
       if (!document.getElementById('sel-materia').value) {
@@ -74,12 +93,20 @@
           data.tiposEvaluacion.map(t => {
             const v = data.notasExistentes[e.id_estudiante]?.[t.id_tipo_evaluacion] ?? '';
             return `<td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
-              data-est="${e.id_estudiante}" data-tipo="${t.id_tipo_evaluacion}" value="${esc(v)}"></td>`;
+              data-est="${e.id_estudiante}" data-tipo="${t.id_tipo_evaluacion}" data-original="${esc(v)}" value="${esc(v)}"></td>`;
           }).join('') + '</tr>').join('') +
         `</tbody></table></div>
         <div class="form-actions"><button class="btn-primary" id="btn-guardar">Guardar todas</button></div>`;
+
       document.getElementById('btn-guardar').onclick = guardar;
+
+      document.querySelectorAll('input[data-est]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          hayCambiosSinGuardar = inp.value !== inp.dataset.original;
+        });
+      });
     }
+
     async function guardar() {
       const notas = {};
       document.querySelectorAll('input[data-est]').forEach(inp => {
@@ -94,14 +121,38 @@
           notas
         });
         showOk(r.mensaje);
+        limpiarCambios();
         await cargar();
       } catch (err) { showError(err.message); }
     }
+
+    window.addEventListener('beforeunload', confirmarSalida);
+
+    document.addEventListener('click', (e) => {
+      if (!hayCambiosSinGuardar) return;
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      if (link.closest('#app-sidebar') || link.closest('.sidebar-link')) {
+        e.preventDefault();
+        const destino = link.getAttribute('href');
+        if (confirm('Tiene notas sin guardar. ¿Seguro que desea salir?')) {
+          hayCambiosSinGuardar = false;
+          window.location.href = destino;
+        }
+      }
+    });
+
     (async () => {
       if (!await initPage()) return;
       await cargar(true).catch(showError);
-      document.getElementById('sel-materia').onchange = () => cargar().catch(showError);
-      document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-materia').onchange = async () => {
+        if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de materia?')) return;
+        await cargar(true).catch(showError);
+      };
+      document.getElementById('sel-curso').onchange = async () => {
+        if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de curso?')) return;
+        await cargar(true).catch(showError);
+      };
     })();
   </script>
 </body>
