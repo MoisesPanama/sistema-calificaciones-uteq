@@ -53,11 +53,13 @@
       const div = document.getElementById('resultado');
       if (d.mensajeSinDatos) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinDatos)}</div>`; return; }
       const conMat = !!d.idMateria;
-      div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th><th>Curso</th>` +
-        (conMat ? '<th>Promedio materia</th>' : '') + '<th>Promedio general</th><th>Escala</th></tr></thead><tbody>' +
-        d.reporte.map(f => `<tr><td>${esc(f.nombres)}</td><td>${esc(f.apellidos)}</td><td>${esc(f.curso || '—')}</td>` +
-          (conMat ? `<td>${f.promedio_materia != null ? esc(f.promedio_materia) : 'Sin calificaciones'}</td>` : '') +
-          `<td>${f.promedio_general != null ? esc(f.promedio_general) : 'Sin calificaciones'}</td><td>${esc(f.escala || '')}</td></tr>`).join('') +
+      const conCurso = !!d.idCurso;
+      div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th>` +
+        (conCurso ? '<th>Curso</th>' : '') +
+        '<th>Promedio</th><th>Escala</th></tr></thead><tbody>' +
+        d.reporte.map(f => `<tr><td>${esc(f.nombres)}</td><td>${esc(f.apellidos)}</td>` +
+          (conCurso ? `<td>${esc(f.curso || '—')}</td>` : '') +
+          `<td>${f.promedio != null ? esc(f.promedio) : 'Sin calificaciones'}</td><td>${esc(f.escala || '')}</td></tr>`).join('') +
         '</tbody></table>';
     }
     (async () => {

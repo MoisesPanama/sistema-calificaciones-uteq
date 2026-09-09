@@ -12,7 +12,11 @@ const pool = new Pool({
     database: process.env.DB_NAME,
     user:     process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    options: '-c search_path=colegio,public',
+});
+
+// Set search_path on every new connection
+pool.on('connect', () => {
+    pool.query('SET search_path TO colegio, public');
 });
 
 // Verifica la conexion apenas arranca el servidor,

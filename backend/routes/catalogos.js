@@ -26,7 +26,7 @@ router.get('/cursos', requireAuth, async (req, res) => {
         const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
         if (!idPeriodo) return res.json({ cursos: [] });
         const r = await pool.query(
-            'SELECT id_curso, nombre, paralelo FROM colegio.cursos WHERE id_periodo = $1 ORDER BY nombre, paralelo',
+            'SELECT id_curso, nombre, paralelo FROM cursos WHERE id_periodo = $1 ORDER BY nombre, paralelo',
             [idPeriodo]
         );
         res.json({ cursos: r.rows });
@@ -39,7 +39,7 @@ router.get('/cursos', requireAuth, async (req, res) => {
 router.get('/tipos-evaluacion', requireAuth, async (req, res) => {
     try {
         const r = await pool.query(
-            'SELECT id_tipo_evaluacion, nombre, categoria, es_examen FROM tipos_evaluacion ORDER BY nombre'
+            'SELECT id_tipo_evaluacion, nombre, peso FROM tipos_evaluacion ORDER BY nombre'
         );
         res.json({ tiposEvaluacion: r.rows });
     } catch (error) {

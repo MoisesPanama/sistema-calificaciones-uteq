@@ -9,6 +9,15 @@ const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
 
+function evaluarEscala(nota) {
+    if (nota == null) return 'S/N';
+    if (nota >= 9.0) return 'AD';
+    if (nota >= 7.0) return 'A';
+    if (nota >= 5.0) return 'B';
+    if (nota >= 3.0) return 'C';
+    return 'D';
+}
+
 router.get('/', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -20,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
             'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
         );
 
-        const idPeriodo = req.query.id_periodo || String(periodoActivo.id_periodo);
+        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
         const idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.query.id_materia || '';
 
@@ -89,11 +98,7 @@ router.get('/', requireAuth, async (req, res) => {
                     [idEstudiante, materia.id_materia, idPeriodo]
                 );
                 materia.promedio = resultadoProm.rows[0].promedio;
-                const rEsc = await pool.query(
-                    'SELECT fn_escala_cualitativa($1) AS escala',
-                    [materia.promedio]
-                );
-                materia.escala = rEsc.rows[0].escala;
+                materia.escala = evaluarEscala(materia.promedio);
                 if (String(materia.id_materia) === String(idMateria)) {
                     promedioMateriaSel = materia.promedio;
                     escalaMateriaSel = materia.escala;

@@ -24,12 +24,22 @@ async function cargarTabla(idPeriodo, idMateria, idCurso) {
     const notasExistentes = {};
     if (!idMateria) return { estudiantes, notasExistentes };
 
-    let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
-                         m.id_curso, c.nombre AS curso_nombre, c.paralelo
+    let sqlEst;
+    try {
+        sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
+                         m.id_curso, COALESCE(c.nombre, 'Sin curso') AS curso_nombre, COALESCE(c.paralelo, '') AS paralelo
                   FROM matriculas m
                   JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-                  LEFT JOIN colegio.cursos c ON c.id_curso = m.id_curso
+                  LEFT JOIN cursos c ON c.id_curso = m.id_curso
                   WHERE m.id_periodo = $1`;
+        await pool.query(sqlEst + ' LIMIT 0', [idPeriodo]);
+    } catch (_) {
+        sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
+                         NULL AS id_curso, 'Sin curso' AS curso_nombre, '' AS paralelo
+                  FROM matriculas m
+                  JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                  WHERE m.id_periodo = $1`;
+    }
     const params = [idPeriodo];
     if (idCurso) {
         sqlEst += ' AND m.id_curso = $2';
@@ -63,11 +73,11 @@ router.get('/contexto', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados. Cree y active uno primero.' });
         }
-        const idPeriodo = req.query.id_periodo || periodoActivo.id_periodo;
+        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || periodoActivo.id_periodo;
         const materias = await getMateriasPermitidas(pool, req.session.usuario, idPeriodo);
         const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
         const tiposRes = await pool.query(
-            `SELECT id_tipo_evaluacion, nombre, categoria, es_examen
+            `SELECT id_tipo_evaluacion, nombre, peso
              FROM tipos_evaluacion ORDER BY nombre`
         );
 

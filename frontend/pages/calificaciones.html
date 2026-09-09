@@ -68,7 +68,7 @@
       if (data.estudiantes.length === 0) { div.innerHTML = '<p>No hay estudiantes matriculados en este periodo para ese curso.</p>'; return; }
       div.innerHTML = `<p>Se cargaron <strong>${data.estudiantes.length}</strong> estudiantes. Escriba las notas y guarde todo de una vez:</p>
         <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th>` +
-        data.tiposEvaluacion.map(t => `<th>${esc(t.nombre)}<br><small>${esc(t.categoria)}${t.es_examen ? ' · examen (20%)' : ''}</small></th>`).join('') +
+        data.tiposEvaluacion.map(t => `<th>${esc(t.nombre)}<br><small>${esc(t.peso ? (Number(t.peso)*100)+'%' : '')}</small></th>`).join('') +
         `</tr></thead><tbody>` +
         data.estudiantes.map(e => `<tr><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>` +
           data.tiposEvaluacion.map(t => {

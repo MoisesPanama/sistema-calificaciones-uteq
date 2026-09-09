@@ -142,7 +142,7 @@ async function cargarPeriodos(seleccionado) {
       item.addEventListener('click', async () => {
         const id = Number(item.dataset.id);
         await apiPost('/auth/periodo-seleccionado', { id_periodo: id });
-        cargarPeriodos(id);
+        location.reload();
       });
     });
   } catch (e) {
