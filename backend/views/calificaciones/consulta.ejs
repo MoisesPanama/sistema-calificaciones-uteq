@@ -4,18 +4,7 @@
 
 <div class="form-box">
   <form action="/calificaciones/consulta" method="GET">
-    <label for="id_periodo">Periodo</label>
-    <select id="id_periodo" name="id_periodo" onchange="this.form.submit()">
-      <option value="">-- Selecciona un periodo --</option>
-      <% periodos.forEach(function(periodo) { %>
-        <option
-          value="<%= periodo.id_periodo %>"
-          <%= String(idPeriodoSeleccionado) === String(periodo.id_periodo) ? 'selected' : '' %>
-        >
-          <%= periodo.nombre %>
-        </option>
-      <% }); %>
-    </select>
+    <input type="hidden" name="id_periodo" value="<%= idPeriodoSeleccionado %>">
 
     <% if (idPeriodoSeleccionado) { %>
       <label for="id_estudiante">Estudiante</label>
@@ -40,36 +29,59 @@
       <%= mensajeSinNotas %>
     </div>
   <% } else { %>
-    <% materias.forEach(function(materia) { %>
+
+    <% if (materias.length > 0) { %>
+      <h2 style="margin-top:1.5rem;margin-bottom:0.5rem;">Resumen por Materia</h2>
       <table>
         <thead>
           <tr>
-            <th colspan="2"><%= materia.nombre %></th>
-          </tr>
-          <tr>
-            <th>Tipo de evaluación</th>
-            <th>Nota</th>
+            <th>Materia</th>
+            <th>Promedio</th>
           </tr>
         </thead>
         <tbody>
-          <% materia.parciales.forEach(function(parcial) { %>
+          <% materias.forEach(function(materia) { %>
             <tr>
-              <td><%= parcial.tipo %></td>
-              <td><%= parcial.valor %></td>
+              <td><%= materia.nombre %></td>
+              <td><strong><%= materia.promedio !== null ? materia.promedio : 'Sin notas' %></strong></td>
             </tr>
           <% }); %>
-          <tr>
-            <td><strong>Promedio de la materia</strong></td>
-            <td><strong><%= materia.promedio %></strong></td>
+          <tr style="background-color:#dbe3f0;">
+            <td><strong>PROMEDIO GENERAL</strong></td>
+            <td><strong><%= promedioGeneral !== null ? promedioGeneral : 'Sin notas' %></strong></td>
           </tr>
         </tbody>
       </table>
+    <% } %>
+
+    <h2 style="margin-top:2rem;margin-bottom:0.5rem;">Detalle por Materia</h2>
+    <% materias.forEach(function(materia) { %>
+      <div style="margin-bottom:1.5rem;">
+        <h3 style="color:#1e3a8a;"><%= materia.nombre %> — Promedio: <span style="color:<%= materia.promedio >= 7 ? '#166534' : (materia.promedio >= 5 ? '#a16207' : '#991b1b') %>;"><%= materia.promedio %></span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Evaluacion</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% materia.parciales.forEach(function(parcial) { %>
+              <tr>
+                <td><%= parcial.tipo %></td>
+                <td><%= parcial.valor %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
     <% }); %>
 
-    <div class="form-box">
-      <h2>Promedio general del periodo: <%= promedioGeneral %></h2>
-    </div>
   <% } %>
+<% } else if (idPeriodoSeleccionado) { %>
+  <p>Selecciona un estudiante para ver sus calificaciones.</p>
+<% } else { %>
+  <p>No hay un periodo activo seleccionado. Selecciona un periodo desde el selector superior.</p>
 <% } %>
 
 <%- include('../partials/footer') %>

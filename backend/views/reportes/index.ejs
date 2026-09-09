@@ -1,23 +1,6 @@
 <%- include('../partials/header') %>
 
-<h1>Reporte de Promedios por Periodo</h1>
-
-<div class="form-box">
-  <form action="/reportes" method="GET">
-    <label for="id_periodo">Periodo</label>
-    <select id="id_periodo" name="id_periodo" onchange="this.form.submit()">
-      <option value="">-- Selecciona un periodo --</option>
-      <% periodos.forEach(function(periodo) { %>
-        <option
-          value="<%= periodo.id_periodo %>"
-          <%= String(idPeriodoSeleccionado) === String(periodo.id_periodo) ? 'selected' : '' %>
-        >
-          <%= periodo.nombre %>
-        </option>
-      <% }); %>
-    </select>
-  </form>
-</div>
+<h1>Reporte de Promedios por Quimestre</h1>
 
 <% if (idPeriodoSeleccionado) { %>
   <% if (mensajeSinDatos) { %>
@@ -30,7 +13,8 @@
         <tr>
           <th>Nombres</th>
           <th>Apellidos</th>
-          <th>Promedio general</th>
+          <th>Promedio General</th>
+          <th>Estado</th>
         </tr>
       </thead>
       <tbody>
@@ -38,12 +22,27 @@
           <tr>
             <td><%= fila.nombres %></td>
             <td><%= fila.apellidos %></td>
-            <td><%= fila.promedio !== null ? fila.promedio : 'Sin calificaciones' %></td>
+            <td><strong><%= fila.promedio !== null ? fila.promedio : 'Sin calificaciones' %></strong></td>
+            <td>
+              <% if (fila.promedio !== null) { %>
+                <% if (fila.promedio >= 7) { %>
+                  <span style="color:#166534;font-weight:bold;">Aprobado</span>
+                <% } else if (fila.promedio >= 5) { %>
+                  <span style="color:#a16207;font-weight:bold;">Supletorio</span>
+                <% } else { %>
+                  <span style="color:#991b1b;font-weight:bold;">Reprobado</span>
+                <% } %>
+              <% } else { %>
+                <span style="color:#6b7280;">--</span>
+              <% } %>
+            </td>
           </tr>
         <% }); %>
       </tbody>
     </table>
   <% } %>
+<% } else { %>
+  <p>No hay un periodo activo seleccionado. Selecciona un periodo desde el selector superior.</p>
 <% } %>
 
 <%- include('../partials/footer') %>

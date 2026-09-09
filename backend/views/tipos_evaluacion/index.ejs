@@ -1,0 +1,72 @@
+<%- include('../partials/header') %>
+
+<h1>Tipos de Evaluacion (Maestro de Datos)</h1>
+
+<% if (errores && errores.length > 0) { %>
+  <div class="alert alert-error">
+    <ul>
+      <% errores.forEach(function(err) { %>
+        <li><%= err %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="search-bar">
+  <button type="button" class="btn-secondary" onclick="abrirModal()">+ Nuevo Tipo</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Peso</th>
+      <th>Porcentaje</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% tiposEvaluacion.forEach(function(tipo) { %>
+      <tr>
+        <td><%= tipo.nombre %></td>
+        <td><%= tipo.peso %></td>
+        <td><%= (tipo.peso * 100).toFixed(0) %>%</td>
+        <td>
+          <form action="/tipos-evaluacion/<%= tipo.id_tipo_evaluacion %>/eliminar" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar este tipo de evaluacion?')">
+            <button type="submit" class="btn-danger btn-secondary" style="padding:0.2rem 0.6rem;font-size:0.8rem;">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+    <% }); %>
+  </tbody>
+</table>
+
+<div class="modal-fondo" id="modalTipo">
+  <div class="modal-caja">
+    <h2>Nuevo Tipo de Evaluacion</h2>
+    <form action="/tipos-evaluacion" method="POST" class="form-box">
+      <label for="nombre">Nombre</label>
+      <input type="text" id="nombre" name="nombre" placeholder="Ej: Parcial 1" required>
+
+      <label for="peso">Peso (0.01 a 1.00)</label>
+      <input type="number" id="peso" name="peso" min="0.01" max="1" step="0.01" placeholder="Ej: 0.30" required>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Guardar</button>
+        <button type="button" class="btn-danger btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function abrirModal() {
+    document.getElementById('modalTipo').classList.add('activo');
+  }
+
+  function cerrarModal() {
+    document.getElementById('modalTipo').classList.remove('activo');
+  }
+</script>
+
+<%- include('../partials/footer') %>

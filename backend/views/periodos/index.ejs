@@ -1,6 +1,6 @@
 <%- include('../partials/header') %>
 
-<h1>Gestión de Periodos Académicos</h1>
+<h1>Gestion de Quimestres/Periodos</h1>
 
 <% if (errores && errores.length > 0) { %>
   <div class="alert alert-error">
@@ -13,7 +13,7 @@
 <% } %>
 
 <div class="search-bar">
-  <button type="button" class="btn-secondary" onclick="abrirModal()">+ Nuevo Periodo</button>
+  <button type="button" class="btn-secondary" onclick="abrirModal('modalNuevo')">+ Nuevo Quimestre</button>
 </div>
 
 <table>
@@ -23,6 +23,7 @@
       <th>Fecha inicio</th>
       <th>Fecha fin</th>
       <th>Estado</th>
+      <th>Acciones</th>
     </tr>
   </thead>
   <tbody>
@@ -31,18 +32,22 @@
         <td><%= periodo.nombre %></td>
         <td><%= new Date(periodo.fecha_inicio).toLocaleDateString('es-EC') %></td>
         <td><%= new Date(periodo.fecha_fin).toLocaleDateString('es-EC') %></td>
-        <td><%= periodo.activo ? 'Activo' : 'Inactivo' %></td>
+        <td><span class="badge badge-<%= periodo.estado === 'Activo' ? 'success' : (periodo.estado === 'Finalizado' ? 'danger' : 'warning') %>"><%= periodo.estado %></span></td>
+        <td>
+          <a href="/periodos/<%= periodo.id_periodo %>/editar" class="btn-secondary" style="padding:0.2rem 0.6rem;font-size:0.8rem;text-decoration:none;">Editar</a>
+        </td>
       </tr>
     <% }); %>
   </tbody>
 </table>
 
-<div class="modal-fondo" id="modalPeriodo">
+<!-- Modal Nuevo Periodo -->
+<div class="modal-fondo" id="modalNuevo">
   <div class="modal-caja">
-    <h2>Nuevo Periodo</h2>
+    <h2>Nuevo Quimestre</h2>
     <form action="/periodos" method="POST" class="form-box">
       <label for="nombre">Nombre</label>
-      <input type="text" id="nombre" name="nombre" required>
+      <input type="text" id="nombre" name="nombre" placeholder="Ej: Primer Quimestre 2026-2027" required>
 
       <label for="fecha_inicio">Fecha de inicio</label>
       <input type="date" id="fecha_inicio" name="fecha_inicio" required>
@@ -52,19 +57,48 @@
 
       <div class="form-actions">
         <button type="submit" class="btn-primary">Guardar</button>
-        <button type="button" class="btn-danger btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button type="button" class="btn-danger btn-secondary" onclick="cerrarModal('modalNuevo')">Cancelar</button>
       </div>
     </form>
   </div>
 </div>
 
+<!-- Modal Editar Periodo -->
+<% if (periodoEditar) { %>
+<div class="modal-fondo activo" id="modalEditar">
+  <div class="modal-caja">
+    <h2>Editar Quimestre</h2>
+    <form action="/periodos/<%= periodoEditar.id_periodo %>?_method=PUT" method="POST" class="form-box">
+      <label for="edit_nombre">Nombre</label>
+      <input type="text" id="edit_nombre" name="nombre" value="<%= periodoEditar.nombre %>" required>
+
+      <label for="edit_fecha_inicio">Fecha de inicio</label>
+      <input type="date" id="edit_fecha_inicio" name="fecha_inicio" value="<%= new Date(periodoEditar.fecha_inicio).toISOString().split('T')[0] %>" required>
+
+      <label for="edit_fecha_fin">Fecha de fin</label>
+      <input type="date" id="edit_fecha_fin" name="fecha_fin" value="<%= new Date(periodoEditar.fecha_fin).toISOString().split('T')[0] %>" required>
+
+      <label class="checkbox-label">
+        <input type="checkbox" name="activo" <%= periodoEditar.activo ? 'checked' : '' %>>
+        Periodo activo
+      </label>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Guardar cambios</button>
+        <a href="/periodos" class="btn-danger btn-secondary" style="text-decoration:none;">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+<% } %>
+
 <script>
-  function abrirModal() {
-    document.getElementById('modalPeriodo').classList.add('activo');
+  function abrirModal(id) {
+    document.getElementById(id).classList.add('activo');
   }
 
-  function cerrarModal() {
-    document.getElementById('modalPeriodo').classList.remove('activo');
+  function cerrarModal(id) {
+    document.getElementById(id).classList.remove('activo');
   }
 </script>
 

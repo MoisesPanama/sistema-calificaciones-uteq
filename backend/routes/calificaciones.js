@@ -7,24 +7,63 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
+const { getPeriodoActivo, getAllPeriodos } = require('../helpers/periodos');
 
 // GET /calificaciones/nueva -> formulario de registro
 router.get('/calificaciones/nueva', requireAuth, async (req, res) => {
     try {
-        const periodos = await pool.query(
-            'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
-        );
-        const materias = await pool.query(
-            'SELECT id_materia, nombre FROM materias ORDER BY nombre'
-        );
-        const tiposEvaluacion = await pool.query(
-            'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
-        );
+        const periodos = await getAllPeriodos();
+        const periodoActivo = await getPeriodoActivo();
 
-        const idPeriodoSeleccionado = req.query.id_periodo || '';
+        const idPeriodoSeleccionado = res.locals.periodoSeleccionado || '';
+
+        let materias = [];
+        let tiposEvaluacion = [];
         let estudiantes = [];
 
         if (idPeriodoSeleccionado) {
+            // Si es profesor, solo mostrar materias asignadas a el
+            let consultaMaterias;
+            if (req.session.usuario.nombre_rol === 'profesor') {
+                // Obtener el id_profesor del usuario logueado
+                const profRes = await pool.query(
+                    'SELECT id_profesor FROM profesores WHERE id_usuario = $1',
+                    [req.session.usuario.id_usuario]
+                );
+
+                if (profRes.rows.length > 0) {
+                    consultaMaterias = pool.query(
+                        `SELECT DISTINCT m.id_materia, m.nombre
+                         FROM materias m
+                         JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
+                         WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
+                         ORDER BY m.nombre`,
+                        [idPeriodoSeleccionado, profRes.rows[0].id_profesor]
+                    );
+                } else {
+                    consultaMaterias = Promise.resolve({ rows: [] });
+                }
+            } else {
+                // Admin ve todas las materias del periodo
+                consultaMaterias = pool.query(
+                    `SELECT DISTINCT m.id_materia, m.nombre
+                     FROM materias m
+                     JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
+                     WHERE pmp.id_periodo = $1
+                     ORDER BY m.nombre`,
+                    [idPeriodoSeleccionado]
+                );
+            }
+
+            const [materiasRes, tiposRes] = await Promise.all([
+                consultaMaterias,
+                pool.query(
+                    'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
+                )
+            ]);
+            materias = materiasRes.rows;
+            tiposEvaluacion = tiposRes.rows;
+
             const resultadoEst = await pool.query(
                 `SELECT e.id_estudiante, e.nombres, e.apellidos
                  FROM matriculas m
@@ -37,9 +76,9 @@ router.get('/calificaciones/nueva', requireAuth, async (req, res) => {
         }
 
         res.render('calificaciones/nueva', {
-            periodos: periodos.rows,
-            materias: materias.rows,
-            tiposEvaluacion: tiposEvaluacion.rows,
+            periodos,
+            materias,
+            tiposEvaluacion,
             estudiantes,
             idPeriodoSeleccionado,
             errores: []
@@ -66,6 +105,26 @@ router.post('/calificaciones', requireAuth, async (req, res) => {
         errores.push('La calificacion debe ser un numero.');
     }
 
+    // Validar que el profesor solo pueda registrar notas en sus materias
+    if (errores.length === 0 && req.session.usuario.nombre_rol === 'profesor') {
+        const profRes = await pool.query(
+            'SELECT id_profesor FROM profesores WHERE id_usuario = $1',
+            [req.session.usuario.id_usuario]
+        );
+
+        if (profRes.rows.length > 0) {
+            const asignacion = await pool.query(
+                `SELECT 1 FROM profesor_materia_periodo
+                 WHERE id_profesor = $1 AND id_materia = $2 AND id_periodo = $3`,
+                [profRes.rows[0].id_profesor, id_materia, id_periodo]
+            );
+
+            if (asignacion.rows.length === 0) {
+                errores.push('No tiene permiso para registrar calificaciones en esta materia.');
+            }
+        }
+    }
+
     if (errores.length > 0) {
         return await recargarFormularioConError(req, res, errores, id_periodo);
     }
@@ -83,7 +142,6 @@ router.post('/calificaciones', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Error al registrar calificacion:', error.message);
 
-        // P0001 = codigo generico de RAISE EXCEPTION dentro del procedimiento
         let mensaje = 'No se pudo registrar la calificacion.';
         if (error.code === 'P0001') {
             mensaje = error.message;
@@ -95,15 +153,28 @@ router.post('/calificaciones', requireAuth, async (req, res) => {
 
 // Funcion auxiliar: vuelve a cargar todos los selects y re-renderiza con errores
 async function recargarFormularioConError(req, res, errores, idPeriodoSeleccionado) {
-    const periodos = await pool.query(
-        'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
-    );
-    const materias = await pool.query(
-        'SELECT id_materia, nombre FROM materias ORDER BY nombre'
-    );
-    const tiposEvaluacion = await pool.query(
-        'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
-    );
+    const periodos = await getAllPeriodos();
+
+    let materias = [];
+    let tiposEvaluacion = [];
+
+    if (idPeriodoSeleccionado) {
+        const [materiasRes, tiposRes] = await Promise.all([
+            pool.query(
+                `SELECT DISTINCT m.id_materia, m.nombre
+                 FROM materias m
+                 JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
+                 WHERE pmp.id_periodo = $1
+                 ORDER BY m.nombre`,
+                [idPeriodoSeleccionado]
+            ),
+            pool.query(
+                'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
+            )
+        ]);
+        materias = materiasRes.rows;
+        tiposEvaluacion = tiposRes.rows;
+    }
 
     let estudiantes = [];
     if (idPeriodoSeleccionado) {
@@ -119,9 +190,9 @@ async function recargarFormularioConError(req, res, errores, idPeriodoSelecciona
     }
 
     res.render('calificaciones/nueva', {
-        periodos: periodos.rows,
-        materias: materias.rows,
-        tiposEvaluacion: tiposEvaluacion.rows,
+        periodos,
+        materias,
+        tiposEvaluacion,
         estudiantes,
         idPeriodoSeleccionado: idPeriodoSeleccionado || '',
         errores

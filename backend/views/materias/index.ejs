@@ -1,6 +1,6 @@
 <%- include('../partials/header') %>
 
-<h1>Gestión de Materias</h1>
+<h1>Gestion de Materias</h1>
 
 <% if (errores && errores.length > 0) { %>
   <div class="alert alert-error">
@@ -13,14 +13,17 @@
 <% } %>
 
 <div class="search-bar">
-  <button type="button" class="btn-secondary" onclick="abrirModal()">+ Nueva Materia</button>
+  <button type="button" class="btn-secondary" onclick="abrirModal('modalNuevo')">+ Nueva Materia</button>
 </div>
 
 <table>
   <thead>
     <tr>
       <th>Nombre</th>
-      <th>Descripción</th>
+      <th>Descripcion</th>
+      <th>Profesor</th>
+      <th>Periodo</th>
+      <th>Acciones</th>
     </tr>
   </thead>
   <tbody>
@@ -28,36 +31,95 @@
       <tr>
         <td><%= materia.nombre %></td>
         <td><%= materia.descripcion %></td>
+        <td><%= materia.profesor_nombre || '-' %></td>
+        <td><%= materia.periodo_nombre || '-' %></td>
+        <td>
+          <a href="/materias/<%= materia.id_materia %>/editar" class="btn-secondary" style="padding:0.2rem 0.6rem;font-size:0.8rem;text-decoration:none;">Editar</a>
+        </td>
       </tr>
     <% }); %>
   </tbody>
 </table>
 
-<div class="modal-fondo" id="modalMateria">
+<!-- Modal Nueva Materia -->
+<div class="modal-fondo" id="modalNuevo">
   <div class="modal-caja">
     <h2>Nueva Materia</h2>
     <form action="/materias" method="POST" class="form-box">
       <label for="nombre">Nombre</label>
       <input type="text" id="nombre" name="nombre" required>
 
-      <label for="descripcion">Descripción</label>
+      <label for="descripcion">Descripcion</label>
       <input type="text" id="descripcion" name="descripcion">
+
+      <label for="id_profesor">Profesor</label>
+      <select id="id_profesor" name="id_profesor" required>
+        <option value="">-- Selecciona un profesor --</option>
+        <% profesores.forEach(function(prof) { %>
+          <option value="<%= prof.id_profesor %>"><%= prof.nombres %> <%= prof.apellidos %></option>
+        <% }); %>
+      </select>
+
+      <label for="id_periodo">Periodo Academico</label>
+      <select id="id_periodo" name="id_periodo" required>
+        <option value="">-- Selecciona un periodo --</option>
+        <% periodos.forEach(function(periodo) { %>
+          <option value="<%= periodo.id_periodo %>" <%= periodo.activo ? 'selected' : '' %>><%= periodo.nombre %></option>
+        <% }); %>
+      </select>
 
       <div class="form-actions">
         <button type="submit" class="btn-primary">Guardar</button>
-        <button type="button" class="btn-danger btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button type="button" class="btn-danger btn-secondary" onclick="cerrarModal('modalNuevo')">Cancelar</button>
       </div>
     </form>
   </div>
 </div>
 
+<!-- Modal Editar Materia -->
+<% if (materiaEditar) { %>
+<div class="modal-fondo activo" id="modalEditar">
+  <div class="modal-caja">
+    <h2>Editar Materia</h2>
+    <form action="/materias/<%= materiaEditar.id_materia %>?_method=PUT" method="POST" class="form-box">
+      <label for="edit_nombre">Nombre</label>
+      <input type="text" id="edit_nombre" name="nombre" value="<%= materiaEditar.nombre %>" required>
+
+      <label for="edit_descripcion">Descripcion</label>
+      <input type="text" id="edit_descripcion" name="descripcion" value="<%= materiaEditar.descripcion || '' %>">
+
+      <label for="edit_id_profesor">Profesor</label>
+      <select id="edit_id_profesor" name="id_profesor" required>
+        <option value="">-- Selecciona un profesor --</option>
+        <% profesores.forEach(function(prof) { %>
+          <option value="<%= prof.id_profesor %>" <%= String(materiaEditar.id_profesor) === String(prof.id_profesor) ? 'selected' : '' %>><%= prof.nombres %> <%= prof.apellidos %></option>
+        <% }); %>
+      </select>
+
+      <label for="edit_id_periodo">Periodo Academico</label>
+      <select id="edit_id_periodo" name="id_periodo" required>
+        <option value="">-- Selecciona un periodo --</option>
+        <% periodos.forEach(function(periodo) { %>
+          <option value="<%= periodo.id_periodo %>" <%= String(materiaEditar.id_periodo) === String(periodo.id_periodo) ? 'selected' : '' %>><%= periodo.nombre %></option>
+        <% }); %>
+      </select>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Guardar cambios</button>
+        <a href="/materias" class="btn-danger btn-secondary" style="text-decoration:none;">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+<% } %>
+
 <script>
-  function abrirModal() {
-    document.getElementById('modalMateria').classList.add('activo');
+  function abrirModal(id) {
+    document.getElementById(id).classList.add('activo');
   }
 
-  function cerrarModal() {
-    document.getElementById('modalMateria').classList.remove('activo');
+  function cerrarModal(id) {
+    document.getElementById(id).classList.remove('activo');
   }
 </script>
 

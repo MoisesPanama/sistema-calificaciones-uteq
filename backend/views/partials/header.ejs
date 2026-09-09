@@ -5,6 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Calificaciones - UTEQ</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .header-periodo {
+            position: relative;
+            cursor: pointer;
+        }
+        .header-periodo-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 0.35rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .header-periodo-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .header-periodo-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: white;
+        }
+        .header-periodo-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.4rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            min-width: 280px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        .header-periodo-dropdown.activo {
+            display: block;
+        }
+        .header-periodo-dropdown-header {
+            padding: 0.7rem 1rem;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #1e3a8a;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .header-periodo-dropdown-title {
+            padding: 0.5rem 1rem 0.2rem;
+            font-size: 0.7rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .header-periodo-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1rem;
+            font-size: 0.85rem;
+            color: #1f2937;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .header-periodo-item:hover {
+            background: #f3f4f6;
+        }
+        .header-periodo-item.activo {
+            color: #166534;
+            font-weight: 600;
+        }
+        .header-periodo-item .check {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #d1d5db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .header-periodo-item.activo .check {
+            border-color: #166534;
+            background: #166534;
+        }
+        .header-periodo-item.activo .check::after {
+            content: '';
+            width: 6px;
+            height: 3px;
+            border-left: 2px solid white;
+            border-bottom: 2px solid white;
+            transform: rotate(-45deg);
+            margin-top: -1px;
+        }
+        .header-periodo-footer {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .header-periodo-footer svg {
+            width: 12px;
+            height: 12px;
+            fill: #6b7280;
+            vertical-align: middle;
+            margin-right: 0.2rem;
+        }
+    </style>
 </head>
 <body>
     <% if (usuario) { %>
@@ -20,14 +132,96 @@
             <a href="/reportes">Reportes</a>
             <% if (usuario.nombre_rol === 'administrador') { %>
                 <a href="/auditoria">Auditoria</a>
+                <a href="/tipos-evaluacion">Tipos Evaluacion</a>
             <% } %>
         </nav>
-        <div class="header-user">
-            <span><%= usuario.nombres %> (<%= usuario.nombre_rol %>)</span>
-            <form action="/logout" method="POST">
-                <button type="submit" class="btn-logout">Cerrar sesion</button>
-            </form>
+        <div style="display:flex;align-items:center;gap:0.8rem;">
+            <% if (typeof periodos !== 'undefined' && periodos && periodos.length > 0) { %>
+            <div class="header-periodo" id="selectorPeriodo">
+                <button class="header-periodo-btn" onclick="toggleDropdownPeriodo()">
+                    <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                    <span id="periodoActualNombre"></span>
+                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <div class="header-periodo-dropdown" id="dropdownPeriodo">
+                    <div class="header-periodo-dropdown-header">
+                        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#1e3a8a;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                        PERIODO ACADEMICO
+                    </div>
+                    <div class="header-periodo-dropdown-title">Periodos disponibles</div>
+                    <% periodos.forEach(function(periodo) { %>
+                        <a class="header-periodo-item"
+                           data-periodo-id="<%= periodo.id_periodo %>"
+                           href="#" onclick="cambiarPeriodo(<%= periodo.id_periodo %>); return false;">
+                            <span class="check"></span>
+                            <%= periodo.nombre %>
+                        </a>
+                    <% }); %>
+                    <div class="header-periodo-footer">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        Selecciona un periodo para cambiar
+                    </div>
+                </div>
+            </div>
+            <script>
+                (function() {
+                    var periodos = [
+                        <% periodos.forEach(function(p, i) { %>
+                            { id: <%= p.id_periodo %>, nombre: '<%= p.nombre.replace(/'/g, "\\'") %>' }<%= i < periodos.length - 1 ? ',' : '' %>
+                        <% }); %>
+                    ];
+
+                    var idActual = <%= typeof periodoSeleccionado !== 'undefined' && periodoSeleccionado ? periodoSeleccionado : 'null' %>;
+                    var nombreActual = 'Sin periodo';
+
+                    periodos.forEach(function(p) {
+                        if (p.id == idActual) {
+                            nombreActual = p.nombre;
+                        }
+                    });
+
+                    document.getElementById('periodoActualNombre').textContent = nombreActual;
+
+                    var items = document.querySelectorAll('.header-periodo-item');
+                    items.forEach(function(item) {
+                        if (item.getAttribute('data-periodo-id') == idActual) {
+                            item.classList.add('activo');
+                        }
+                    });
+                })();
+            </script>
+            <% } %>
+            <div class="header-user">
+                <span><%= usuario.nombres %> (<%= usuario.nombre_rol %>)</span>
+                <form action="/logout" method="POST">
+                    <button type="submit" class="btn-logout">Cerrar sesion</button>
+                </form>
+            </div>
         </div>
     </header>
+    <script>
+        function toggleDropdownPeriodo() {
+            var dd = document.getElementById('dropdownPeriodo');
+            dd.classList.toggle('activo');
+        }
+
+        function cambiarPeriodo(id) {
+            fetch('/periodo-seleccionado', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_periodo: id })
+            }).then(function() {
+                window.location.reload();
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            var sp = document.getElementById('selectorPeriodo');
+            var dd = document.getElementById('dropdownPeriodo');
+            if (sp && dd && !sp.contains(e.target)) {
+                dd.classList.remove('activo');
+            }
+        });
+    </script>
     <% } %>
     <main class="main-content">

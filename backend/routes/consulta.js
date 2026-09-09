@@ -8,14 +8,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
+const { getPeriodoActivo, getAllPeriodos } = require('../helpers/periodos');
 
 router.get('/calificaciones/consulta', requireAuth, async (req, res) => {
     try {
-        const periodos = await pool.query(
-            'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
-        );
+        const periodos = await getAllPeriodos();
+        const periodoActivo = await getPeriodoActivo();
 
-        const idPeriodoSeleccionado = req.query.id_periodo || '';
+        const idPeriodoSeleccionado = res.locals.periodoSeleccionado || '';
         const idEstudianteSeleccionado = req.query.id_estudiante || '';
 
         let estudiantes = [];
@@ -77,7 +77,6 @@ router.get('/calificaciones/consulta', requireAuth, async (req, res) => {
             }
 
             // Promedio general, usando fn_promedio_general
-            // Puede lanzar excepcion si el estudiante no tiene NINGUNA nota en el periodo
             try {
                 const resultadoGeneral = await pool.query(
                     'SELECT fn_promedio_general($1, $2) AS promedio',
@@ -94,7 +93,7 @@ router.get('/calificaciones/consulta', requireAuth, async (req, res) => {
         }
 
         res.render('calificaciones/consulta', {
-            periodos: periodos.rows,
+            periodos,
             estudiantes,
             materias,
             promedioGeneral,

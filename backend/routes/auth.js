@@ -72,4 +72,13 @@ router.post('/logout', (req, res) => {
     });
 });
 
+// POST /periodo-seleccionado -> guarda el periodo elegido en la sesion
+router.post('/periodo-seleccionado', (req, res) => {
+    const { id_periodo } = req.body;
+    if (id_periodo) {
+        req.session.periodoSeleccionado = parseInt(id_periodo, 10);
+    }
+    res.json({ ok: true });
+});
+
 module.exports = router;

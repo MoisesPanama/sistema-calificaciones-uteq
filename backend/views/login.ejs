@@ -8,6 +8,9 @@
 </head>
 <body class="login-body">
     <div class="login-box">
+        <div style="margin-bottom:1rem;">
+            <svg viewBox="0 0 24 24" style="width:48px;height:48px;fill:#1e3a8a;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+        </div>
         <h1>Sistema de Calificaciones</h1>
         <h2>UTEQ - Taller de Funciones</h2>
 
@@ -17,10 +20,10 @@
 
         <form action="/login" method="POST">
             <label for="email">Correo electronico</label>
-            <input type="email" id="email" name="email" required autofocus>
+            <input type="email" id="email" name="email" placeholder="tu@uteq.edu.ec" required autofocus>
 
             <label for="password">Contrasena</label>
-            <input type="password" id="password" name="password" required>
+            <input type="password" id="password" name="password" placeholder="Ingresa tu contrasena" required>
 
             <button type="submit" class="btn-primary">Iniciar sesion</button>
         </form>

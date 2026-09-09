@@ -8,14 +8,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
+const { getPeriodoActivo, getAllPeriodos } = require('../helpers/periodos');
 
 router.get('/reportes', requireAuth, async (req, res) => {
     try {
-        const periodos = await pool.query(
-            'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
-        );
+        const periodos = await getAllPeriodos();
+        const periodoActivo = await getPeriodoActivo();
 
-        const idPeriodoSeleccionado = req.query.id_periodo || '';
+        const idPeriodoSeleccionado = res.locals.periodoSeleccionado || '';
         let reporte = [];
         let mensajeSinDatos = null;
 
@@ -36,7 +36,7 @@ router.get('/reportes', requireAuth, async (req, res) => {
         }
 
         res.render('reportes/index', {
-            periodos: periodos.rows,
+            periodos,
             reporte,
             mensajeSinDatos,
             idPeriodoSeleccionado

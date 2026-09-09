@@ -31,10 +31,35 @@ function requireRole(...rolesPermitidos) {
     };
 }
 
-// Hace disponible el usuario logueado en todas las vistas EJS
+// Hace disponible el usuario logueado y los periodos en todas las vistas EJS
 // automaticamente, sin tener que pasarlo manualmente en cada render.
-function inyectarUsuario(req, res, next) {
+async function inyectarUsuario(req, res, next) {
     res.locals.usuario = req.session.usuario || null;
+
+    // Cargar periodos para el selector del header
+    try {
+        const periodosRes = await pool.query(
+            'SELECT id_periodo, nombre, activo FROM periodos_academicos ORDER BY fecha_inicio DESC'
+        );
+        res.locals.periodos = periodosRes.rows;
+
+        const periodoActivo = periodosRes.rows.find(p => p.activo);
+        res.locals.periodoActivo = periodoActivo || null;
+    } catch (error) {
+        res.locals.periodos = [];
+        res.locals.periodoActivo = null;
+    }
+
+    // Determinar periodo seleccionado: URL param > sesion > activo
+    const urlPeriodo = req.query.id_periodo ? parseInt(req.query.id_periodo, 10) : null;
+    const sesionPeriodo = req.session.periodoSeleccionado || null;
+    res.locals.periodoSeleccionado = urlPeriodo || sesionPeriodo || (res.locals.periodoActivo ? res.locals.periodoActivo.id_periodo : null);
+
+    // Si se cambio por URL, sincronizar a sesion
+    if (urlPeriodo && urlPeriodo !== sesionPeriodo) {
+        req.session.periodoSeleccionado = urlPeriodo;
+    }
+
     next();
 }
 

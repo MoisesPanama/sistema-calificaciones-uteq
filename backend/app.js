@@ -22,8 +22,9 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Parseo de formularios y metodo override (PUT/DELETE desde forms)
-app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Sesiones guardadas en PostgreSQL (tabla colegio.sesiones)
 app.use(session({
@@ -51,6 +52,7 @@ app.use('/', require('./routes/calificaciones'));
 app.use('/', require('./routes/consulta'));
 app.use('/', require('./routes/reportes'));
 app.use('/', require('./routes/auditoria'));
+app.use('/', require('./routes/tipos_evaluacion'));
 
 // Ruta raiz: redirige segun si hay sesion o no
 app.get('/', (req, res) => {
