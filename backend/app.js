@@ -13,14 +13,18 @@ const pgSession = require('connect-pg-simple')(session);
 const cors = require('cors');
 const pool = require('./config/db');
 
+const path = require('path');
 const app = express();
 
-// CORS para el frontend separado (otro puerto/origen).
-// En produccion define FRONTEND_URL con el dominio real.
+// CORS (abierto para desarrollo local).
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || true,
     credentials: true
 }));
+
+// Servir archivos estaticos del frontend desde /frontend
+const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
+app.use(express.static(FRONTEND_DIR));
 
 // La API habla JSON (el frontend envia JSON por fetch).
 app.use(express.json());
