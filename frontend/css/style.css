@@ -288,6 +288,14 @@ body {
     padding: 1.5rem 2rem;
     flex: 1;
 }
+.periodo-fijo {
+    font-size: 0.92rem;
+    color: #374151;
+    margin-bottom: 1rem;
+}
+.periodo-fijo strong {
+    color: #1e3a8a;
+}
 h1 {
     font-size: 1.5rem;
     color: #1e3a8a;

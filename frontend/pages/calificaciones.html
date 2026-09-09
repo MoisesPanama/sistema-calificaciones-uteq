@@ -45,7 +45,7 @@
       const data = await apiGet('/calificaciones/contexto?' + params());
       ctx = data;
       document.getElementById('info-periodo').innerHTML =
-        `Periodo activo (fijo): <strong>${esc(data.periodoActivo?.nombre || '—')}</strong>. Todo lo que registre queda en este periodo.`;
+        `Periodo seleccionado: <strong>${esc(data.periodoNombre || data.periodoActivo?.nombre || '—')}</strong>. Todo lo que registre queda en este periodo.`;
       if (first) {
         const sm = document.getElementById('sel-materia');
         sm.innerHTML = '<option value="">-- Selecciona una materia --</option>' +

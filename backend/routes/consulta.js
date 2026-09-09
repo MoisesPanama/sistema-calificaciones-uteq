@@ -33,6 +33,9 @@ router.get('/', requireAuth, async (req, res) => {
         const idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.query.id_materia || '';
 
+        const periodoSel = periodos.rows.find(p => String(p.id_periodo) === String(idPeriodo));
+        const periodoNombre = periodoSel ? periodoSel.nombre : periodoActivo.nombre;
+
         const resultadoEst = await pool.query(
             `SELECT e.id_estudiante, e.nombres, e.apellidos
              FROM matriculas m
@@ -122,6 +125,7 @@ router.get('/', requireAuth, async (req, res) => {
 
         res.json({
             periodoActivo,
+            periodoNombre,
             periodos: periodos.rows,
             estudiantes: resultadoEst.rows,
             materiasFiltro,

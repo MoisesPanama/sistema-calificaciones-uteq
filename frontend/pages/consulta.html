@@ -41,7 +41,7 @@
     async function cargar(rebuild = false) {
       const d = await apiGet('/consulta/?' + q());
       document.getElementById('info-periodo').innerHTML =
-        `Periodo activo (fijo): <strong>${esc(d.periodoActivo?.nombre || '—')}</strong>`;
+        `Periodo seleccionado: <strong>${esc(d.periodoNombre || d.periodoActivo?.nombre || '—')}</strong>`;
       if (rebuild || !document.getElementById('sel-periodo').options.length) {
         document.getElementById('sel-periodo').innerHTML =
           d.periodos.map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === d.idPeriodo ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
