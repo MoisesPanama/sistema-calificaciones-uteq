@@ -10,27 +10,52 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 // GET /api/psicologo/rendimiento — lista de estudiantes con promedio y alertas
 router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, res) => {
     try {
-        const resultado = await pool.query(`
+        let sql = `
             SELECT 
                 e.id_estudiante,
                 e.nombres,
                 e.apellidos,
                 e.cedula,
-                COALESCE(c.nombre, '') AS curso,
-                COALESCE(c.paralelo, '') AS paralelo,
+                '' AS curso,
+                '' AS paralelo,
                 ROUND(AVG(mm.promedio)::numeric, 2) AS promedio_general,
                 COUNT(mm.id_detalle) AS materias_inscritas,
                 SUM(CASE WHEN mm.promedio < 7 THEN 1 ELSE 0 END) AS materias_bajo_rendimiento,
                 SUM(CASE WHEN mm.promedio >= 9 THEN 1 ELSE 0 END) AS materias_excelencia
             FROM estudiantes e
             JOIN matriculas m ON m.id_estudiante = e.id_estudiante
-            LEFT JOIN cursos c ON c.id_curso = m.id_curso
             JOIN matricula_materias mm ON mm.id_matricula = m.id_matricula
             WHERE m.id_periodo = (SELECT id_periodo FROM periodos_academicos WHERE activo = TRUE LIMIT 1)
               AND mm.promedio IS NOT NULL
-            GROUP BY e.id_estudiante, e.nombres, e.apellidos, e.cedula, c.nombre, c.paralelo
-            ORDER BY promedio_general ASC
-        `);
+            GROUP BY e.id_estudiante, e.nombres, e.apellidos, e.cedula
+            ORDER BY promedio_general ASC`;
+
+        // Intentar con cursos si la tabla existe
+        try {
+            await pool.query('SELECT 1 FROM cursos LIMIT 1');
+            sql = `
+                SELECT 
+                    e.id_estudiante,
+                    e.nombres,
+                    e.apellidos,
+                    e.cedula,
+                    COALESCE(c.nombre, '') AS curso,
+                    COALESCE(c.paralelo, '') AS paralelo,
+                    ROUND(AVG(mm.promedio)::numeric, 2) AS promedio_general,
+                    COUNT(mm.id_detalle) AS materias_inscritas,
+                    SUM(CASE WHEN mm.promedio < 7 THEN 1 ELSE 0 END) AS materias_bajo_rendimiento,
+                    SUM(CASE WHEN mm.promedio >= 9 THEN 1 ELSE 0 END) AS materias_excelencia
+                FROM estudiantes e
+                JOIN matriculas m ON m.id_estudiante = e.id_estudiante
+                LEFT JOIN cursos c ON c.id_curso = m.id_curso
+                JOIN matricula_materias mm ON mm.id_matricula = m.id_matricula
+                WHERE m.id_periodo = (SELECT id_periodo FROM periodos_academicos WHERE activo = TRUE LIMIT 1)
+                  AND mm.promedio IS NOT NULL
+                GROUP BY e.id_estudiante, e.nombres, e.apellidos, e.cedula, c.nombre, c.paralelo
+                ORDER BY promedio_general ASC`;
+        } catch (_) { /* cursos no existe, usar query sin cursos */ }
+
+        const resultado = await pool.query(sql);
 
         const estudiantes = resultado.rows.map(e => ({
             ...e,
@@ -46,7 +71,7 @@ router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, re
         res.json({ estudiantes });
     } catch (error) {
         console.error('Error al obtener rendimiento:', error.message);
-        res.status(500).json({ error: 'No se pudo cargar el rendimiento.' });
+        res.status(500).json({ error: 'No se pudo cargar el rendimiento: ' + error.message });
     }
 });
 
@@ -91,7 +116,7 @@ router.get('/estudiante/:id', requireAuth, requireRole('psicologo'), async (req,
         });
     } catch (error) {
         console.error('Error al obtener detalle del estudiante:', error.message);
-        res.status(500).json({ error: 'No se pudo cargar el detalle.' });
+        res.status(500).json({ error: 'No se pudo cargar el detalle: ' + error.message });
     }
 });
 
