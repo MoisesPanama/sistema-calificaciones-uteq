@@ -43,6 +43,7 @@ async function renderLayout(usuario, periodoSeleccionado) {
   ];
   const navAdmin = [
     { href: 'auditoria.html',       icon: '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>', label: 'Auditoria' },
+    { href: 'respaldos.html',       icon: '<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>', label: 'Respaldos' },
   ];
 
   function buildNav(items) {

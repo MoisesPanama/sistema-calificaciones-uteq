@@ -65,6 +65,7 @@ app.use('/api/consulta', require('./routes/consulta'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/auditoria', require('./routes/auditoria'));
 app.use('/api/catalogos', require('./routes/catalogos'));
+app.use('/api/respaldos', require('./routes/respaldos'));
 
 // 404 JSON (antes: render de vista error)
 app.use((req, res) => {
