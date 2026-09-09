@@ -15,8 +15,9 @@
     <h1>Gestión de Materias</h1>
     <p class="alert alert-error" id="error" style="display:none"></p>
     <p class="alert-exito" id="ok" style="display:none"></p>
-    <div class="search-bar"><button class="btn-secondary" id="btn-modal">+ Nueva Materia</button></div>
+    <div class="search-bar"><button class="btn-primary" id="btn-modal">+ Nueva Materia</button></div>
     <div id="tabla"></div>
+
     <div class="modal-fondo" id="modalMateria">
       <div class="modal-caja">
         <h2>Nueva Materia</h2>
@@ -27,11 +28,29 @@
           <input type="text" id="descripcion">
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
-            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar">Cancelar</button>
+            <button type="button" class="btn-secondary" id="btn-cerrar">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
+
+    <div class="modal-fondo" id="modalEditar">
+      <div class="modal-caja">
+        <h2>Editar Materia</h2>
+        <form id="form-editar" class="form-box">
+          <input type="hidden" id="ed-id">
+          <label for="ed-nombre">Nombre</label>
+          <input type="text" id="ed-nombre" required>
+          <label for="ed-descripcion">Descripción</label>
+          <input type="text" id="ed-descripcion">
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" class="btn-secondary" id="btn-cerrar-editar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     </main>
   </div>
 </div>
@@ -42,16 +61,35 @@
     async function cargar() {
       const { materias } = await apiGet('/materias/');
       document.getElementById('tabla').innerHTML =
-        `<table><thead><tr><th>Nombre</th><th>Descripción</th></tr></thead><tbody>` +
-        materias.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.descripcion || '')}</td></tr>`).join('') +
-        '</tbody></table>';
+        `<div class="table-responsive"><table><thead><tr><th>Nombre</th><th>Descripción</th><th></th></tr></thead><tbody>` +
+        materias.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.descripcion || '—')}</td>
+          <td class="td-actions">${rol === 'administrador'
+            ? `<button class="btn-secondary btn-sm" data-editar='${JSON.stringify({id:m.id_materia,nombre:m.nombre,descripcion:m.descripcion||''})}'>Editar</button>`
+            : ''}</td></tr>`).join('') +
+        '</tbody></table></div>';
+      document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
+        const m = JSON.parse(b.dataset.editar);
+        document.getElementById('ed-id').value = m.id;
+        document.getElementById('ed-nombre').value = m.nombre;
+        document.getElementById('ed-descripcion').value = m.descripcion;
+        document.getElementById('modalEditar').classList.add('activo');
+      });
     }
+    let rol = '';
     (async () => {
-      if (!await initPage()) return;
+      const usuario = await initPage();
+      if (!usuario) return;
+      rol = usuario.nombre_rol;
       await cargar().catch(showError);
       const modal = document.getElementById('modalMateria');
+      const modalEditar = document.getElementById('modalEditar');
+
       document.getElementById('btn-modal').onclick = () => modal.classList.add('activo');
       document.getElementById('btn-cerrar').onclick = () => modal.classList.remove('activo');
+      document.getElementById('btn-cerrar-editar').onclick = () => modalEditar.classList.remove('activo');
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('activo'); });
+      modalEditar.addEventListener('click', (e) => { if (e.target === modalEditar) modalEditar.classList.remove('activo'); });
+
       document.getElementById('form-mat').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
@@ -61,6 +99,19 @@
           });
           modal.classList.remove('activo');
           showOk('Materia guardada.');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
+      document.getElementById('form-editar').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const id = document.getElementById('ed-id').value;
+          await apiPost(`/materias/${id}/editar`, {
+            nombre: document.getElementById('ed-nombre').value,
+            descripcion: document.getElementById('ed-descripcion').value || null
+          });
+          modalEditar.classList.remove('activo');
+          showOk('Materia actualizada correctamente.');
           await cargar();
         } catch (err) { showError(err.message); }
       });
