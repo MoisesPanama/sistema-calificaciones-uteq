@@ -1,6 +1,6 @@
 -- =========================================================
 -- 07_add_audit_triggers.sql
--- Agrega triggers de auditoría a las tablas que faltan
+-- Agrega triggers de auditoria a las tablas que faltan
 -- =========================================================
 
 SET search_path TO colegio;

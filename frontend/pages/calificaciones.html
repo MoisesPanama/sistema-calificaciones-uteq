@@ -7,8 +7,11 @@
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-  <header class="header" id="app-header"></header>
-  <main class="main-content">
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
     <h1>Registrar Calificaciones</h1>
     <p class="periodo-fijo" id="info-periodo"></p>
     <p class="alert-exito" id="ok" style="display:none"></p>
@@ -21,7 +24,9 @@
     </div>
     <div id="tabla"></div>
     <p><small>Las celdas vacías no se guardan (conservan la nota anterior). Aprueba con 7. Cada parcial pide mínimo 2 insumos formativos.</small></p>
-  </main>
+    </main>
+  </div>
+</div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
