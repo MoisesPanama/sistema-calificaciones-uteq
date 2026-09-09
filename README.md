@@ -36,10 +36,11 @@ auditoría automática de cambios.
 - Consulta de calificaciones por estudiante, con desglose por parcial.
 - Reporte de promedios por periodo, generado con un **cursor explícito**
   en PostgreSQL, tolerante a estudiantes sin calificaciones.
-- Panel de auditoría (solo administrador): historial de cambios en
-  calificaciones, usuarios y matrículas, con datos antes/después en JSONB.
+- Panel de auditoría (solo administrador): historial de cambios en todas
+  las tablas del sistema, con datos antes/después en JSONB colapsable.
 - Triggers de validación (defensa en profundidad) y auditoría genérica
-  a nivel de base de datos.
+  a nivel de base de datos en **todas las tablas**.
+- Selector de quimestre global que persiste al navegar entre páginas.
 - Roles de PostgreSQL diferenciados (lectura, profesor, administrador)
   además del control de roles a nivel de aplicación.
 
@@ -64,7 +65,7 @@ Esquema `colegio`, normalizado (1FN–3FN), con las siguientes tablas:
 ### Triggers
 
 - `trg_validar_calificacion` — valida rango 0–10 antes de insertar/actualizar.
-- Auditoría genérica sobre `calificaciones`, `usuarios` y `matriculas`
+- Auditoría genérica sobre **todas las tablas** del sistema
   (registra usuario de la app, operación, y datos antes/después).
 
 ## Requisitos previos
@@ -82,44 +83,45 @@ git clone https://github.com/MoisesPanama/sistema-calificaciones-uteq.git
 cd sistema-calificaciones-uteq
 ```
 
-### 2. Crear la base de datos
+### 2. Crear la base de datos y el usuario
 
-Conéctate a PostgreSQL y crea la base de datos:
+Conéctate a PostgreSQL como superusuario (postgres) y ejecuta:
 
 ```sql
-CREATE DATABASE calificaciones_uteq;
+-- Crear la base de datos
+CREATE DATABASE sistema_calificaciones;
+
+-- Crear el usuario de la aplicación
+CREATE ROLE app_uteq LOGIN PASSWORD 'tu_password_aqui';
+
+-- Otorgar permisos
+GRANT ALL PRIVILEGES ON DATABASE sistema_calificaciones TO app_uteq;
 ```
 
 ### 3. Ejecutar los scripts SQL, en este orden exacto
 
 ```bash
-psql -U postgres -d calificaciones_uteq -f database/01_schema.sql
-psql -U postgres -d calificaciones_uteq -f database/02_functions_procedures.sql
-psql -U postgres -d calificaciones_uteq -f database/03_triggers_audit.sql
-psql -U postgres -d calificaciones_uteq -f database/04_roles_permissions.sql
-psql -U postgres -d calificaciones_uteq -f database/05_seed_data.sql
-psql -U postgres -d calificaciones_uteq -f database/06_sesiones.sql
+psql -U postgres -d sistema_calificaciones -f database/01_schema.sql
+psql -U postgres -d sistema_calificaciones -f database/02_functions_procedures.sql
+psql -U postgres -d sistema_calificaciones -f database/03_triggers_audit.sql
+psql -U postgres -d sistema_calificaciones -f database/04_roles_permissions.sql
+psql -U postgres -d sistema_calificaciones -f database/05_seed_data.sql
+psql -U postgres -d sistema_calificaciones -f database/06_sesiones.sql
+psql -U postgres -d sistema_calificaciones -f database/06_more_data.sql
+psql -U postgres -d sistema_calificaciones -f database/07_add_audit_triggers.sql
 ```
 
-> **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
-> `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
-> antes de ejecutarlo.
+> **Nota:** `04_roles_permissions.sql` crea el usuario `app_uteq` con
+> contraseña `cambiar_esta_password`. Si ya lo creaste en el paso 2,
+> edita el archivo antes de ejecutarlo o usa `IF NOT EXISTS`.
 
-### 3.1. Configurar el search_path a nivel de base de datos
-
-Este paso es obligatorio y no está incluido en los scripts anteriores.
-Sin él, el sistema falla con errores de "no existe la relación" al
-intentar usarlo:
+### 4. Configurar el search_path a nivel de base de datos
 
 ```bash
-psql -U postgres -d calificaciones_uteq -c "ALTER DATABASE calificaciones_uteq SET search_path TO colegio, public;"
+psql -U postgres -d sistema_calificaciones -c "ALTER DATABASE sistema_calificaciones SET search_path TO colegio, public;"
 ```
 
-> **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
-> `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
-> antes de ejecutarlo.
-
-### 4. Configurar variables de entorno
+### 5. Configurar variables de entorno
 
 ```bash
 cd backend
@@ -131,20 +133,21 @@ Edita `.env` con tus datos reales de conexión:
 ```
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=calificaciones_uteq
+DB_NAME=sistema_calificaciones
 DB_USER=app_uteq
-DB_PASSWORD=tu_password
+DB_PASSWORD=tu_password_aqui
 PORT=3000
-SESSION_SECRET=una_clave_secreta_cualquiera
+SESSION_SECRET=una_clave_secreta_larga_y_aleatoria
 ```
 
-### 5. Instalar dependencias
+### 6. Instalar dependencias
 
 ```bash
+cd backend
 npm install
 ```
 
-### 6. Ejecutar el servidor
+### 7. Ejecutar el servidor
 
 ```bash
 npm run dev
@@ -157,24 +160,32 @@ El sistema estará disponible en `http://localhost:3000`.
 | Email | Contraseña | Rol |
 |-------|------------|-----|
 | admin@uteq.edu.ec | admin123 | Administrador |
-| carla.vera@uteq.edu.ec | profesor123 | Profesor |
-| jorge.mendoza@uteq.edu.ec | profesor123 | Profesor |
+| carla.vera@uteq.edu.ec | profesor123 | Profesor (Matemáticas) |
+| jorge.mendoza@uteq.edu.ec | profesor123 | Profesor (Lengua y Literatura) |
+| elena.romero@uteq.edu.ec | profesor123 | Profesor (Ciencias Naturales) |
+| andres.torres@uteq.edu.ec | profesor123 | Profesor (Estudios Sociales) |
+| diana.vargas@uteq.edu.ec | profesor123 | Profesor (Inglés) |
 
 ## Estructura del proyecto
 
 ```
 sistema-calificaciones-uteq/
 ├── database/
-│   ├── 01_schema.sql
-│   ├── 02_functions_procedures.sql
-│   ├── 03_triggers_audit.sql
-│   ├── 04_roles_permissions.sql
-│   ├── 05_seed_data.sql
-│   └── 06_sesiones.sql
+│   ├── 01_schema.sql                  # Esquema completo (13 tablas)
+│   ├── 02_functions_procedures.sql    # Funciones y SP
+│   ├── 03_triggers_audit.sql          # Triggers de validación y auditoría
+│   ├── 04_roles_permissions.sql       # Roles de PostgreSQL
+│   ├── 05_seed_data.sql               # Datos iniciales (usuarios, periodos)
+│   ├── 06_sesiones.sql                # Tabla de sesiones
+│   ├── 06_more_data.sql               # Datos adicionales (10 estudiantes, 8 materias)
+│   └── 07_add_audit_triggers.sql      # Triggers de auditoría faltantes
 └── backend/
     ├── app.js
+    ├── .env.example
     ├── config/
     │   └── db.js
+    ├── helpers/
+    │   └── periodos.js
     ├── middleware/
     │   └── auth.js
     ├── routes/
@@ -186,8 +197,22 @@ sistema-calificaciones-uteq/
     │   ├── calificaciones.js
     │   ├── consulta.js
     │   ├── reportes.js
-    │   └── auditoria.js
+    │   ├── auditoria.js
+    │   └── tipos_evaluacion.js
     ├── views/
+    │   ├── partials/
+    │   │   ├── header.ejs
+    │   │   └── footer.ejs
+    │   ├── login.ejs
+    │   ├── dashboard.ejs
+    │   ├── error.ejs
+    │   ├── estudiantes/
+    │   ├── materias/
+    │   ├── periodos/
+    │   ├── calificaciones/
+    │   ├── reportes/
+    │   ├── auditoria/
+    │   └── tipos_evaluacion/
     └── public/
         └── css/
             └── style.css
@@ -198,12 +223,14 @@ sistema-calificaciones-uteq/
 1. Login
 2. Dashboard (resumen general)
 3. Gestión de estudiantes (listado, búsqueda, crear/editar)
-4. Gestión de materias
-5. Gestión de periodos académicos
-6. Registro de calificaciones
-7. Consulta de calificaciones por estudiante
-8. Reporte de promedios por periodo
-9. Panel de auditoría (solo administrador)
+4. Gestión de materias (con asignación de profesor y periodo)
+5. Gestión de periodos académicos (estado dinámico por fechas)
+6. Registro de control de acceso por profesor
+7. Registro de calificaciones
+8. Consulta de calificaciones por estudiante (promedios por materia)
+9. Reporte de promedios por periodo (Aprobado/Supletorio/Reprobado)
+10. Panel de auditoría (solo administrador)
+11. Maestro de tipos de evaluación (solo administrador)
 
 ## Notas de diseño
 
@@ -213,9 +240,10 @@ sistema-calificaciones-uteq/
 - La tabla `auditoria` no tiene claves foráneas hacia otras tablas de
   forma intencional, para poder auditar cambios incluso sobre registros
   que ya fueron eliminados.
-- La gestión de representantes no está incluida como interfaz
-  independiente en esta entrega; el modelo ya soporta múltiples
-  representantes por diseño (relación uno a muchos con estudiantes).
+- El quimestre seleccionado en el header se persiste en la sesión del
+  usuario y se mantiene al navegar entre páginas.
+- El estado de los periodos (Activo/Finalizado/Próximo) se calcula
+  dinámicamente según las fechas de inicio y fin.
 
 ## Licencia
 
