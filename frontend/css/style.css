@@ -519,7 +519,7 @@ select {
 
 /* ===================== TABLE HELPERS ===================== */
 .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.tag-activo { background-color: #dcfce7; color: #166534; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+.tag-activo { background-color: #dcfce7; color: #166534; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
 .td-actions { text-align: right; white-space: nowrap; }
 
