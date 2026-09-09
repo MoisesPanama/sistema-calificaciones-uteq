@@ -65,7 +65,11 @@
     (async () => {
       if (!await initPage()) return;
       await cargar(true).catch(showError);
-      document.getElementById('sel-periodo').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-periodo').onchange = async () => {
+        const id = document.getElementById('sel-periodo').value;
+        await apiPost('/auth/periodo-seleccionado', { id_periodo: Number(id) });
+        location.reload();
+      };
       document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
       document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
     })();
