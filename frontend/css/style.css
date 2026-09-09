@@ -506,6 +506,7 @@ tbody tr:last-child td { border-bottom: none; }
 .badge-success { background-color: #dcfce7; color: #166534; }
 .badge-danger { background-color: #fee2e2; color: #991b1b; }
 .badge-warning { background-color: #fef3c7; color: #92400e; }
+.badge-info { background-color: #dbeafe; color: #1e40af; }
 
 /* ===================== SELECTS ===================== */
 select {

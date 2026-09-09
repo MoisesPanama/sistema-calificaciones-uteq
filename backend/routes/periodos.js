@@ -7,15 +7,14 @@ const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
+const { getAllPeriodos } = require('../helpers/periodos');
 
 // GET /api/periodos -> { periodos, periodoActivo }
 router.get('/', requireAuth, async (req, res) => {
     try {
-        const resultado = await pool.query(
-            'SELECT id_periodo, nombre, fecha_inicio, fecha_fin, activo FROM periodos_academicos ORDER BY fecha_inicio DESC'
-        );
+        const periodos = await getAllPeriodos();
         const periodoActivo = await getPeriodoActivo();
-        res.json({ periodos: resultado.rows, periodoActivo });
+        res.json({ periodos, periodoActivo });
     } catch (error) {
         console.error('Error al listar periodos:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el listado de periodos.' });

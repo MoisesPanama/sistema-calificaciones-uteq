@@ -48,12 +48,17 @@
       document.getElementById('info-activo').innerHTML =
         `Periodo activo (fijo): <strong>${periodoActivo ? esc(periodoActivo.nombre) : 'Ninguno'}</strong>. ` +
         'Todo el sistema opera sobre este periodo. Solo puede haber <strong>un periodo activo</strong> a la vez.';
+      const badge = (e) => {
+        if (e === 'Finalizado') return 'badge-danger';
+        if (e === 'Activo') return 'badge-success';
+        return 'badge-info';
+      };
       document.getElementById('tabla').innerHTML =
         `<table><thead><tr><th>Nombre</th><th>Fecha inicio</th><th>Fecha fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>` +
         periodos.map(p => `<tr><td>${esc(p.nombre)}</td>
           <td>${new Date(p.fecha_inicio).toLocaleDateString('es-EC')}</td>
           <td>${new Date(p.fecha_fin).toLocaleDateString('es-EC')}</td>
-          <td>${p.activo ? 'Activo (fijo)' : 'Inactivo'}</td>
+          <td><span class="${badge(p.estado)}">${p.estado}</span></td>
           <td>${p.activo ? 'En uso'
             : (rol === 'administrador'
               ? `<button class="btn-primary" data-activar="${p.id_periodo}">Activar</button>` : '—')}</td></tr>`).join('') +
