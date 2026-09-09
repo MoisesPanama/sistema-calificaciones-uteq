@@ -147,11 +147,11 @@
       await cargar(true).catch(showError);
       document.getElementById('sel-materia').onchange = async () => {
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de materia?')) return;
-        await cargar(true).catch(showError);
+        await cargar().catch(showError);
       };
       document.getElementById('sel-curso').onchange = async () => {
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de curso?')) return;
-        await cargar(true).catch(showError);
+        await cargar().catch(showError);
       };
     })();
   </script>
