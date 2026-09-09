@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rendimiento Académico - Psicología</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Rendimiento Académico</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+
+    <!-- Resumen -->
+    <div class="cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;" id="resumen"></div>
+
+    <!-- Alertas de bajo rendimiento -->
+    <div id="alertas" style="margin-bottom: 1.5rem;"></div>
+
+    <!-- Tabla de estudiantes -->
+    <h2 style="font-size:1rem;margin-bottom:0.8rem;color:#1e3a8a;">Listado de Estudiantes</h2>
+    <div id="tabla"></div>
+
+    <!-- Modal detalle -->
+    <div class="modal-fondo" id="modalDetalle">
+      <div class="modal-caja" style="max-width:550px;">
+        <h2 id="detalle-titulo">Detalle del Estudiante</h2>
+        <div id="detalle-contenido"></div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="btn-cerrar-detalle">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    const UMBRAL_BAJO = 7;
+    const UMBRAL_DESTACADO = 8.5;
+
+    function colorPromedio(p) {
+      if (p < 5) return '#dc2626';
+      if (p < 7) return '#f59e0b';
+      if (p < 8.5) return '#2563eb';
+      return '#16a34a';
+    }
+
+    function badgeRendimiento(estado) {
+      const mapa = {
+        'Critico': 'badge-danger',
+        'Bajo': 'badge-warning',
+        'Normal': 'badge-info',
+        'Destacado': 'badge-success'
+      };
+      return `<span class="badge ${mapa[estado] || 'badge-info'}">${estado}</span>`;
+    }
+
+    async function cargar() {
+      const d = await apiGet('/psicologo/rendimiento');
+      const periodos = await apiGet('/periodos/');
+      const activo = periodos.periodoActivo;
+      document.getElementById('info-periodo').innerHTML =
+        `Periodo: <strong>${activo ? esc(activo.nombre) : '—'}</strong>`;
+
+      const estudiantes = d.estudiantes || [];
+      const total = estudiantes.length;
+      const criticos = estudiantes.filter(e => e.estado_rendimiento === 'Critico').length;
+      const bajos = estudiantes.filter(e => e.estado_rendimiento === 'Bajo').length;
+      const destacados = estudiantes.filter(e => e.estado_rendimiento === 'Destacado').length;
+
+      document.getElementById('resumen').innerHTML = `
+        <div class="card" style="text-align:center;padding:1.2rem;">
+          <div style="font-size:2rem;font-weight:700;color:#1e3a8a;">${total}</div>
+          <div style="font-size:0.82rem;color:#6b7280;">Total Estudiantes</div>
+        </div>
+        <div class="card" style="text-align:center;padding:1.2rem;">
+          <div style="font-size:2rem;font-weight:700;color:#dc2626;">${criticos + bajos}</div>
+          <div style="font-size:0.82rem;color:#6b7280;">Bajo Rendimiento</div>
+        </div>
+        <div class="card" style="text-align:center;padding:1.2rem;">
+          <div style="font-size:2rem;font-weight:700;color:#16a34a;">${destacados}</div>
+          <div style="font-size:0.82rem;color:#6b7280;">Destacados</div>
+        </div>
+        <div class="card" style="text-align:center;padding:1.2rem;">
+          <div style="font-size:2rem;font-weight:700;color:#6b7280;">${total > 0 ? (estudiantes.reduce((s, e) => s + Number(e.promedio_general), 0) / total).toFixed(2) : '—'}</div>
+          <div style="font-size:0.82rem;color:#6b7280;">Promedio General</div>
+        </div>`;
+
+      // Alertas
+      const conAlerta = estudiantes.filter(e => e.alerta_bajo_rendimiento);
+      if (conAlerta.length > 0) {
+        document.getElementById('alertas').innerHTML =
+          `<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;">
+            <h3 style="font-size:0.95rem;color:#92400e;margin-bottom:0.8rem;">⚠️ Estudiantes con Bajo Rendimiento</h3>
+            ${conAlerta.map(e => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #fde68a;">
+                <div>
+                  <strong>${esc(e.nombres)} ${esc(e.apellidos)}</strong>
+                  <span style="font-size:0.82rem;color:#6b7280;margin-left:0.5rem;">${e.mensaje_alerta}</span>
+                </div>
+                <span style="font-weight:700;color:${colorPromedio(e.promedio_general)};">${e.promedio_general}</span>
+              </div>
+            `).join('')}
+          </div>`;
+      } else {
+        document.getElementById('alertas').innerHTML = '';
+      }
+
+      // Tabla
+      const div = document.getElementById('tabla');
+      if (estudiantes.length === 0) {
+        div.innerHTML = '<p style="color:#6b7280;">No hay datos de rendimiento disponibles.</p>';
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table>
+        <thead><tr><th>Estudiante</th><th>Curso</th><th>Promedio</th><th>Escala</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+        ${estudiantes.map(e => `<tr>
+          <td>${esc(e.nombres)} ${esc(e.apellidos)}</td>
+          <td>${esc(e.curso || '—')} ${esc(e.paralelo || '')}</td>
+          <td style="font-weight:700;color:${colorPromedio(e.promedio_general)};">${e.promedio_general}</td>
+          <td>${badgeRendimiento(e.estado_rendimiento)}</td>
+          <td style="font-size:0.82rem;color:${e.alerta_bajo_rendimiento ? '#dc2626' : '#16a34a'};">${e.mensaje_alerta || '—'}</td>
+          <td class="td-actions"><button class="btn-secondary btn-sm" data-ver="${e.id_estudiante}">Ver detalle</button></td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+
+      div.querySelectorAll('[data-ver]').forEach(b => b.onclick = async () => {
+        const id = b.dataset.ver;
+        try {
+          const det = await apiGet(`/psicologo/estudiante/${id}`);
+          document.getElementById('detalle-titulo').textContent =
+            `${det.estudiante.nombres} ${det.estudiante.apellidos}`;
+          const rep = det.estudiante.rep_nombres
+            ? `${det.estudiante.rep_nombres} ${det.estudiante.rep_apellidos} — ${det.estudiante.rep_telefono || '—'}`
+            : 'Sin representante registrado';
+          let html = `
+            <div style="margin-bottom:1rem;">
+              <p style="font-size:0.85rem;"><strong>Cédula:</strong> ${esc(det.estudiante.cedula)}</p>
+              <p style="font-size:0.85rem;"><strong>Representante:</strong> ${esc(rep)}</p>
+            </div>
+            <table style="width:100%;font-size:0.85rem;">
+              <thead><tr><th>Materia</th><th>Promedio</th><th>Escala</th></tr></thead>
+              <tbody>
+              ${det.materias.map(m => `<tr>
+                <td>${esc(m.materia)}</td>
+                <td style="font-weight:700;color:${colorPromedio(m.promedio)};">${m.promedio}</td>
+                <td>${esc(m.escala)}</td>
+              </tr>`).join('')}
+              </tbody>
+            </table>`;
+          if (det.materias.length === 0) {
+            html = '<p style="color:#6b7280;">No tiene calificaciones registradas en este periodo.</p>';
+          }
+          document.getElementById('detalle-contenido').innerHTML = html;
+          document.getElementById('modalDetalle').classList.add('activo');
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    (async () => {
+      if (!await initPage({ adminOnly: false })) return;
+      const usuario = await getSessionUser();
+      if (!usuario || usuario.nombre_rol !== 'psicologo') {
+        document.querySelector('main').innerHTML = '<div class="alert alert-error">Acceso restringido a psicólogos.</div>';
+        return;
+      }
+      await cargar().catch(showError);
+      document.getElementById('btn-cerrar-detalle').onclick = () =>
+        document.getElementById('modalDetalle').classList.remove('activo');
+      document.getElementById('modalDetalle').addEventListener('click', (e) => {
+        if (e.target.id === 'modalDetalle') e.target.classList.remove('activo');
+      });
+    })();
+  </script>
+</body>
+</html>

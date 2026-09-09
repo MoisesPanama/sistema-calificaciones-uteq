@@ -60,8 +60,23 @@ router.get('/', requireAuth, async (req, res) => {
                           JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
                           WHERE m.id_periodo = $1`;
             const paramsEst = [idPeriodo];
+
+            // Representante: solo ver sus hijos
+            if (req.session.usuario.nombre_rol === 'representante') {
+                const repResult = await pool.query(
+                    'SELECT id_representante FROM representantes WHERE id_usuario = $1',
+                    [req.session.usuario.id_usuario]
+                );
+                if (repResult.rows.length > 0) {
+                    sqlEst += ' AND e.id_representante = $' + (paramsEst.length + 1);
+                    paramsEst.push(repResult.rows[0].id_representante);
+                } else {
+                    sqlEst += ' AND 1 = 0';
+                }
+            }
+
             if (idCurso) {
-                sqlEst += ' AND m.id_curso = $2';
+                sqlEst += ' AND m.id_curso = $' + (paramsEst.length + 1);
                 paramsEst.push(idCurso);
             }
             sqlEst += ' ORDER BY e.apellidos, e.nombres';

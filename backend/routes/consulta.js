@@ -36,14 +36,29 @@ router.get('/', requireAuth, async (req, res) => {
         const periodoSel = periodos.rows.find(p => String(p.id_periodo) === String(idPeriodo));
         const periodoNombre = periodoSel ? periodoSel.nombre : periodoActivo.nombre;
 
-        const resultadoEst = await pool.query(
-            `SELECT e.id_estudiante, e.nombres, e.apellidos
-             FROM matriculas m
-             JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-             WHERE m.id_periodo = $1
-             ORDER BY e.apellidos, e.nombres`,
-            [idPeriodo]
-        );
+        // Filtrar estudiantes segun rol
+        let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos
+                     FROM matriculas m
+                     JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                     WHERE m.id_periodo = $1`;
+        const paramsEst = [idPeriodo];
+
+        // Representante: solo ver sus hijos
+        if (req.session.usuario.nombre_rol === 'representante') {
+            const repResult = await pool.query(
+                'SELECT id_representante FROM representantes WHERE id_usuario = $1',
+                [req.session.usuario.id_usuario]
+            );
+            if (repResult.rows.length > 0) {
+                sqlEst += ' AND e.id_representante = $2';
+                paramsEst.push(repResult.rows[0].id_representante);
+            } else {
+                sqlEst += ' AND 1 = 0';
+            }
+        }
+
+        sqlEst += ' ORDER BY e.apellidos, e.nombres';
+        const resultadoEst = await pool.query(sqlEst, paramsEst);
 
         let materiasFiltro = [];
         let materias = [];
