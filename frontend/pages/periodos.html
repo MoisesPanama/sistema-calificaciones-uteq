@@ -16,8 +16,27 @@
     <p class="periodo-fijo" id="info-activo"></p>
     <p class="alert-exito" id="ok" style="display:none"></p>
     <p class="alert alert-error" id="error" style="display:none"></p>
-    <div class="search-bar"><button class="btn-secondary" id="btn-modal">+ Nuevo Periodo</button></div>
+    <div class="search-bar"><button class="btn-primary" id="btn-modal">+ Nuevo Periodo</button></div>
     <div id="tabla"></div>
+
+    <div class="modal-fondo" id="modalPeriodo">
+      <div class="modal-caja">
+        <h2>Nuevo Periodo</h2>
+        <form id="form-per" class="form-box">
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" required>
+          <label for="fecha_inicio">Fecha de inicio</label>
+          <input type="date" id="fecha_inicio" required>
+          <label for="fecha_fin">Fecha de fin</label>
+          <input type="date" id="fecha_fin" required>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" class="btn-secondary" id="btn-cerrar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div class="modal-fondo" id="modalEditar">
       <div class="modal-caja">
         <h2>Editar Periodo</h2>
@@ -31,27 +50,12 @@
           <input type="date" id="ed-fecha_fin" required>
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
-            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar-editar">Cancelar</button>
+            <button type="button" class="btn-secondary" id="btn-cerrar-editar">Cancelar</button>
           </div>
         </form>
       </div>
     </div>
-      <div class="modal-caja">
-        <h2>Nuevo Periodo</h2>
-        <form id="form-per" class="form-box">
-          <label for="nombre">Nombre</label>
-          <input type="text" id="nombre" required>
-          <label for="fecha_inicio">Fecha de inicio</label>
-          <input type="date" id="fecha_inicio" required>
-          <label for="fecha_fin">Fecha de fin</label>
-          <input type="date" id="fecha_fin" required>
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Guardar</button>
-            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar">Cancelar</button>
-          </div>
-        </form>
-      </div>
-    </div>
+
     </main>
   </div>
 </div>
@@ -63,25 +67,40 @@
     async function cargar() {
       const { periodos, periodoActivo } = await apiGet('/periodos/');
       document.getElementById('info-activo').innerHTML =
-        `Periodo activo (fijo): <strong>${periodoActivo ? esc(periodoActivo.nombre) : 'Ninguno'}</strong>. ` +
+        `Periodo activo: <strong>${periodoActivo ? esc(periodoActivo.nombre) : 'Ninguno'}</strong>. ` +
         'Todo el sistema opera sobre este periodo. Solo puede haber <strong>un periodo activo</strong> a la vez.';
       const badge = (e) => {
         if (e === 'Finalizado') return 'badge-danger';
         if (e === 'Activo') return 'badge-success';
         return 'badge-info';
       };
+      const colAccion = (p) => {
+        if (p.activo) return '<span class="tag-activo">En uso</span>';
+        if (rol === 'administrador') return `<button class="btn-primary btn-sm" data-activar="${p.id_periodo}">Activar</button>`;
+        return '—';
+      };
+      const colEditar = (p) => {
+        if (rol !== 'administrador') return '';
+        return `<button class="btn-secondary btn-sm" data-editar='${JSON.stringify(p)}'>Editar</button>`;
+      };
       document.getElementById('tabla').innerHTML =
-        `<table><thead><tr><th>Nombre</th><th>Fecha inicio</th><th>Fecha fin</th><th>Estado</th><th>Acción</th></tr></thead><tbody>` +
-        periodos.map(p => `<tr><td>${esc(p.nombre)}</td>
-          <td>${new Date(p.fecha_inicio).toLocaleDateString('es-EC')}</td>
-          <td>${new Date(p.fecha_fin).toLocaleDateString('es-EC')}</td>
-          <td><span class="${badge(p.estado)}">${p.estado}</span></td>
-          <td>${p.activo ? 'En uso'
-            : (rol === 'administrador'
-              ? `<button class="btn-primary" data-activar="${p.id_periodo}">Activar</button>` : '—')}</td>
-          <td>${rol === 'administrador'
-            ? `<button class="btn-secondary" data-editar='${JSON.stringify(p)}'>Editar</button>` : '—'}</td></tr>`).join('') +
-        '</tbody></table>';
+        `<div class="table-responsive">
+          <table>
+            <thead><tr>
+              <th>Nombre</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Periodo</th><th></th>
+            </tr></thead>
+            <tbody>
+            ${periodos.map(p => `<tr>
+              <td>${esc(p.nombre)}</td>
+              <td>${new Date(p.fecha_inicio).toLocaleDateString('es-EC')}</td>
+              <td>${new Date(p.fecha_fin).toLocaleDateString('es-EC')}</td>
+              <td><span class="${badge(p.estado)}">${p.estado}</span></td>
+              <td>${colAccion(p)}</td>
+              <td class="td-actions">${colEditar(p)}</td>
+            </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
       document.querySelectorAll('[data-activar]').forEach(b => b.onclick = async () => {
         try {
           const r = await apiPost(`/periodos/${b.dataset.activar}/activar`, {});
@@ -89,12 +108,12 @@
           await cargar();
         } catch (err) { showError(err.message); }
       });
-      document.querySelectorAll('[data-editar]').forEach(b => b.onclick = async () => {
+      document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
         const p = JSON.parse(b.dataset.editar);
+        document.getElementById('ed-id').value = p.id_periodo;
         document.getElementById('ed-nombre').value = p.nombre;
         document.getElementById('ed-fecha_inicio').value = p.fecha_inicio.split('T')[0];
         document.getElementById('ed-fecha_fin').value = p.fecha_fin.split('T')[0];
-        document.getElementById('ed-id').value = p.id_periodo;
         document.getElementById('modalEditar').classList.add('activo');
       });
     }
@@ -104,11 +123,27 @@
       rol = usuario.nombre_rol;
       await cargar().catch(showError);
       const modal = document.getElementById('modalPeriodo');
+      const modalEditar = document.getElementById('modalEditar');
+
       document.getElementById('btn-modal').onclick = () => modal.classList.add('activo');
       document.getElementById('btn-cerrar').onclick = () => modal.classList.remove('activo');
-      const modalEditar = document.getElementById('modalEditar');
       document.getElementById('btn-cerrar-editar').onclick = () => modalEditar.classList.remove('activo');
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('activo'); });
       modalEditar.addEventListener('click', (e) => { if (e.target === modalEditar) modalEditar.classList.remove('activo'); });
+
+      document.getElementById('form-per').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await apiPost('/periodos/', {
+            nombre: document.getElementById('nombre').value,
+            fecha_inicio: document.getElementById('fecha_inicio').value,
+            fecha_fin: document.getElementById('fecha_fin').value
+          });
+          modal.classList.remove('activo');
+          showOk('Periodo creado correctamente.');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
       document.getElementById('form-editar').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
@@ -120,18 +155,6 @@
           });
           modalEditar.classList.remove('activo');
           showOk('Periodo actualizado correctamente.');
-          await cargar();
-        } catch (err) { showError(err.message); }
-      });
-      document.getElementById('form-per').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-          await apiPost('/periodos/', {
-            nombre: document.getElementById('nombre').value,
-            fecha_inicio: document.getElementById('fecha_inicio').value,
-            fecha_fin: document.getElementById('fecha_fin').value
-          });
-          modal.classList.remove('activo');
           await cargar();
         } catch (err) { showError(err.message); }
       });

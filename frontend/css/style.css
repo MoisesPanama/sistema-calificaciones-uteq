@@ -517,6 +517,12 @@ select {
     padding-right: 2rem !important;
 }
 
+/* ===================== TABLE HELPERS ===================== */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tag-activo { background-color: #dcfce7; color: #166534; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.td-actions { text-align: right; white-space: nowrap; }
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
@@ -528,8 +534,15 @@ select {
     .form-box { max-width: 100%; }
     table { font-size: 0.82rem; }
     th, td { padding: 0.5rem 0.6rem; }
+    .modal-caja { width: 95%; padding: 1.2rem; }
 }
 @media (max-width: 480px) {
     .cards-grid { grid-template-columns: 1fr; }
     .card-number { font-size: 1.8rem; }
+    table thead { display: none; }
+    table tbody tr { display: flex; flex-direction: column; padding: 0.8rem; border-bottom: 1px solid #e5e7eb; }
+    table tbody td { display: flex; justify-content: space-between; padding: 0.25rem 0; border: none; }
+    table tbody td::before { content: attr(data-label); font-weight: 600; color: #6b7280; }
+    .td-actions { text-align: left; }
+    .search-bar { flex-wrap: wrap; }
 }
