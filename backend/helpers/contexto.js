@@ -74,7 +74,7 @@ async function getMateriasPermitidas(client, usuario, idPeriodo) {
 async function getCursosPermitidos(client, usuario, idPeriodo) {
     if (esAdmin(usuario)) {
         const r = await client.query(
-            `SELECT id_curso, nombre, paralelo FROM cursos
+            `SELECT id_curso, nombre, paralelo FROM colegio.cursos
              WHERE id_periodo = $1 ORDER BY nombre, paralelo`,
             [idPeriodo]
         );
@@ -86,7 +86,7 @@ async function getCursosPermitidos(client, usuario, idPeriodo) {
     const r = await client.query(
         `SELECT DISTINCT c.id_curso, c.nombre, c.paralelo
          FROM profesor_materia_periodo pmp
-         JOIN cursos c ON c.id_curso = pmp.id_curso
+         JOIN colegio.cursos c ON c.id_curso = pmp.id_curso
          WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
          ORDER BY c.nombre, c.paralelo`,
         [idPeriodo, idProfesor]

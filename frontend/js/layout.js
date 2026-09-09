@@ -2,8 +2,8 @@
 
 async function getSessionUser() {
   try {
-    const { usuario } = await apiGet('/auth/me');
-    renderLayout(usuario);
+    const { usuario, periodoSeleccionado } = await apiGet('/auth/me');
+    renderLayout(usuario, periodoSeleccionado);
     return usuario;
   } catch {
     location.href = 'login.html';
@@ -22,7 +22,7 @@ async function initPage({ adminOnly = false } = {}) {
   return usuario;
 }
 
-function renderLayout(usuario) {
+async function renderLayout(usuario, periodoSeleccionado) {
   const sidebar = document.getElementById('app-sidebar');
   const topbar = document.getElementById('app-topbar');
   if (!sidebar || !topbar) return;
@@ -82,6 +82,18 @@ function renderLayout(usuario) {
       <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#374151;"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
     </button>
     <div class="topbar-right">
+      <div class="header-periodo" id="selectorPeriodo">
+        <button class="header-periodo-btn" id="btnPeriodo">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+          <span id="periodoNombre">Cargando...</span>
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="header-periodo-dropdown" id="dropdownPeriodo">
+          <div class="header-periodo-dropdown-header">Seleccionar periodo</div>
+          <div id="periodosLista"></div>
+          <div class="header-periodo-footer">Periodo fijo en sesion</div>
+        </div>
+      </div>
       <span style="font-size:0.82rem;color:#6b7280;">${esc(usuario.nombre_rol)}</span>
     </div>`;
 
@@ -89,4 +101,52 @@ function renderLayout(usuario) {
     await apiPost('/auth/logout', {});
     location.href = 'login.html';
   });
+
+  document.getElementById('btnPeriodo').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('dropdownPeriodo').classList.toggle('activo');
+  });
+
+  document.addEventListener('click', (e) => {
+    const sp = document.getElementById('selectorPeriodo');
+    const dd = document.getElementById('dropdownPeriodo');
+    if (sp && dd && !sp.contains(e.target)) dd.classList.remove('activo');
+  });
+
+  cargarPeriodos(periodoSeleccionado);
+}
+
+async function cargarPeriodos(seleccionado) {
+  try {
+    const d = await apiGet('/periodos/');
+    const periodos = d.periodos || [];
+    const activo = d.periodoActivo;
+    const lista = document.getElementById('periodosLista');
+    const nombreEl = document.getElementById('periodoNombre');
+    if (!lista || !nombreEl) return;
+
+    let idSeleccionado = seleccionado || (activo && activo.id_periodo);
+    const periodoActual = periodos.find(p => String(p.id_periodo) === String(idSeleccionado)) || activo;
+    nombreEl.textContent = periodoActual ? esc(periodoActual.nombre) : 'Sin periodo';
+
+    lista.innerHTML = periodos.map(p => {
+      const seleccionado = String(p.id_periodo) === String(idSeleccionado);
+      const clase = seleccionado ? ' class="activo"' : '';
+      return `<div class="header-periodo-item${seleccionado ? ' activo' : ''}" data-id="${p.id_periodo}">
+        <span class="check">${seleccionado ? '&#10003;' : ''}</span>
+        <span>${esc(p.nombre)}</span>
+      </div>`;
+    }).join('');
+
+    lista.querySelectorAll('.header-periodo-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const id = Number(item.dataset.id);
+        await apiPost('/auth/periodo-seleccionado', { id_periodo: id });
+        cargarPeriodos(id);
+      });
+    });
+  } catch (e) {
+    const nombreEl = document.getElementById('periodoNombre');
+    if (nombreEl) nombreEl.textContent = 'Sin periodo';
+  }
 }

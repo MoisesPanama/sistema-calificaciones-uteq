@@ -206,6 +206,83 @@ body {
 .topbar-toggle:hover { background: #f3f4f6; }
 .topbar-right { display: flex; align-items: center; gap: 0.8rem; }
 
+/* ===================== PERIOD SELECTOR (header) ===================== */
+.header-periodo { position: relative; }
+.header-periodo-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #1e3a8a;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.header-periodo-btn:hover { background: #dbeafe; }
+.header-periodo-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.4rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    min-width: 260px;
+    z-index: 1000;
+    overflow: hidden;
+}
+.header-periodo-dropdown.activo { display: block; }
+.header-periodo-dropdown-header {
+    padding: 0.7rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1e3a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e5e7eb;
+}
+.header-periodo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.12s;
+}
+.header-periodo-item:hover { background: #f3f4f6; }
+.header-periodo-item.activo { color: #166534; font-weight: 600; background: #f0fdf4; }
+.header-periodo-item .check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+.header-periodo-item.activo .check {
+    border-color: #22c55e;
+    background: #22c55e;
+    color: white;
+}
+.header-periodo-footer {
+    padding: 0.5rem 1rem;
+    font-size: 0.72rem;
+    color: #9ca3af;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+}
+
 /* ===================== CONTENIDO ===================== */
 .main-content {
     padding: 1.5rem 2rem;

@@ -28,7 +28,7 @@ async function cargarTabla(idPeriodo, idMateria, idCurso) {
                          m.id_curso, c.nombre AS curso_nombre, c.paralelo
                   FROM matriculas m
                   JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-                  LEFT JOIN cursos c ON c.id_curso = m.id_curso
+                  LEFT JOIN colegio.cursos c ON c.id_curso = m.id_curso
                   WHERE m.id_periodo = $1`;
     const params = [idPeriodo];
     if (idCurso) {

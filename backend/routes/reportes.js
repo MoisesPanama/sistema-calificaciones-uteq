@@ -25,7 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
         const idMateria = req.query.id_materia || '';
 
         const cursos = await pool.query(
-            `SELECT id_curso, nombre, paralelo FROM cursos
+            `SELECT id_curso, nombre, paralelo FROM colegio.cursos
              WHERE id_periodo = $1 ORDER BY nombre, paralelo`,
             [idPeriodo]
         );
