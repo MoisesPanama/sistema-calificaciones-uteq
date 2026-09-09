@@ -1,5 +1,6 @@
 // =========================================================
 // routes/psicologo.js — vista de rendimiento para psicologo
+// Muestra promedios por QUIMESTRE (todos los periodos)
 // =========================================================
 
 const express = require('express');
@@ -7,75 +8,99 @@ const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
-// GET /api/psicologo/rendimiento — lista de estudiantes con promedio y alertas
+// GET /api/psicologo/rendimiento — estudiantes con promedio por quimestre
 router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, res) => {
     try {
-        let sql = `
+        // Obtener todos los periodos
+        const periodosRes = await pool.query(
+            'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio'
+        );
+        const periodos = periodosRes.rows;
+
+        // Obtener estudiantes con sus promedios por materia y periodo
+        const resultado = await pool.query(`
             SELECT 
                 e.id_estudiante,
                 e.nombres,
                 e.apellidos,
                 e.cedula,
-                '' AS curso,
-                '' AS paralelo,
-                ROUND(AVG(mm.promedio)::numeric, 2) AS promedio_general,
-                COUNT(mm.id_detalle) AS materias_inscritas,
-                SUM(CASE WHEN mm.promedio < 7 THEN 1 ELSE 0 END) AS materias_bajo_rendimiento,
-                SUM(CASE WHEN mm.promedio >= 9 THEN 1 ELSE 0 END) AS materias_excelencia
+                pa.id_periodo,
+                pa.nombre AS periodo_nombre,
+                mt.nombre AS materia,
+                mm.promedio,
+                mm.estado
             FROM estudiantes e
             JOIN matriculas m ON m.id_estudiante = e.id_estudiante
             JOIN matricula_materias mm ON mm.id_matricula = m.id_matricula
-            WHERE m.id_periodo = (SELECT id_periodo FROM periodos_academicos WHERE activo = TRUE LIMIT 1)
-              AND mm.promedio IS NOT NULL
-            GROUP BY e.id_estudiante, e.nombres, e.apellidos, e.cedula
-            ORDER BY promedio_general ASC`;
+            JOIN materias mt ON mt.id_materia = mm.id_materia
+            JOIN periodos_academicos pa ON pa.id_periodo = m.id_periodo
+            WHERE mm.promedio IS NOT NULL
+            ORDER BY e.apellidos, e.nombres, pa.fecha_inicio, mt.nombre
+        `);
 
-        // Intentar con cursos si la tabla existe
-        try {
-            await pool.query('SELECT 1 FROM cursos LIMIT 1');
-            sql = `
-                SELECT 
-                    e.id_estudiante,
-                    e.nombres,
-                    e.apellidos,
-                    e.cedula,
-                    COALESCE(c.nombre, '') AS curso,
-                    COALESCE(c.paralelo, '') AS paralelo,
-                    ROUND(AVG(mm.promedio)::numeric, 2) AS promedio_general,
-                    COUNT(mm.id_detalle) AS materias_inscritas,
-                    SUM(CASE WHEN mm.promedio < 7 THEN 1 ELSE 0 END) AS materias_bajo_rendimiento,
-                    SUM(CASE WHEN mm.promedio >= 9 THEN 1 ELSE 0 END) AS materias_excelencia
-                FROM estudiantes e
-                JOIN matriculas m ON m.id_estudiante = e.id_estudiante
-                LEFT JOIN cursos c ON c.id_curso = m.id_curso
-                JOIN matricula_materias mm ON mm.id_matricula = m.id_matricula
-                WHERE m.id_periodo = (SELECT id_periodo FROM periodos_academicos WHERE activo = TRUE LIMIT 1)
-                  AND mm.promedio IS NOT NULL
-                GROUP BY e.id_estudiante, e.nombres, e.apellidos, e.cedula, c.nombre, c.paralelo
-                ORDER BY promedio_general ASC`;
-        } catch (_) { /* cursos no existe, usar query sin cursos */ }
+        // Agrupar por estudiante
+        const mapaEstudiantes = new Map();
+        for (const row of resultado.rows) {
+            const key = row.id_estudiante;
+            if (!mapaEstudiantes.has(key)) {
+                mapaEstudiantes.set(key, {
+                    id_estudiante: row.id_estudiante,
+                    nombres: row.nombres,
+                    apellidos: row.apellidos,
+                    cedula: row.cedula,
+                    quimestres: {}
+                });
+            }
+            const est = mapaEstudiantes.get(key);
+            if (!est.quimestres[row.id_periodo]) {
+                est.quimestres[row.id_periodo] = {
+                    nombre: row.periodo_nombre,
+                    materias: [],
+                    promedio: null
+                };
+            }
+            est.quimestres[row.id_periodo].materias.push({
+                materia: row.materia,
+                promedio: row.promedio,
+                estado: row.estado
+            });
+        }
 
-        const resultado = await pool.query(sql);
+        // Calcular promedio general por quimestre
+        const estudiantes = [];
+        for (const est of mapaEstudiantes.values()) {
+            const逐 = [];
+            for (const [idPeriodo, datos] of Object.entries(est.quimestres)) {
+                const suma = datos.materias.reduce((s, m) => s + Number(m.promedio), 0);
+                datos.promedio = Math.round((suma / datos.materias.length) * 100) / 100;
+                const bajo = datos.materias.filter(m => m.promedio < 7).length;
+                datos.bajo_rendimiento = bajo;
+                datos.alerta = bajo > 0 ? `Bajo rendimiento en ${bajo} materia(s)` : null;
+            }
+            // Calcular promedio general (promedio de los quimestres)
+            const vals = Object.values(est.quimestres).map(q => q.promedio);
+            const promedioGeneral = vals.length > 0 ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 : null;
 
-        const estudiantes = resultado.rows.map(e => ({
-            ...e,
-            estado_rendimiento: e.promedio_general < 5 ? 'Critico' :
-                               e.promedio_general < 7 ? 'Bajo' :
-                               e.promedio_general < 8.5 ? 'Normal' : 'Destacado',
-            alerta_bajo_rendimiento: e.materias_bajo_rendimiento > 0,
-            mensaje_alerta: e.materias_bajo_rendimiento > 0
-                ? `Bajo rendimiento en ${e.materias_bajo_rendimiento} materia(s)`
-                : null
-        }));
+            estudiantes.push({
+                ...est,
+                promedio_general: promedioGeneral,
+                estado_rendimiento: promedioGeneral < 5 ? 'Critico' :
+                                   promedioGeneral < 7 ? 'Bajo' :
+                                   promedioGeneral < 8.5 ? 'Normal' : 'Destacado'
+            });
+        }
 
-        res.json({ estudiantes });
+        // Ordenar por promedio general ascendente
+        estudiantes.sort((a, b) => (a.promedio_general || 0) - (b.promedio_general || 0));
+
+        res.json({ periodos, estudiantes });
     } catch (error) {
         console.error('Error al obtener rendimiento:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el rendimiento: ' + error.message });
     }
 });
 
-// GET /api/psicologo/estudiante/:id — detalle de un estudiante
+// GET /api/psicologo/estudiante/:id — detalle de un estudiante por quimestre
 router.get('/estudiante/:id', requireAuth, requireRole('psicologo'), async (req, res) => {
     try {
         const infoBasica = await pool.query(`
@@ -92,6 +117,7 @@ router.get('/estudiante/:id', requireAuth, requireRole('psicologo'), async (req,
 
         const materias = await pool.query(`
             SELECT 
+                pa.nombre AS periodo,
                 mt.nombre AS materia,
                 mm.promedio,
                 mm.estado,
@@ -104,10 +130,10 @@ router.get('/estudiante/:id', requireAuth, requireRole('psicologo'), async (req,
             FROM matricula_materias mm
             JOIN matriculas m ON m.id_matricula = mm.id_matricula
             JOIN materias mt ON mt.id_materia = mm.id_materia
+            JOIN periodos_academicos pa ON pa.id_periodo = m.id_periodo
             WHERE m.id_estudiante = $1
-              AND m.id_periodo = (SELECT id_periodo FROM periodos_academicos WHERE activo = TRUE LIMIT 1)
               AND mm.promedio IS NOT NULL
-            ORDER BY mm.promedio ASC
+            ORDER BY pa.fecha_inicio, mt.nombre
         `, [req.params.id]);
 
         res.json({

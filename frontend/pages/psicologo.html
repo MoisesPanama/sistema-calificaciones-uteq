@@ -13,7 +13,6 @@
     <header class="topbar" id="app-topbar"></header>
     <main class="main-content">
     <h1>Rendimiento Académico</h1>
-    <p class="periodo-fijo" id="info-periodo"></p>
     <p class="alert alert-error" id="error" style="display:none"></p>
 
     <!-- Resumen -->
@@ -28,7 +27,7 @@
 
     <!-- Modal detalle -->
     <div class="modal-fondo" id="modalDetalle">
-      <div class="modal-caja" style="max-width:550px;">
+      <div class="modal-caja" style="max-width:650px;">
         <h2 id="detalle-titulo">Detalle del Estudiante</h2>
         <div id="detalle-contenido"></div>
         <div class="form-actions">
@@ -44,10 +43,8 @@
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
   <script>
-    const UMBRAL_BAJO = 7;
-    const UMBRAL_DESTACADO = 8.5;
-
     function colorPromedio(p) {
+      if (p == null) return '#6b7280';
       if (p < 5) return '#dc2626';
       if (p < 7) return '#f59e0b';
       if (p < 8.5) return '#2563eb';
@@ -64,14 +61,18 @@
       return `<span class="badge ${mapa[estado] || 'badge-info'}">${estado}</span>`;
     }
 
+    function badgePromedio(p) {
+      if (p == null) return '<span style="color:#9ca3af;">—</span>';
+      const color = colorPromedio(p);
+      return `<span style="font-weight:700;color:${color};">${p.toFixed(2)}</span>`;
+    }
+
     async function cargar() {
       const d = await apiGet('/psicologo/rendimiento');
-      const periodos = await apiGet('/periodos/');
-      const activo = periodos.periodoActivo;
-      document.getElementById('info-periodo').innerHTML =
-        `Periodo: <strong>${activo ? esc(activo.nombre) : '—'}</strong>`;
-
+      const periodos = d.periodos || [];
       const estudiantes = d.estudiantes || [];
+
+      // Resumen
       const total = estudiantes.length;
       const criticos = estudiantes.filter(e => e.estado_rendimiento === 'Critico').length;
       const bajos = estudiantes.filter(e => e.estado_rendimiento === 'Bajo').length;
@@ -91,23 +92,31 @@
           <div style="font-size:0.82rem;color:#6b7280;">Destacados</div>
         </div>
         <div class="card" style="text-align:center;padding:1.2rem;">
-          <div style="font-size:2rem;font-weight:700;color:#6b7280;">${total > 0 ? (estudiantes.reduce((s, e) => s + Number(e.promedio_general), 0) / total).toFixed(2) : '—'}</div>
+          <div style="font-size:2rem;font-weight:700;color:#6b7280;">${total > 0 ? (estudiantes.reduce((s, e) => s + (e.promedio_general || 0), 0) / total).toFixed(2) : '—'}</div>
           <div style="font-size:0.82rem;color:#6b7280;">Promedio General</div>
         </div>`;
 
       // Alertas
-      const conAlerta = estudiantes.filter(e => e.alerta_bajo_rendimiento);
+      const conAlerta = [];
+      for (const e of estudiantes) {
+        for (const [idP, q] of Object.entries(e.quimestres)) {
+          if (q.alerta) {
+            conAlerta.push({ estudiante: e, quimestre: q.nombre, mensaje: q.alerta, promedio: q.promedio });
+          }
+        }
+      }
       if (conAlerta.length > 0) {
         document.getElementById('alertas').innerHTML =
           `<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;">
-            <h3 style="font-size:0.95rem;color:#92400e;margin-bottom:0.8rem;">⚠️ Estudiantes con Bajo Rendimiento</h3>
-            ${conAlerta.map(e => `
+            <h3 style="font-size:0.95rem;color:#92400e;margin-bottom:0.8rem;">Estudiantes con Bajo Rendimiento</h3>
+            ${conAlerta.map(a => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #fde68a;">
                 <div>
-                  <strong>${esc(e.nombres)} ${esc(e.apellidos)}</strong>
-                  <span style="font-size:0.82rem;color:#6b7280;margin-left:0.5rem;">${e.mensaje_alerta}</span>
+                  <strong>${esc(a.estudiante.nombres)} ${esc(a.estudiante.apellidos)}</strong>
+                  <span style="font-size:0.82rem;color:#6b7280;margin-left:0.5rem;">${esc(a.quimestre)}</span>
+                  <span style="font-size:0.82rem;color:#dc2626;margin-left:0.5rem;">${a.mensaje}</span>
                 </div>
-                <span style="font-weight:700;color:${colorPromedio(e.promedio_general)};">${e.promedio_general}</span>
+                <span style="font-weight:700;color:${colorPromedio(a.promedio)};">${a.promedio.toFixed(2)}</span>
               </div>
             `).join('')}
           </div>`;
@@ -121,17 +130,33 @@
         div.innerHTML = '<p style="color:#6b7280;">No hay datos de rendimiento disponibles.</p>';
         return;
       }
+
+      // Encabezados de quimestres
+      const thPeriodos = periodos.map(p => `<th style="text-align:center;">${esc(p.nombre)}</th>`).join('');
+
       div.innerHTML = `<div class="table-responsive"><table>
-        <thead><tr><th>Estudiante</th><th>Curso</th><th>Promedio</th><th>Escala</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr>
+          <th>Estudiante</th>
+          ${thPeriodos}
+          <th style="text-align:center;">General</th>
+          <th>Estado</th>
+          <th></th>
+        </tr></thead>
         <tbody>
-        ${estudiantes.map(e => `<tr>
-          <td>${esc(e.nombres)} ${esc(e.apellidos)}</td>
-          <td>${esc(e.curso || '—')} ${esc(e.paralelo || '')}</td>
-          <td style="font-weight:700;color:${colorPromedio(e.promedio_general)};">${e.promedio_general}</td>
-          <td>${badgeRendimiento(e.estado_rendimiento)}</td>
-          <td style="font-size:0.82rem;color:${e.alerta_bajo_rendimiento ? '#dc2626' : '#16a34a'};">${e.mensaje_alerta || '—'}</td>
-          <td class="td-actions"><button class="btn-secondary btn-sm" data-ver="${e.id_estudiante}">Ver detalle</button></td>
-        </tr>`).join('')}
+        ${estudiantes.map(e => {
+          const celdas = periodos.map(p => {
+            const q = e.quimestres[p.id_periodo];
+            if (!q) return '<td style="text-align:center;">—</td>';
+            return `<td style="text-align:center;">${badgePromedio(q.promedio)}</td>`;
+          }).join('');
+          return `<tr>
+            <td>${esc(e.nombres)} ${esc(e.apellidos)}</td>
+            ${celdas}
+            <td style="text-align:center;">${badgePromedio(e.promedio_general)}</td>
+            <td>${badgeRendimiento(e.estado_rendimiento)}</td>
+            <td class="td-actions"><button class="btn-secondary btn-sm" data-ver="${e.id_estudiante}">Ver detalle</button></td>
+          </tr>`;
+        }).join('')}
         </tbody></table></div>`;
 
       div.querySelectorAll('[data-ver]').forEach(b => b.onclick = async () => {
@@ -143,23 +168,41 @@
           const rep = det.estudiante.rep_nombres
             ? `${det.estudiante.rep_nombres} ${det.estudiante.rep_apellidos} — ${det.estudiante.rep_telefono || '—'}`
             : 'Sin representante registrado';
+
           let html = `
             <div style="margin-bottom:1rem;">
-              <p style="font-size:0.85rem;"><strong>Cédula:</strong> ${esc(det.estudiante.cedula)}</p>
+              <p style="font-size:0.85rem;"><strong>Cedula:</strong> ${esc(det.estudiante.cedula)}</p>
               <p style="font-size:0.85rem;"><strong>Representante:</strong> ${esc(rep)}</p>
-            </div>
-            <table style="width:100%;font-size:0.85rem;">
-              <thead><tr><th>Materia</th><th>Promedio</th><th>Escala</th></tr></thead>
-              <tbody>
-              ${det.materias.map(m => `<tr>
-                <td>${esc(m.materia)}</td>
-                <td style="font-weight:700;color:${colorPromedio(m.promedio)};">${m.promedio}</td>
-                <td>${esc(m.escala)}</td>
-              </tr>`).join('')}
-              </tbody>
-            </table>`;
+            </div>`;
+
+          // Agrupar por periodo
+          const porPeriodo = {};
+          for (const m of det.materias) {
+            if (!porPeriodo[m.periodo]) porPeriodo[m.periodo] = [];
+            porPeriodo[m.periodo].push(m);
+          }
+
+          for (const [periodo, mats] of Object.entries(porPeriodo)) {
+            const suma = mats.reduce((s, m) => s + Number(m.promedio), 0);
+            const prom = (suma / mats.length).toFixed(2);
+            const colorProm = colorPromedio(Number(prom));
+            html += `
+              <h3 style="font-size:0.9rem;color:#1e3a8a;margin:1rem 0 0.5rem;border-bottom:1px solid #e5e7eb;padding-bottom:0.3rem;">
+                ${esc(periodo)} — Promedio: <span style="color:${colorProm};">${prom}</span>
+              </h3>
+              <table style="width:100%;font-size:0.85rem;">
+                <thead><tr><th>Materia</th><th>Promedio</th><th>Escala</th></tr></thead>
+                <tbody>
+                ${mats.map(m => `<tr>
+                  <td>${esc(m.materia)}</td>
+                  <td style="font-weight:700;color:${colorPromedio(m.promedio)};">${m.promedio}</td>
+                  <td>${esc(m.escala)}</td>
+                </tr>`).join('')}
+                </tbody>
+              </table>`;
+          }
           if (det.materias.length === 0) {
-            html = '<p style="color:#6b7280;">No tiene calificaciones registradas en este periodo.</p>';
+            html += '<p style="color:#6b7280;">No tiene calificaciones registradas.</p>';
           }
           document.getElementById('detalle-contenido').innerHTML = html;
           document.getElementById('modalDetalle').classList.add('activo');
@@ -171,7 +214,7 @@
       if (!await initPage({ adminOnly: false })) return;
       const usuario = await getSessionUser();
       if (!usuario || usuario.nombre_rol !== 'psicologo') {
-        document.querySelector('main').innerHTML = '<div class="alert alert-error">Acceso restringido a psicólogos.</div>';
+        document.querySelector('main').innerHTML = '<div class="alert alert-error">Acceso restringido a psicologos.</div>';
         return;
       }
       await cargar().catch(showError);
