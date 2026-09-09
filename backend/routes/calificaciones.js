@@ -1,202 +1,200 @@
 // =========================================================
-// routes/calificaciones.js
-// Registro de calificaciones (usa sp_registrar_calificacion)
+// routes/calificaciones.js — API JSON sobre el PERIODO ACTIVO
+// GET  /api/calificaciones/contexto?id_periodo&id_materia&id_curso
+// POST /api/calificaciones/lote {id_periodo,id_materia,id_curso,notas}
+// POST /api/calificaciones (individual)
+// ---------------------------------------------------------
+// Profesor: solo ve/califica SUS materias/cursos asignados.
+// Usa sp_registrar_calificacion (upsert + validaciones).
 // =========================================================
 
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
-const { getPeriodoActivo, getAllPeriodos } = require('../helpers/periodos');
+const {
+    getPeriodoActivo,
+    getMateriasPermitidas,
+    getCursosPermitidos
+} = require('../helpers/contexto');
 
-// GET /calificaciones/nueva -> formulario de registro
-router.get('/calificaciones/nueva', requireAuth, async (req, res) => {
+// Carga estudiantes matriculados + notas existentes (reutilizable)
+async function cargarTabla(idPeriodo, idMateria, idCurso) {
+    let estudiantes = [];
+    const notasExistentes = {};
+    if (!idMateria) return { estudiantes, notasExistentes };
+
+    let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
+                         m.id_curso, c.nombre AS curso_nombre, c.paralelo
+                  FROM matriculas m
+                  JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                  LEFT JOIN cursos c ON c.id_curso = m.id_curso
+                  WHERE m.id_periodo = $1`;
+    const params = [idPeriodo];
+    if (idCurso) {
+        sqlEst += ' AND m.id_curso = $2';
+        params.push(idCurso);
+    }
+    sqlEst += ' ORDER BY e.apellidos, e.nombres';
+    const rEst = await pool.query(sqlEst, params);
+    estudiantes = rEst.rows;
+
+    if (estudiantes.length > 0) {
+        const ids = estudiantes.map((e) => e.id_estudiante);
+        const rNotas = await pool.query(
+            `SELECT id_estudiante, id_tipo_evaluacion, valor
+             FROM calificaciones
+             WHERE id_periodo = $1 AND id_materia = $2
+               AND id_estudiante = ANY($3)`,
+            [idPeriodo, idMateria, ids]
+        );
+        rNotas.rows.forEach((n) => {
+            if (!notasExistentes[n.id_estudiante]) notasExistentes[n.id_estudiante] = {};
+            notasExistentes[n.id_estudiante][n.id_tipo_evaluacion] = n.valor;
+        });
+    }
+    return { estudiantes, notasExistentes };
+}
+
+// GET /api/calificaciones/contexto -> todo lo que necesita la pantalla
+router.get('/contexto', requireAuth, async (req, res) => {
     try {
-        const periodos = await getAllPeriodos();
         const periodoActivo = await getPeriodoActivo();
+        if (!periodoActivo) {
+            return res.status(500).json({ error: 'No hay periodos registrados. Cree y active uno primero.' });
+        }
+        const idPeriodo = req.query.id_periodo || periodoActivo.id_periodo;
+        const materias = await getMateriasPermitidas(pool, req.session.usuario, idPeriodo);
+        const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
+        const tiposRes = await pool.query(
+            `SELECT id_tipo_evaluacion, nombre, categoria, es_examen
+             FROM tipos_evaluacion ORDER BY nombre`
+        );
 
-        const idPeriodoSeleccionado = res.locals.periodoSeleccionado || '';
+        const idMateria = req.query.id_materia || '';
+        const idCurso = req.query.id_curso || '';
 
-        let materias = [];
-        let tiposEvaluacion = [];
-        let estudiantes = [];
-
-        if (idPeriodoSeleccionado) {
-            // Si es profesor, solo mostrar materias asignadas a el
-            let consultaMaterias;
-            if (req.session.usuario.nombre_rol === 'profesor') {
-                // Obtener el id_profesor del usuario logueado
-                const profRes = await pool.query(
-                    'SELECT id_profesor FROM profesores WHERE id_usuario = $1',
-                    [req.session.usuario.id_usuario]
-                );
-
-                if (profRes.rows.length > 0) {
-                    consultaMaterias = pool.query(
-                        `SELECT DISTINCT m.id_materia, m.nombre
-                         FROM materias m
-                         JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
-                         WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
-                         ORDER BY m.nombre`,
-                        [idPeriodoSeleccionado, profRes.rows[0].id_profesor]
-                    );
-                } else {
-                    consultaMaterias = Promise.resolve({ rows: [] });
-                }
-            } else {
-                // Admin ve todas las materias del periodo
-                consultaMaterias = pool.query(
-                    `SELECT DISTINCT m.id_materia, m.nombre
-                     FROM materias m
-                     JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
-                     WHERE pmp.id_periodo = $1
-                     ORDER BY m.nombre`,
-                    [idPeriodoSeleccionado]
-                );
-            }
-
-            const [materiasRes, tiposRes] = await Promise.all([
-                consultaMaterias,
-                pool.query(
-                    'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
-                )
-            ]);
-            materias = materiasRes.rows;
-            tiposEvaluacion = tiposRes.rows;
-
-            const resultadoEst = await pool.query(
-                `SELECT e.id_estudiante, e.nombres, e.apellidos
-                 FROM matriculas m
-                 JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-                 WHERE m.id_periodo = $1
-                 ORDER BY e.apellidos, e.nombres`,
-                [idPeriodoSeleccionado]
+        let periodoNombre = periodoActivo.nombre;
+        if (String(idPeriodo) !== String(periodoActivo.id_periodo)) {
+            const rp = await pool.query(
+                'SELECT nombre FROM periodos_academicos WHERE id_periodo = $1',
+                [idPeriodo]
             );
-            estudiantes = resultadoEst.rows;
+            if (rp.rows.length > 0) periodoNombre = rp.rows[0].nombre;
         }
 
-        res.render('calificaciones/nueva', {
-            periodos,
-            materias,
-            tiposEvaluacion,
-            estudiantes,
-            idPeriodoSeleccionado,
-            errores: []
-        });
+        const { estudiantes, notasExistentes } = await cargarTabla(idPeriodo, idMateria, idCurso);
 
+        res.json({
+            periodoActivo,
+            idPeriodo: String(idPeriodo),
+            periodoNombre,
+            materias,
+            cursos,
+            tiposEvaluacion: tiposRes.rows,
+            estudiantes,
+            notasExistentes
+        });
     } catch (error) {
-        console.error('Error al cargar formulario de calificaciones:', error.message);
-        res.status(500).render('error', { mensaje: 'No se pudo cargar el formulario de calificaciones.' });
+        console.error('Error al cargar contexto de calificaciones:', error.message);
+        res.status(500).json({ error: 'No se pudo cargar el formulario de calificaciones.' });
     }
 });
 
-// POST /calificaciones -> registra una calificacion
-router.post('/calificaciones', requireAuth, async (req, res) => {
-    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor } = req.body;
-    const errores = [];
+function extraerEntradas(notas) {
+    const entradas = [];
+    if (notas && typeof notas === 'object') {
+        Object.keys(notas).forEach((idEst) => {
+            const porTipo = notas[idEst];
+            if (porTipo && typeof porTipo === 'object') {
+                Object.keys(porTipo).forEach((idTipo) => {
+                    const crudo = String(porTipo[idTipo] == null ? '' : porTipo[idTipo]).trim();
+                    if (crudo !== '') entradas.push({ idEst, idTipo, crudo });
+                });
+            }
+        });
+    }
+    return entradas;
+}
 
+// POST /api/calificaciones/lote -> guarda la tabla masiva en transaccion
+router.post('/lote', requireAuth, async (req, res) => {
+    const { id_periodo, id_materia, notas } = req.body || {};
+
+    if (!id_periodo) return res.status(400).json({ error: 'Falta el periodo.' });
+    if (!id_materia) return res.status(400).json({ error: 'Debe seleccionar una materia.' });
+
+    const materiasPermitidas = await getMateriasPermitidas(pool, req.session.usuario, id_periodo);
+    if (!materiasPermitidas.some((m) => String(m.id_materia) === String(id_materia))) {
+        return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo: no puede registrar estas notas.' });
+    }
+
+    const entradas = extraerEntradas(notas);
+    if (entradas.length === 0) {
+        return res.status(400).json({ error: 'No ingreso ninguna calificacion.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await setUsuarioAuditoria(req.session.usuario.id_usuario);
+        await client.query('BEGIN');
+        for (const e of entradas) {
+            const valor = Number(String(e.crudo).replace(',', '.'));
+            if (!Number.isFinite(valor)) {
+                throw new Error('Valor no numerico para el estudiante ' + e.idEst + ': "' + e.crudo + '"');
+            }
+            await client.query(
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
+                [e.idEst, id_materia, id_periodo, e.idTipo, valor, req.session.usuario.id_usuario]
+            );
+        }
+        await client.query('COMMIT');
+        res.json({ ok: true, mensaje: `Se guardaron ${entradas.length} calificaciones.`, total: entradas.length });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Error al guardar lote de calificaciones:', error.message);
+        if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
+            return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'No se pudieron guardar las calificaciones.' });
+    } finally {
+        client.release();
+    }
+});
+
+// POST /api/calificaciones -> registro individual
+router.post('/', requireAuth, async (req, res) => {
+    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor } = req.body || {};
+    const errores = [];
     if (!id_estudiante) errores.push('Debe seleccionar un estudiante.');
     if (!id_materia) errores.push('Debe seleccionar una materia.');
     if (!id_periodo) errores.push('Debe seleccionar un periodo.');
     if (!id_tipo_evaluacion) errores.push('Debe seleccionar un tipo de evaluacion.');
-    if (!valor || valor.trim() === '') errores.push('Debe ingresar una calificacion.');
+    if (valor === undefined || valor === null || String(valor).trim() === '') errores.push('Debe ingresar una calificacion.');
+    if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
-    if (errores.length === 0 && isNaN(Number(valor))) {
-        errores.push('La calificacion debe ser un numero.');
-    }
+    const numerico = Number(String(valor).replace(',', '.'));
+    if (isNaN(numerico)) return res.status(400).json({ error: 'La calificacion debe ser un numero.' });
 
-    // Validar que el profesor solo pueda registrar notas en sus materias
-    if (errores.length === 0 && req.session.usuario.nombre_rol === 'profesor') {
-        const profRes = await pool.query(
-            'SELECT id_profesor FROM profesores WHERE id_usuario = $1',
-            [req.session.usuario.id_usuario]
-        );
-
-        if (profRes.rows.length > 0) {
-            const asignacion = await pool.query(
-                `SELECT 1 FROM profesor_materia_periodo
-                 WHERE id_profesor = $1 AND id_materia = $2 AND id_periodo = $3`,
-                [profRes.rows[0].id_profesor, id_materia, id_periodo]
-            );
-
-            if (asignacion.rows.length === 0) {
-                errores.push('No tiene permiso para registrar calificaciones en esta materia.');
-            }
-        }
-    }
-
-    if (errores.length > 0) {
-        return await recargarFormularioConError(req, res, errores, id_periodo);
+    const permitidas = await getMateriasPermitidas(pool, req.session.usuario, id_periodo);
+    if (!permitidas.some((m) => String(m.id_materia) === String(id_materia))) {
+        return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo: no puede registrar la nota.' });
     }
 
     try {
         await setUsuarioAuditoria(req.session.usuario.id_usuario);
-
         await pool.query(
             'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
-            [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, req.session.usuario.id_usuario]
+            [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario]
         );
-
-        res.redirect('/calificaciones/nueva?id_periodo=' + id_periodo + '&exito=1');
-
+        res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
     } catch (error) {
         console.error('Error al registrar calificacion:', error.message);
-
-        let mensaje = 'No se pudo registrar la calificacion.';
-        if (error.code === 'P0001') {
-            mensaje = error.message;
+        if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
+            return res.status(400).json({ error: error.message });
         }
-
-        await recargarFormularioConError(req, res, [mensaje], id_periodo);
+        res.status(500).json({ error: 'No se pudo registrar la calificacion.' });
     }
 });
-
-// Funcion auxiliar: vuelve a cargar todos los selects y re-renderiza con errores
-async function recargarFormularioConError(req, res, errores, idPeriodoSeleccionado) {
-    const periodos = await getAllPeriodos();
-
-    let materias = [];
-    let tiposEvaluacion = [];
-
-    if (idPeriodoSeleccionado) {
-        const [materiasRes, tiposRes] = await Promise.all([
-            pool.query(
-                `SELECT DISTINCT m.id_materia, m.nombre
-                 FROM materias m
-                 JOIN profesor_materia_periodo pmp ON pmp.id_materia = m.id_materia
-                 WHERE pmp.id_periodo = $1
-                 ORDER BY m.nombre`,
-                [idPeriodoSeleccionado]
-            ),
-            pool.query(
-                'SELECT id_tipo_evaluacion, nombre FROM tipos_evaluacion ORDER BY nombre'
-            )
-        ]);
-        materias = materiasRes.rows;
-        tiposEvaluacion = tiposRes.rows;
-    }
-
-    let estudiantes = [];
-    if (idPeriodoSeleccionado) {
-        const resultadoEst = await pool.query(
-            `SELECT e.id_estudiante, e.nombres, e.apellidos
-             FROM matriculas m
-             JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-             WHERE m.id_periodo = $1
-             ORDER BY e.apellidos, e.nombres`,
-            [idPeriodoSeleccionado]
-        );
-        estudiantes = resultadoEst.rows;
-    }
-
-    res.render('calificaciones/nueva', {
-        periodos,
-        materias,
-        tiposEvaluacion,
-        estudiantes,
-        idPeriodoSeleccionado: idPeriodoSeleccionado || '',
-        errores
-    });
-}
 
 module.exports = router;

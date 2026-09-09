@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesion - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-box">
+    <h1>Sistema de Calificaciones</h1>
+    <h2>UTEQ - Taller de Funciones</h2>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <form id="form-login">
+      <label for="email">Correo electronico</label>
+      <input type="email" id="email" name="email" required autofocus>
+      <label for="password">Contrasena</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit" class="btn-primary">Iniciar sesion</button>
+    </form>
+  </div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+    // Si ya hay sesion, ir directo al dashboard.
+    apiGet('/auth/me').then(() => location.href = 'dashboard.html').catch(() => {});
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        await apiPost('/auth/login', { email, password });
+        location.href = 'dashboard.html';
+      } catch (err) { showError(err.message); }
+    });
+  </script>
+</body>
+</html>

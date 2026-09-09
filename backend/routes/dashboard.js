@@ -1,6 +1,5 @@
 // =========================================================
-// routes/dashboard.js
-// Pantalla de inicio con resumen general del sistema
+// routes/dashboard.js — GET /api/dashboard (resumen general)
 // =========================================================
 
 const express = require('express');
@@ -8,7 +7,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 
-router.get('/dashboard', requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
     try {
         const [estudiantes, materias, periodos, calificaciones] = await Promise.all([
             pool.query('SELECT COUNT(*) FROM estudiantes WHERE activo = TRUE'),
@@ -17,16 +16,16 @@ router.get('/dashboard', requireAuth, async (req, res) => {
             pool.query('SELECT COUNT(*) FROM calificaciones')
         ]);
 
-        res.render('dashboard', {
-            totalEstudiantes: estudiantes.rows[0].count,
-            totalMaterias: materias.rows[0].count,
-            totalPeriodos: periodos.rows[0].count,
-            totalCalificaciones: calificaciones.rows[0].count
+        res.json({
+            totalEstudiantes: Number(estudiantes.rows[0].count),
+            totalMaterias: Number(materias.rows[0].count),
+            totalPeriodos: Number(periodos.rows[0].count),
+            totalCalificaciones: Number(calificaciones.rows[0].count)
         });
 
     } catch (error) {
         console.error('Error en dashboard:', error.message);
-        res.status(500).render('error', { mensaje: 'No se pudo cargar el resumen del sistema.' });
+        res.status(500).json({ error: 'No se pudo cargar el resumen del sistema.' });
     }
 });
 

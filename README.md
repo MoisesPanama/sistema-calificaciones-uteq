@@ -9,6 +9,26 @@ y calificaciones, calculando promedios mediante funciones y procedimientos
 almacenados de PostgreSQL, con soporte de triggers de validación y
 auditoría automática de cambios.
 
+## Inicio rápido (un solo comando)
+
+Requisitos previos (lo único a instalar a mano, una vez): Node.js 20+,
+PostgreSQL 18 en ejecución, y Git.
+
+```powershell
+git clone https://github.com/MoisesPanama/sistema-calificaciones-uteq.git
+cd sistema-calificaciones-uteq
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+Eso instala dependencias (backend + frontend), crea el `.env`, el rol/base de datos, ejecuta las
+migraciones `01..09`, asigna las passwords de prueba y levanta **dos servidores**: la API en
+`http://localhost:3000` y el frontend en `http://localhost:5173` (abre `pages/login.html`).
+El script es re-ejecutable: si la BD ya existe, la conserva.
+
+> En VS Code también puedes usar la tarea **Setup y levantar proyecto**
+> (Terminal → Run Task…). Si `psql` pide password de superusuario, es solo la
+> primera vez (para crear rol/BD).
+
 ## Integrantes del equipo
 
 - Moises Panama — Backend, base de datos, interfaces de gestión
@@ -20,9 +40,9 @@ auditoría automática de cambios.
 | Componente         | Tecnología           |
 |---------------------|-----------------------|
 | Base de datos        | PostgreSQL 18          |
-| Backend               | Node.js + Express 5     |
-| Motor de vistas        | EJS (renderizado en servidor) |
-| Autenticación           | express-session + connect-pg-simple + bcrypt |
+| Backend               | Node.js + Express 5 — **API REST JSON** (`/api/*`, sin vistas) |
+| Frontend              | HTML + CSS + JS vanilla (carpeta `frontend/`, fetch con sesión por cookie) |
+| Autenticación           | express-session + connect-pg-simple + bcrypt (cookie; CORS con credenciales) |
 | Control de versiones     | Git + GitHub |
 
 ## Características principales
@@ -36,11 +56,10 @@ auditoría automática de cambios.
 - Consulta de calificaciones por estudiante, con desglose por parcial.
 - Reporte de promedios por periodo, generado con un **cursor explícito**
   en PostgreSQL, tolerante a estudiantes sin calificaciones.
-- Panel de auditoría (solo administrador): historial de cambios en todas
-  las tablas del sistema, con datos antes/después en JSONB colapsable.
+- Panel de auditoría (solo administrador): historial de cambios en
+  calificaciones, usuarios y matrículas, con datos antes/después en JSONB.
 - Triggers de validación (defensa en profundidad) y auditoría genérica
-  a nivel de base de datos en **todas las tablas**.
-- Selector de quimestre global que persiste al navegar entre páginas.
+  a nivel de base de datos.
 - Roles de PostgreSQL diferenciados (lectura, profesor, administrador)
   además del control de roles a nivel de aplicación.
 
@@ -57,16 +76,44 @@ Esquema `colegio`, normalizado (1FN–3FN), con las siguientes tablas:
 
 | Objeto | Tipo | Descripción |
 |--------|------|-------------|
-| `fn_promedio_materia` | Función | Promedio ponderado por peso de tipo de evaluación |
+| `fn_promedio_materia` | Función | Promedio anual por materia con fórmula oficial (80% parciales + 20% examen por ciclo, ponderado por peso); con fallback ponderado legacy |
 | `fn_promedio_general` | Función | Promedio general del estudiante en un periodo |
-| `sp_registrar_calificacion` | Procedimiento | Valida rango 0–10 e inserta/actualiza (upsert) una calificación |
+| `fn_promedio_parcial` / `fn_promedio_ciclo` | Funciones | Promedio de un parcial (insumos formativos) y de un ciclo/quimestre (80/20) |
+| `fn_escala_cualitativa` | Función | Escala oficial (Domina/Alcanza/Próximo/No alcanza) |
+| `fn_insumos_faltantes` | Función | Control de mínimo 2 insumos formativos por parcial |
+| `sp_registrar_calificacion` | Procedimiento | Valida rango 0–10, matrícula y asignación docente; inserta/actualiza (upsert) con contexto parcial/ciclo |
 | `sp_reporte_promedios_periodo` | Función (cursor) | Recorre estudiantes matriculados y devuelve su promedio, tolerando errores individuales |
+| `sp_reporte_promedios_curso_materia` | Función (cursor) | Reporte filtrable por curso y materia, con promedio específico + general + escala |
 
 ### Triggers
 
 - `trg_validar_calificacion` — valida rango 0–10 antes de insertar/actualizar.
-- Auditoría genérica sobre **todas las tablas** del sistema
+- `trg_solo_un_periodo_activo` — garantiza un único periodo activo (periodo fijo).
+- `trg_validar_profesor_materia` — un profesor solo califica sus materias asignadas.
+- `trg_validar_matricula_calificacion` — exige matrícula previa (auto-crea el detalle).
+- `trg_actualizar_promedio_matricula` — recalcula promedio/estado del detalle por materia.
+- Auditoría genérica sobre `calificaciones`, `usuarios`, `matriculas`,
+  `matricula_materias`, `profesor_materia_periodo`, `cursos` y `ciclos_evaluativos`
   (registra usuario de la app, operación, y datos antes/después).
+
+## Modelo escalable (desde migración 07–09)
+
+- **Periodo fijo:** solo un `periodos_academicos.activo = TRUE` (índice parcial +
+  trigger). Todo opera sobre el activo; al activar otro, cursos/materias/promedios
+  empiezan de cero porque todo filtra por periodo.
+- **Cursos/paralelos** (`cursos`: nombre + paralelo + periodo + tutor).
+- **Ciclos evaluativos configurables** (`ciclos_evaluativos`: nombre renombrable,
+  tipo quimestre/trimestre/bimestre/semestre/otro, orden, peso) con
+  **parciales de N variable** (`parciales`). Por defecto: 2 quimestres × 3 parciales.
+- **Tipos de evaluación** con `categoria` (diagnóstica/formativa/sumativa),
+  `es_examen` (examen quimestral = 20%), `cuenta_para_promedio` y parcial asociado.
+  Mínimo **2 insumos formativos por parcial** (`fn_insumos_faltantes`).
+- **Matrícula por materia** (`matricula_materias`: matrícula, materia, promedio
+  calculado por trigger, estado cursando/aprobado/sin_notas).
+- **Una materia en un curso/periodo = un solo profesor** (índice único +
+  validación en SP y trigger; el admin puede todo).
+- **Fórmula oficial Ecuador:** parcial = promedio de insumos; quimestre = 80%
+  parciales + 20% examen; anual = promedio de ciclos; aprueba con 7 (escala incluida).
 
 ## Requisitos previos
 
@@ -83,45 +130,47 @@ git clone https://github.com/MoisesPanama/sistema-calificaciones-uteq.git
 cd sistema-calificaciones-uteq
 ```
 
-### 2. Crear la base de datos y el usuario
+### 2. Crear la base de datos
 
-Conéctate a PostgreSQL como superusuario (postgres) y ejecuta:
+Conéctate a PostgreSQL y crea la base de datos:
 
 ```sql
--- Crear la base de datos
-CREATE DATABASE sistema_calificaciones;
-
--- Crear el usuario de la aplicación
-CREATE ROLE app_uteq LOGIN PASSWORD 'tu_password_aqui';
-
--- Otorgar permisos
-GRANT ALL PRIVILEGES ON DATABASE sistema_calificaciones TO app_uteq;
+CREATE DATABASE calificaciones_uteq;
 ```
 
 ### 3. Ejecutar los scripts SQL, en este orden exacto
 
 ```bash
-psql -U postgres -d sistema_calificaciones -f database/01_schema.sql
-psql -U postgres -d sistema_calificaciones -f database/02_functions_procedures.sql
-psql -U postgres -d sistema_calificaciones -f database/03_triggers_audit.sql
-psql -U postgres -d sistema_calificaciones -f database/04_roles_permissions.sql
-psql -U postgres -d sistema_calificaciones -f database/05_seed_data.sql
-psql -U postgres -d sistema_calificaciones -f database/06_sesiones.sql
-psql -U postgres -d sistema_calificaciones -f database/06_more_data.sql
-psql -U postgres -d sistema_calificaciones -f database/07_add_audit_triggers.sql
+psql -U postgres -d calificaciones_uteq -f database/01_schema.sql
+psql -U postgres -d calificaciones_uteq -f database/02_functions_procedures.sql
+psql -U postgres -d calificaciones_uteq -f database/03_triggers_audit.sql
+psql -U postgres -d calificaciones_uteq -f database/04_roles_permissions.sql
+psql -U postgres -d calificaciones_uteq -f database/05_seed_data.sql
+psql -U postgres -d calificaciones_uteq -f database/06_sesiones.sql
+psql -U postgres -d calificaciones_uteq -f database/07_periodo_activo_cursos_ciclos.sql
+psql -U postgres -d calificaciones_uteq -f database/08_tipos_matricula_detalle.sql
+psql -U postgres -d calificaciones_uteq -f database/09_funciones_formula_oficial.sql
 ```
 
-> **Nota:** `04_roles_permissions.sql` crea el usuario `app_uteq` con
-> contraseña `cambiar_esta_password`. Si ya lo creaste en el paso 2,
-> edita el archivo antes de ejecutarlo o usa `IF NOT EXISTS`.
+> **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
+> `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
+> antes de ejecutarlo.
 
-### 4. Configurar el search_path a nivel de base de datos
+### 3.1. Configurar el search_path a nivel de base de datos
+
+Este paso es obligatorio y no está incluido en los scripts anteriores.
+Sin él, el sistema falla con errores de "no existe la relación" al
+intentar usarlo:
 
 ```bash
-psql -U postgres -d sistema_calificaciones -c "ALTER DATABASE sistema_calificaciones SET search_path TO colegio, public;"
+psql -U postgres -d calificaciones_uteq -c "ALTER DATABASE calificaciones_uteq SET search_path TO colegio, public;"
 ```
 
-### 5. Configurar variables de entorno
+> **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
+> `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
+> antes de ejecutarlo.
+
+### 4. Configurar variables de entorno
 
 ```bash
 cd backend
@@ -133,104 +182,98 @@ Edita `.env` con tus datos reales de conexión:
 ```
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=sistema_calificaciones
+DB_NAME=calificaciones_uteq
 DB_USER=app_uteq
-DB_PASSWORD=tu_password_aqui
+DB_PASSWORD=tu_password
 PORT=3000
-SESSION_SECRET=una_clave_secreta_larga_y_aleatoria
+SESSION_SECRET=una_clave_secreta_cualquiera
 ```
 
-### 6. Instalar dependencias
+### 5. Instalar dependencias
 
 ```bash
-cd backend
-npm install
+npm install --prefix backend
+npm install --prefix frontend
 ```
 
-### 7. Ejecutar el servidor
+### 6. Ejecutar (dos terminales)
 
 ```bash
-npm run dev
+# Terminal 1 — API
+npm run dev --prefix backend   # http://localhost:3000
+
+# Terminal 2 — frontend
+npm run dev --prefix frontend  # http://localhost:5173 -> pages/login.html
 ```
 
-El sistema estará disponible en `http://localhost:3000`.
+El sistema se usa desde `http://localhost:5173/pages/login.html`.
 
 ## Usuarios de prueba
 
 | Email | Contraseña | Rol |
 |-------|------------|-----|
 | admin@uteq.edu.ec | admin123 | Administrador |
-| carla.vera@uteq.edu.ec | profesor123 | Profesor (Matemáticas) |
-| jorge.mendoza@uteq.edu.ec | profesor123 | Profesor (Lengua y Literatura) |
-| elena.romero@uteq.edu.ec | profesor123 | Profesor (Ciencias Naturales) |
-| andres.torres@uteq.edu.ec | profesor123 | Profesor (Estudios Sociales) |
-| diana.vargas@uteq.edu.ec | profesor123 | Profesor (Inglés) |
+| carla.vera@uteq.edu.ec | profesor123 | Profesor |
+| jorge.mendoza@uteq.edu.ec | profesor123 | Profesor |
 
 ## Estructura del proyecto
 
 ```
 sistema-calificaciones-uteq/
-├── database/
-│   ├── 01_schema.sql                  # Esquema completo (13 tablas)
-│   ├── 02_functions_procedures.sql    # Funciones y SP
-│   ├── 03_triggers_audit.sql          # Triggers de validación y auditoría
-│   ├── 04_roles_permissions.sql       # Roles de PostgreSQL
-│   ├── 05_seed_data.sql               # Datos iniciales (usuarios, periodos)
-│   ├── 06_sesiones.sql                # Tabla de sesiones
-│   ├── 06_more_data.sql               # Datos adicionales (10 estudiantes, 8 materias)
-│   └── 07_add_audit_triggers.sql      # Triggers de auditoría faltantes
-└── backend/
-    ├── app.js
-    ├── .env.example
-    ├── config/
-    │   └── db.js
-    ├── helpers/
-    │   └── periodos.js
-    ├── middleware/
-    │   └── auth.js
-    ├── routes/
-    │   ├── auth.js
-    │   ├── dashboard.js
-    │   ├── estudiantes.js
-    │   ├── materias.js
-    │   ├── periodos.js
-    │   ├── calificaciones.js
-    │   ├── consulta.js
-    │   ├── reportes.js
-    │   ├── auditoria.js
-    │   └── tipos_evaluacion.js
-    ├── views/
-    │   ├── partials/
-    │   │   ├── header.ejs
-    │   │   └── footer.ejs
-    │   ├── login.ejs
-    │   ├── dashboard.ejs
-    │   ├── error.ejs
-    │   ├── estudiantes/
-    │   ├── materias/
-    │   ├── periodos/
-    │   ├── calificaciones/
-    │   ├── reportes/
-    │   ├── auditoria/
-    │   └── tipos_evaluacion/
-    └── public/
-        └── css/
-            └── style.css
+├── database/              # migraciones SQL 01..09
+├── backend/               # API REST JSON (Express, sin vistas)
+│   ├── app.js             # CORS + sesion + montaje /api/*
+│   ├── config/db.js
+│   ├── middleware/auth.js # 401/403 JSON + auditoria
+│   ├── helpers/contexto.js
+│   ├── routes/            # auth, dashboard, estudiantes, materias,
+│   │                      # periodos, calificaciones, consulta,
+│   │                      # reportes, auditoria, catalogos
+│   └── scripts/seed-passwords.js
+└── frontend/              # UI estatica (sin build)
+    ├── index.html         # redirige a pages/login.html
+    ├── css/style.css
+    ├── js/                # config (API_BASE), api (fetch), layout (header/guard)
+    └── pages/             # login, dashboard, estudiantes, estudiante-form,
+                           # materias, periodos, calificaciones, consulta,
+                           # reportes, auditoria
 ```
+
+### API (prefijo `/api`, sesión por cookie, `credentials: include`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/auth/login` | Inicia sesión `{email,password}` |
+| GET | `/api/auth/me` | Sesión actual (guard del frontend) |
+| POST | `/api/auth/logout` | Cierra sesión |
+| GET | `/api/dashboard/` | Contadores generales |
+| GET/POST | `/api/estudiantes/` | Listado (`?q=`) / crear |
+| GET | `/api/estudiantes/representantes` | Select del formulario |
+| GET/PUT | `/api/estudiantes/:id` | Obtener / actualizar |
+| GET/POST | `/api/materias/` | Listado / crear |
+| GET/POST | `/api/periodos/` | Listado + periodo activo / crear |
+| POST | `/api/periodos/:id/activar` | Fijar periodo activo (solo admin) |
+| GET | `/api/calificaciones/contexto` | Materias, cursos, tipos, estudiantes y notas |
+| POST | `/api/calificaciones/lote` | Guardado masivo transaccional |
+| POST | `/api/calificaciones/` | Registro individual |
+| GET | `/api/consulta/` | Notas + promedios por estudiante |
+| GET | `/api/reportes/` | Reporte con cursor explícito |
+| GET | `/api/auditoria/` | Panel de auditoría (solo admin) |
+| GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
+| GET | `/api/catalogos/cursos` | Cursos por periodo |
+| GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
 
 ## Interfaces del sistema
 
 1. Login
 2. Dashboard (resumen general)
 3. Gestión de estudiantes (listado, búsqueda, crear/editar)
-4. Gestión de materias (con asignación de profesor y periodo)
-5. Gestión de periodos académicos (estado dinámico por fechas)
-6. Registro de control de acceso por profesor
-7. Registro de calificaciones
-8. Consulta de calificaciones por estudiante (promedios por materia)
-9. Reporte de promedios por periodo (Aprobado/Supletorio/Reprobado)
-10. Panel de auditoría (solo administrador)
-11. Maestro de tipos de evaluación (solo administrador)
+4. Gestión de materias
+5. Gestión de periodos académicos
+6. Registro de calificaciones
+7. Consulta de calificaciones por estudiante
+8. Reporte de promedios por periodo
+9. Panel de auditoría (solo administrador)
 
 ## Notas de diseño
 
@@ -240,10 +283,9 @@ sistema-calificaciones-uteq/
 - La tabla `auditoria` no tiene claves foráneas hacia otras tablas de
   forma intencional, para poder auditar cambios incluso sobre registros
   que ya fueron eliminados.
-- El quimestre seleccionado en el header se persiste en la sesión del
-  usuario y se mantiene al navegar entre páginas.
-- El estado de los periodos (Activo/Finalizado/Próximo) se calcula
-  dinámicamente según las fechas de inicio y fin.
+- La gestión de representantes no está incluida como interfaz
+  independiente en esta entrega; el modelo ya soporta múltiples
+  representantes por diseño (relación uno a muchos con estudiantes).
 
 ## Licencia
 

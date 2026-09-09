@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1 id="bienvenida">Bienvenido</h1>
+    <p id="rol"></p>
+    <div class="cards-grid">
+      <div class="card"><h3>Estudiantes activos</h3><p class="card-number" id="c-est">—</p></div>
+      <div class="card"><h3>Materias</h3><p class="card-number" id="c-mat">—</p></div>
+      <div class="card"><h3>Periodos academicos</h3><p class="card-number" id="c-per">—</p></div>
+      <div class="card"><h3>Calificaciones registradas</h3><p class="card-number" id="c-cal">—</p></div>
+    </div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    (async () => {
+      const usuario = await initPage();
+      if (!usuario) return;
+      document.getElementById('bienvenida').textContent = `Bienvenido, ${usuario.nombres}`;
+      document.getElementById('rol').innerHTML = `Rol: <strong>${esc(usuario.nombre_rol)}</strong>`;
+      try {
+        const d = await apiGet('/dashboard/');
+        document.getElementById('c-est').textContent = d.totalEstudiantes;
+        document.getElementById('c-mat').textContent = d.totalMaterias;
+        document.getElementById('c-per').textContent = d.totalPeriodos;
+        document.getElementById('c-cal').textContent = d.totalCalificaciones;
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar Notas - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Registrar Calificaciones</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="form-box">
+      <label for="sel-materia">Materia (solo las que usted dicta)</label>
+      <select id="sel-materia"><option value="">-- Selecciona una materia --</option></select>
+      <label for="sel-curso">Curso</label>
+      <select id="sel-curso"><option value="">-- Todos mis cursos --</option></select>
+    </div>
+    <div id="tabla"></div>
+    <p><small>Las celdas vacías no se guardan (conservan la nota anterior). Aprueba con 7. Cada parcial pide mínimo 2 insumos formativos.</small></p>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    let ctx = null;
+    function params() {
+      const p = new URLSearchParams();
+      if (ctx) p.set('id_periodo', ctx.idPeriodo);
+      const m = document.getElementById('sel-materia').value;
+      const c = document.getElementById('sel-curso').value;
+      if (m) p.set('id_materia', m);
+      if (c) p.set('id_curso', c);
+      return p.toString();
+    }
+    async function cargar(first = false) {
+      const data = await apiGet('/calificaciones/contexto?' + params());
+      ctx = data;
+      document.getElementById('info-periodo').innerHTML =
+        `Periodo activo (fijo): <strong>${esc(data.periodoActivo?.nombre || '—')}</strong>. Todo lo que registre queda en este periodo.`;
+      if (first) {
+        const sm = document.getElementById('sel-materia');
+        sm.innerHTML = '<option value="">-- Selecciona una materia --</option>' +
+          data.materias.map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
+        const sc = document.getElementById('sel-curso');
+        sc.innerHTML = '<option value="">-- Todos mis cursos --</option>' +
+          data.cursos.map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+        if (data.materias.length === 0) {
+          showError('No tiene materias asignadas en este periodo. Pida al administrador que le asigne materias.');
+        }
+      }
+      renderTabla(data);
+    }
+    function renderTabla(data) {
+      const div = document.getElementById('tabla');
+      if (!document.getElementById('sel-materia').value) {
+        div.innerHTML = '<p>Seleccione su materia para cargar a todos los estudiantes.</p>';
+        return;
+      }
+      if (data.estudiantes.length === 0) { div.innerHTML = '<p>No hay estudiantes matriculados en este periodo para ese curso.</p>'; return; }
+      div.innerHTML = `<p>Se cargaron <strong>${data.estudiantes.length}</strong> estudiantes. Escriba las notas y guarde todo de una vez:</p>
+        <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th>` +
+        data.tiposEvaluacion.map(t => `<th>${esc(t.nombre)}<br><small>${esc(t.categoria)}${t.es_examen ? ' · examen (20%)' : ''}</small></th>`).join('') +
+        `</tr></thead><tbody>` +
+        data.estudiantes.map(e => `<tr><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>` +
+          data.tiposEvaluacion.map(t => {
+            const v = data.notasExistentes[e.id_estudiante]?.[t.id_tipo_evaluacion] ?? '';
+            return `<td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
+              data-est="${e.id_estudiante}" data-tipo="${t.id_tipo_evaluacion}" value="${esc(v)}"></td>`;
+          }).join('') + '</tr>').join('') +
+        `</tbody></table></div>
+        <div class="form-actions"><button class="btn-primary" id="btn-guardar">Guardar todas</button></div>`;
+      document.getElementById('btn-guardar').onclick = guardar;
+    }
+    async function guardar() {
+      const notas = {};
+      document.querySelectorAll('input[data-est]').forEach(inp => {
+        if (String(inp.value).trim() === '') return;
+        (notas[inp.dataset.est] ||= {})[inp.dataset.tipo] = inp.value;
+      });
+      try {
+        const r = await apiPost('/calificaciones/lote', {
+          id_periodo: ctx.idPeriodo,
+          id_materia: document.getElementById('sel-materia').value,
+          id_curso: document.getElementById('sel-curso').value || null,
+          notas
+        });
+        showOk(r.mensaje);
+        await cargar();
+      } catch (err) { showError(err.message); }
+    }
+    (async () => {
+      if (!await initPage()) return;
+      await cargar(true).catch(showError);
+      document.getElementById('sel-materia').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
+    })();
+  </script>
+</body>
+</html>

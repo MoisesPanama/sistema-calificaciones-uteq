@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estudiante - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1 id="titulo">Nuevo estudiante</h1>
+    <div class="alert alert-error" id="error" style="display:none"></div>
+    <form id="form-est" class="form-box">
+      <label for="cedula">Cedula</label>
+      <input type="text" id="cedula" required>
+      <label for="nombres">Nombres</label>
+      <input type="text" id="nombres" required>
+      <label for="apellidos">Apellidos</label>
+      <input type="text" id="apellidos" required>
+      <label for="fecha_nacimiento">Fecha de nacimiento</label>
+      <input type="date" id="fecha_nacimiento" required>
+      <label for="id_representante">Representante</label>
+      <select id="id_representante" required><option value="">-- Selecciona un representante --</option></select>
+      <label class="checkbox-label" id="wrap-activo" style="display:none">
+        <input type="checkbox" id="activo"> Estudiante activo
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Guardar</button>
+        <a href="estudiantes.html" class="btn-danger btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    const id = qs('id');
+    (async () => {
+      if (!await initPage()) return;
+      const { representantes } = await apiGet('/estudiantes/representantes');
+      const sel = document.getElementById('id_representante');
+      representantes.forEach(r => {
+        const o = document.createElement('option');
+        o.value = r.id_representante;
+        o.textContent = `${r.nombres} ${r.apellidos}`;
+        sel.appendChild(o);
+      });
+      if (id) {
+        document.getElementById('titulo').textContent = 'Editar estudiante';
+        document.getElementById('wrap-activo').style.display = 'flex';
+        const { estudiante } = await apiGet('/estudiantes/' + id);
+        document.getElementById('cedula').value = estudiante.cedula || '';
+        document.getElementById('nombres').value = estudiante.nombres || '';
+        document.getElementById('apellidos').value = estudiante.apellidos || '';
+        document.getElementById('fecha_nacimiento').value =
+          estudiante.fecha_nacimiento ? new Date(estudiante.fecha_nacimiento).toISOString().split('T')[0] : '';
+        sel.value = String(estudiante.id_representante);
+        document.getElementById('activo').checked = !!estudiante.activo;
+      }
+      document.getElementById('form-est').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+          cedula: document.getElementById('cedula').value,
+          nombres: document.getElementById('nombres').value,
+          apellidos: document.getElementById('apellidos').value,
+          fecha_nacimiento: document.getElementById('fecha_nacimiento').value,
+          id_representante: document.getElementById('id_representante').value,
+          activo: document.getElementById('activo').checked
+        };
+        try {
+          if (id) await apiPut('/estudiantes/' + id, body);
+          else await apiPost('/estudiantes/', body);
+          location.href = 'estudiantes.html';
+        } catch (err) { showError(err.message); }
+      });
+    })();
+  </script>
+</body>
+</html>

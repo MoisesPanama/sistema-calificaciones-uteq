@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materias - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="header" id="app-header"></header>
+  <main class="main-content">
+    <h1>Gestión de Materias</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <div class="search-bar"><button class="btn-secondary" id="btn-modal">+ Nueva Materia</button></div>
+    <div id="tabla"></div>
+    <div class="modal-fondo" id="modalMateria">
+      <div class="modal-caja">
+        <h2>Nueva Materia</h2>
+        <form id="form-mat" class="form-box">
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" required>
+          <label for="descripcion">Descripción</label>
+          <input type="text" id="descripcion">
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" class="btn-danger btn-secondary" id="btn-cerrar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    async function cargar() {
+      const { materias } = await apiGet('/materias/');
+      document.getElementById('tabla').innerHTML =
+        `<table><thead><tr><th>Nombre</th><th>Descripción</th></tr></thead><tbody>` +
+        materias.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.descripcion || '')}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+    (async () => {
+      if (!await initPage()) return;
+      await cargar().catch(showError);
+      const modal = document.getElementById('modalMateria');
+      document.getElementById('btn-modal').onclick = () => modal.classList.add('activo');
+      document.getElementById('btn-cerrar').onclick = () => modal.classList.remove('activo');
+      document.getElementById('form-mat').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await apiPost('/materias/', {
+            nombre: document.getElementById('nombre').value,
+            descripcion: document.getElementById('descripcion').value || null
+          });
+          modal.classList.remove('activo');
+          showOk('Materia guardada.');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
+    })();
+  </script>
+</body>
+</html>
