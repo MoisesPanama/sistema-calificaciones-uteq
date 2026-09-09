@@ -70,9 +70,9 @@
         `Periodo activo: <strong>${periodoActivo ? esc(periodoActivo.nombre) : 'Ninguno'}</strong>. ` +
         'Todo el sistema opera sobre este periodo. Solo puede haber <strong>un periodo activo</strong> a la vez.';
       const badge = (e) => {
-        if (e === 'Finalizado') return 'badge-danger';
-        if (e === 'Activo') return 'badge-success';
-        return 'badge-info';
+        if (e === 'Finalizado') return 'badge badge-danger';
+        if (e === 'Activo') return 'badge badge-success';
+        return 'badge badge-info';
       };
       const colAccion = (p) => {
         if (p.activo) return '<span class="tag-activo">En uso</span>';
