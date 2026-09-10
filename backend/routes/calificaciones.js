@@ -59,9 +59,11 @@ async function cargarTabla(idPeriodo, idMateria, idCurso, page, limit) {
     let countIdx = 1;
     let estIdx = 1;
     if (idCurso) {
-        sqlCount += ` AND m.id_curso = $${++countIdx}`;
+        // Se incluye "Sin curso" (matricula sin curso asignado):
+        // tambien se les puede calificar en ese paralelo.
+        sqlCount += ` AND (m.id_curso = $${++countIdx} OR m.id_curso IS NULL)`;
         paramsCount.push(idCurso);
-        sqlEst += ` AND m.id_curso = $${++estIdx}`;
+        sqlEst += ` AND (m.id_curso = $${++estIdx} OR m.id_curso IS NULL)`;
         paramsEst.push(idCurso);
     }
 

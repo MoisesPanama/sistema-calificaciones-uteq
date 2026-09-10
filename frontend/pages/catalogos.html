@@ -192,6 +192,13 @@
   <script src="../js/layout.js"></script>
   <script>
     let periodoId = '';
+    // Periodo independiente por pestana: cambiarlo en Cursos no
+    // debe mover Ciclos ni Asignaciones (bug anterior: una sola
+    // variable global para las tres).
+    function periodoDe(tab) {
+      const el = document.getElementById(tab + '-periodo');
+      return el ? el.value : periodoId;
+    }
     let cicloSel = '';
 
     function tabs() {
@@ -215,7 +222,7 @@
 
     // ---------- CURSOS ----------
     async function cargarCursos() {
-      const d = await apiGet('/cursos/?id_periodo=' + encodeURIComponent(periodoId));
+      const d = await apiGet('/cursos/?id_periodo=' + encodeURIComponent(periodoDe('cur')));
       const div = document.getElementById('lista-cursos');
       if (!d.cursos || d.cursos.length === 0) { div.innerHTML = '<p>No hay cursos en este periodo.</p>'; return; }
       div.innerHTML = `<div class="table-responsive"><table><thead><tr>
@@ -252,7 +259,7 @@
 
     // ---------- CICLOS ----------
     async function cargarCiclos() {
-      const d = await apiGet('/ciclos/?id_periodo=' + encodeURIComponent(periodoId));
+      const d = await apiGet('/ciclos/?id_periodo=' + encodeURIComponent(periodoDe('cic')));
       const div = document.getElementById('lista-ciclos');
       const selPar = document.getElementById('par-ciclo');
       if (!d.ciclos || d.ciclos.length === 0) {
@@ -389,7 +396,7 @@
 
     // ---------- ASIGNACIONES ----------
     async function cargarOpcionesAsg() {
-      const d = await apiGet('/asignaciones/opciones?id_periodo=' + encodeURIComponent(periodoId));
+      const d = await apiGet('/asignaciones/opciones?id_periodo=' + encodeURIComponent(periodoDe('asg')));
       document.getElementById('asg-prof').innerHTML =
         (d.profesores || []).map(p => `<option value="${p.id_profesor}">${esc(p.nombre)}</option>`).join('');
       document.getElementById('asg-mat').innerHTML =
@@ -399,7 +406,7 @@
     }
 
     async function cargarAsignaciones() {
-      const d = await apiGet('/asignaciones/?id_periodo=' + encodeURIComponent(periodoId));
+      const d = await apiGet('/asignaciones/?id_periodo=' + encodeURIComponent(periodoDe('asg')));
       const div = document.getElementById('lista-asig');
       if (!d.asignaciones || d.asignaciones.length === 0) {
         div.innerHTML = '<p>No hay asignaciones en este periodo.</p>';
@@ -450,17 +457,16 @@
         await cargarOpcionesAsg();
         await cargarAsignaciones();
 
-        document.getElementById('cur-periodo').onchange = (e) => { periodoId = e.target.value; cargarCursos().catch(showError); };
-        document.getElementById('asg-periodo').onchange = (e) => {
-          periodoId = e.target.value;
+        document.getElementById('cur-periodo').onchange = () => { cargarCursos().catch(showError); };
+        document.getElementById('asg-periodo').onchange = () => {
           cargarOpcionesAsg().then(cargarAsignaciones).catch(showError);
         };
         document.getElementById('par-ciclo').onchange = (e) => {
           cicloSel = e.target.value;
           cargarParciales().catch(showError);
         };
-        document.getElementById('cic-periodo').onchange = (e) => {
-          periodoId = e.target.value; cicloSel = '';
+        document.getElementById('cic-periodo').onchange = () => {
+          cicloSel = '';
           mostrarAdvertencia(null);
           cargarCiclos().then(cargarParciales).catch(showError);
         };
@@ -470,7 +476,7 @@
           const body = {
             nombre: document.getElementById('cur-nombre').value,
             paralelo: document.getElementById('cur-paralelo').value || 'A',
-            id_periodo: periodoId,
+            id_periodo: periodoDe('cur'),
             id_tutor: document.getElementById('cur-tutor').value || null
           };
           try {
@@ -489,7 +495,7 @@
             peso: Number(document.getElementById('cic-peso').value),
             peso_formativa: Number(document.getElementById('cic-peso-for').value),
             peso_sumativa: Number(document.getElementById('cic-peso-sum').value),
-            id_periodo: periodoId
+            id_periodo: periodoDe('cic')
           };
           try {
             const r = id ? await apiPut('/ciclos/' + id, body) : await apiPost('/ciclos/', body);
@@ -540,7 +546,7 @@
               id_profesor: document.getElementById('asg-prof').value,
               id_materia: document.getElementById('asg-mat').value,
               id_curso: document.getElementById('asg-cur').value || null,
-              id_periodo: periodoId
+              id_periodo: periodoDe('asg')
             });
             showOk('Asignación guardada.');
             await cargarAsignaciones();

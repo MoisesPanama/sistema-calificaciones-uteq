@@ -63,3 +63,20 @@ test('profesor no ve Catalogos en el sidebar', async ({ page }) => {
   await expect(page.locator('.sidebar-nav')).toContainText('Registrar Nota', { timeout: 15000 });
   await expect(page.locator('.sidebar-nav')).not.toContainText('Catalogos');
 });
+
+test('cada pestana conserva su periodo', async ({ page }) => {
+  await login(page, 'admin@uteq.edu.ec');
+  await page.goto('/pages/catalogos.html');
+  await expect(page.locator('#tab-cursos')).toBeVisible({ timeout: 15000 });
+  const per = await api(page, 'GET', '/periodos/');
+  const ids = (per.data.periodos || []).map(p => String(p.id_periodo));
+  if (ids.length < 2) return;
+  const inicialCic = await page.locator('#cic-periodo').inputValue();
+  const inicialAsg = await page.locator('#asg-periodo').inputValue();
+  const otro = ids.find(id => id !== inicialCic) || ids[1];
+  await page.locator('#cur-periodo').selectOption(otro);
+  await page.locator('#tab-btn-ciclos').click();
+  expect(await page.locator('#cic-periodo').inputValue()).toBe(inicialCic);
+  await page.locator('#tab-btn-asig').click();
+  expect(await page.locator('#asg-periodo').inputValue()).toBe(inicialAsg);
+});

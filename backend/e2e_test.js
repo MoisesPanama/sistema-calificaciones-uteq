@@ -330,6 +330,33 @@ const loginAs = async (email) => {
   log('Desglose ajeno fuerza propio',
     mat0.status === 200 && String(mat0.body.estudiante?.id_estudiante) === String(idEst13), '');
 
+  console.log('\n=== 14. VISTA PROPIA SIN NOTAS + FILTRO SIN-CURSO ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag14 = Date.now().toString(36);
+  const creaSin = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Nulo', apellidos: 'Sin Notas',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  const idSin = creaSin.body.id_estudiante;
+  await post('/matriculas/', { id_estudiante: idSin, id_periodo: idPer13, id_curso: null });
+  await loginAs(creaSin.body.email);
+  const propiaVacia = await get('/consulta/?id_periodo=' + idPer13);
+  log('Sin notas ve tarjetas, no solo error',
+    propiaVacia.status === 200 && (propiaVacia.body.materias || []).length > 0
+    && (propiaVacia.body.materias || []).every(m => m.sin_notas),
+    `materias=${(propiaVacia.body.materias || []).length}`);
+  await loginAs('admin@uteq.edu.ec');
+  const cursos14 = await get('/cursos/?id_periodo=' + idPer13);
+  const cursoA = (cursos14.body.cursos || [])[0];
+  if (cursoA) {
+    const ctxFiltrado = await get(`/calificaciones/contexto?id_periodo=${idPer13}&id_materia=1&id_curso=${cursoA.id_curso}&page=1&limit=50`);
+    const filas = ctxFiltrado.body.estudiantes || [];
+    log('Filtro por curso incluye Sin-curso',
+      filas.length > 0 && filas.some(e => e.id_curso == null),
+      `${filas.length} filas`);
+  }
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

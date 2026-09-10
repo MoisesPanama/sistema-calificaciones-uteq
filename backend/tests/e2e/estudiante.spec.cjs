@@ -34,6 +34,26 @@ test('consulta muestra lo propio sin elegir a nadie', async ({ page }) => {
   await expect(page.locator('#vista-bloques')).toBeHidden();
 });
 
+test('sin notas ve tarjetas Sin calificar, no error', async ({ page }) => {
+  const t2 = Date.now().toString(36);
+  const crea = await api(page, 'POST', '/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'PWVacio ' + t2, apellidos: 'Sin Notas',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  expect(crea.status).toBe(201);
+  const per = await api(page, 'GET', '/periodos/');
+  await api(page, 'POST', '/matriculas/', {
+    id_estudiante: crea.data.id_estudiante,
+    id_periodo: per.data.periodoActivo.id_periodo, id_curso: null
+  });
+  await login(page, crea.data.email);
+  await page.goto('/pages/consulta.html');
+  await expect(page.locator('#vista-detalle')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#resultado')).toContainText('Sin calificar');
+  await expect(page.locator('#resultado .alert-error')).toHaveCount(0);
+});
+
 test('API reportes 403 y consulta ajena devuelve lo propio', async ({ page }) => {
   const per = await api(page, 'GET', '/periodos/');
   const idPeriodo = per.data.periodoActivo.id_periodo;

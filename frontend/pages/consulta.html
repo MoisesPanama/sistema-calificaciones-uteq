@@ -218,7 +218,13 @@
 
     async function renderDetalle(d) {
       const div = document.getElementById('resultado');
-      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      // Sin notas NO es error si hay materias: se muestran en
+      // "Sin calificar" y el mensaje pasa a nota informativa.
+      const hayMaterias = (d.materias || []).length > 0;
+      if (d.mensajeSinNotas && !hayMaterias) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const aviso = (d.mensajeSinNotas && hayMaterias)
+        ? `<div class="form-box"><p><small>${esc(d.mensajeSinNotas)} Se muestran sus materias pendientes de calificar.</small></p></div>`
+        : '';
       const contador = (d.materiasTotales != null)
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
@@ -226,7 +232,7 @@
         `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o mas.</small></p></div>`;
       const soloEsta = (d.materias || []).filter(m => String(m.id_materia) === String(grupo.id_materia));
       const lista = soloEsta.length > 0 ? soloEsta : d.materias;
-      div.innerHTML = contador + headerMat +
+      div.innerHTML = aviso + contador + headerMat +
         lista.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
@@ -320,13 +326,8 @@
 
     async function verDetallePropio() {
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}`);
-      if (d.mensajeSinNotas) {
-        document.getElementById('resultado').innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`;
-        mostrar(3);
-        return;
-      }
-      renderDetalleDirecto(d);
       mostrar(3);
+      renderDetalleDirecto(d);
       // Desglose por cada materia con notas (vista propia del estudiante).
       document.getElementById('desglose').innerHTML = '';
       for (const m of (d.materias || [])) {
@@ -338,12 +339,16 @@
 
     function renderDetalleDirecto(d) {
       const div = document.getElementById('resultado');
-      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const hayMaterias = (d.materias || []).length > 0;
+      if (d.mensajeSinNotas && !hayMaterias) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const aviso = (d.mensajeSinNotas && hayMaterias)
+        ? `<div class="form-box"><p><small>${esc(d.mensajeSinNotas)} Se muestran sus materias pendientes de calificar.</small></p></div>`
+        : '';
       const contador = (d.materiasTotales != null)
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
       const lista = d.materias || [];
-      div.innerHTML = contador +
+      div.innerHTML = aviso + contador +
         lista.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
