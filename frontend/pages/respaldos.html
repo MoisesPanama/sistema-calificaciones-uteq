@@ -50,6 +50,11 @@
     <h2 style="font-size:1rem;margin-bottom:0.8rem;color:#1e3a8a;">Respaldos Guardados</h2>
     <div id="lista-respaldos"></div>
 
+    <!-- Historial de ejecuciones (migracion 14) -->
+    <h2 style="font-size:1rem;margin:1.5rem 0 0.8rem;color:#1e3a8a;">Historial de Ejecuciones</h2>
+    <p style="font-size:0.82rem;color:#6b7280;margin-bottom:0.8rem;">Cada respaldo manual o programado (exitoso o fallido) queda registrado aquí.</p>
+    <div id="historial-respaldos"></div>
+
     </main>
   </div>
 </div>
@@ -63,7 +68,34 @@
       return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
+    async function cargarHistorial() {
+      const div = document.getElementById('historial-respaldos');
+      let h;
+      try {
+        h = await apiGet('/respaldos/historial?limit=20');
+      } catch (err) {
+        div.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;">Historial no disponible (falta aplicar la migración 14_log_respaldos.sql).</p>';
+        return;
+      }
+      if (!h.historial || h.historial.length === 0) {
+        div.innerHTML = '<p style="color:#6b7280;font-size:0.9rem;">Aún no hay ejecuciones registradas.</p>';
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table>
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Archivo</th><th>Resultado</th><th>Disparado por</th></tr></thead>
+        <tbody>
+        ${h.historial.map(r => `<tr>
+          <td>${new Date(r.fecha).toLocaleString('es-EC')}</td>
+          <td>${r.tipo === 'programado' ? '<span class="badge">programado</span>' : '<span class="badge badge-success">manual</span>'}</td>
+          <td style="font-family:monospace;font-size:0.82rem;">${r.nombre_archivo ? esc(r.nombre_archivo) : '—'}</td>
+          <td>${r.exito ? '<span class="badge badge-success">éxito</span>' : '<span class="badge badge-warning">falló: ' + esc(r.detalle || 'ver log del servidor') + '</span>'}</td>
+          <td>${r.usuario_nombres ? esc(r.usuario_nombres + ' ' + (r.usuario_apellidos || '')) : 'sistema (cron)'}</td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+    }
+
     async function cargar() {
+      await cargarHistorial();
       const d = await apiGet('/respaldos/');
 
       // Estado programado

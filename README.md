@@ -152,6 +152,22 @@ psql -U postgres -d calificaciones_uteq -f database/08_tipos_matricula_detalle.s
 psql -U postgres -d calificaciones_uteq -f database/09_funciones_formula_oficial.sql
 ```
 
+Migraciones 10 en adelante (datos de prueba, permisos y logs) se
+aplican a mano, en orden, después de las anteriores:
+
+```bash
+psql -U postgres -d calificaciones_uteq -f database/10_usuarios_roles_especiales.sql
+psql -U postgres -d calificaciones_uteq -f database/11_notas_realistas.sql
+psql -U postgres -d calificaciones_uteq -f database/12_fix_permisos_hashes.sql
+psql -U postgres -d calificaciones_uteq -f database/13_permisos_minimos.sql
+psql -U postgres -d calificaciones_uteq -f database/14_log_respaldos.sql
+```
+
+> **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
+> y deja a `app_uteq` con privilegios mínimos (ver encabezado del
+> archivo). Si un flujo falla con `permission denied`, agrega el
+> `GRANT` específico — nunca vuelvas a `GRANT ALL`.
+
 > **Nota:** `04_roles_permissions.sql` crea el usuario de conexión
 > `app_uteq`. Revisa el archivo y ajusta la contraseña según tu entorno
 > antes de ejecutarlo.
@@ -262,6 +278,30 @@ sistema-calificaciones-uteq/
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
 | GET | `/api/catalogos/cursos` | Cursos por periodo |
 | GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
+| GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
+| POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
+| POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |
+| GET | `/api/respaldos/historial` | Log de ejecuciones manuales/programadas (solo admin) |
+| POST | `/api/respaldos/descargar` | Descarga un `.sql` `{nombre}` (solo admin) |
+| POST | `/api/respaldos/eliminar` | Borra un `.sql` `{nombre}` (solo admin) |
+
+## Respaldos
+
+- Se generan con `pg_dump` (formato `.sql` plano) en `backend/backups/`
+  vía proceso hijo (`execFile`: no bloquea el servidor). Esa carpeta
+  **no** está expuesta como estático: solo se descargan con sesión de
+  admin por `POST /api/respaldos/descargar`.
+- Cada ejecución (manual o programada, exitosa o fallida) queda en la
+  tabla `respaldo_logs` y visible en la página Respaldos → Historial.
+- **Rotación:** se conservan los `RESPALDOS_MAX_ARCHIVOS` más recientes
+  (default 30, configurable en `backend/.env`); el resto se borra solo.
+- **Restaurar** (probar al menos una vez contra una BD vacía antes de
+  confiar en un respaldo):
+  ```bash
+  psql -h localhost -U app_uteq -d calificaciones_uteq -f backend/backups/respaldo_AAAAMMDD_HHMMSS.sql
+  ```
+- **Limitación conocida:** el programado vive en memoria (`node-cron`);
+  al reiniciar el servidor se pierde y hay que reactivarlo en la UI.
 
 ## Interfaces del sistema
 

@@ -5,6 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth, requireRole } = require('../middleware/auth');
+const pool = require('../config/db');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -18,10 +19,51 @@ const DB_PORT = process.env.DB_PORT || 5432;
 const DB_NAME = process.env.DB_NAME || 'sistema_calificaciones';
 const DB_USER = process.env.DB_USER || 'app_uteq';
 
-// Estado del respaldo programado
+// Maximo de archivos .sql a conservar (configurable, no hardcodeado).
+// Al superar el limite se borran los mas antiguos (rotacion).
+const MAX_RESPALDOS = Math.max(1, parseInt(process.env.RESPALDOS_MAX_ARCHIVOS) || 30);
+
+// Estado del respaldo programado (en memoria: se pierde al
+// reiniciar el servidor; ver README, seccion Respaldos).
 let cronJob = null;
 let programadoActivo = false;
 let horaProgramada = null;
+
+// Registra una ejecucion en respaldo_logs (migracion 14). Best-effort:
+// si el log falla, no debe romper el flujo del respaldo.
+async function registrarLog({ tipo, nombre, tamano, exito, detalle, idUsuario }) {
+    try {
+        await pool.query(
+            `INSERT INTO respaldo_logs (tipo, nombre_archivo, tamano_bytes, exito, detalle, id_usuario_app)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [tipo, nombre || null, tamano ?? null, exito, detalle || null, idUsuario || null]
+        );
+    } catch (error) {
+        console.error('No se pudo registrar el log del respaldo:', error.message);
+    }
+}
+
+// Rotacion: conserva solo los MAX_RESPALDOS mas recientes.
+function aplicarRotacion() {
+    try {
+        const archivos = fs.readdirSync(BACKUP_DIR)
+            .filter(f => f.endsWith('.sql'))
+            .map(f => ({ nombre: f, mtime: fs.statSync(path.join(BACKUP_DIR, f)).mtimeMs }))
+            .sort((a, b) => b.mtime - a.mtime);
+        const sobrantes = archivos.slice(MAX_RESPALDOS);
+        for (const s of sobrantes) {
+            try {
+                fs.unlinkSync(path.join(BACKUP_DIR, s.nombre));
+            } catch (error) {
+                console.error('No se pudo rotar el respaldo ' + s.nombre + ':', error.message);
+            }
+        }
+        return sobrantes.length;
+    } catch (error) {
+        console.error('Error al aplicar rotacion de respaldos:', error.message);
+        return 0;
+    }
+}
 
 // Funcion para ejecutar pg_dump
 function ejecutarRespald(callback) {
@@ -87,13 +129,21 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
 
 // POST /api/respaldos/manual — crear respaldo manual
 router.post('/manual', requireAuth, requireRole('administrador'), async (req, res) => {
+    const idUsuario = req.session.usuario.id_usuario;
     try {
         const resultado = await new Promise((resolve, reject) => {
             ejecutarRespald((err, data) => err ? reject(err) : resolve(data));
         });
-        res.json({ ok: true, mensaje: 'Respaldo creado correctamente.', respaldo: resultado });
+        const purgados = aplicarRotacion();
+        await registrarLog({
+            tipo: 'manual', nombre: resultado.nombre, tamano: resultado.tamano,
+            exito: true, detalle: purgados > 0 ? `Rotacion: ${purgados} archivo(s) antiguo(s) eliminado(s).` : null,
+            idUsuario
+        });
+        res.json({ ok: true, mensaje: 'Respaldo creado correctamente.', respaldo: resultado, purgados });
     } catch (error) {
         console.error('Error al crear respaldo manual:', error.message);
+        await registrarLog({ tipo: 'manual', exito: false, detalle: error.message, idUsuario });
         res.status(500).json({ error: 'No se pudo crear el respaldo. Verifique que pg_dump este disponible.' });
     }
 });
@@ -129,8 +179,18 @@ router.post('/programar', requireAuth, requireRole('administrador'), async (req,
     cronJob = cron.schedule(expresion, () => {
         console.log(`[Respaldo programado] Ejecutando respaldo automatico a las ${h}:${m}`);
         ejecutarRespald((err, data) => {
-            if (err) console.error('[Respaldo programado] Error:', err.message);
-            else console.log(`[Respaldo programado] Respaldo creado: ${data.nombre}`);
+            if (err) {
+                console.error('[Respaldo programado] Error:', err.message);
+                registrarLog({ tipo: 'programado', exito: false, detalle: err.message, idUsuario: null });
+            } else {
+                console.log(`[Respaldo programado] Respaldo creado: ${data.nombre}`);
+                const purgados = aplicarRotacion();
+                registrarLog({
+                    tipo: 'programado', nombre: data.nombre, tamano: data.tamano,
+                    exito: true, detalle: purgados > 0 ? `Rotacion: ${purgados} archivo(s) antiguo(s) eliminado(s).` : null,
+                    idUsuario: null
+                });
+            }
         });
     });
 
@@ -142,6 +202,28 @@ router.post('/programar', requireAuth, requireRole('administrador'), async (req,
         mensaje: `Respaldo programado activado a las ${horaProgramada} diariamente.`,
         programado: { activo: true, hora: horaProgramada }
     });
+});
+
+// GET /api/respaldos/historial — log de ejecuciones (migracion 14).
+// NULL en usuario = disparo programado (cron).
+router.get('/historial', requireAuth, requireRole('administrador'), async (req, res) => {
+    try {
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const resultado = await pool.query(
+            `SELECT l.id_log, l.fecha, l.tipo, l.nombre_archivo, l.tamano_bytes,
+                    l.exito, l.detalle,
+                    u.nombres AS usuario_nombres, u.apellidos AS usuario_apellidos
+             FROM respaldo_logs l
+             LEFT JOIN usuarios u ON u.id_usuario = l.id_usuario_app
+             ORDER BY l.fecha DESC
+             LIMIT $1`,
+            [limit]
+        );
+        res.json({ historial: resultado.rows });
+    } catch (error) {
+        console.error('Error al cargar historial de respaldos:', error.message);
+        res.status(500).json({ error: 'No se pudo cargar el historial de respaldos.' });
+    }
 });
 
 // POST /api/respaldos/descargar — descargar respaldo
