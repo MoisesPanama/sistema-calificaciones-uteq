@@ -1,0 +1,23 @@
+
+=== 1. LOGIN TESTS ===
+  OK Login administrador 
+  OK Login profesor 
+  OK Login profesor 
+  OK Login representante 
+  OK Login psicologo 
+
+=== 2. CALIFICACIONES (Elena como profesor) ===
+  OK Context loaded ctx status=200 materia=3 (Ciencias Naturales) estudiantes=2
+  OK Save grades Se guardaron 4 calificaciones.
+
+=== 3. AUDITORIA (solo admin) ===
+  OK Audit query total=251
+  OK Audit has user id_usuario_app=4 user=Elena Romero
+  OK Audit has data valor=8.75
+  OK Elena blocked from audit 
+
+=== 4. ACCESS CONTROL ===
+  OK Elena blocked from respaldos 
+  OK Fernando (representante) can see consulta 
+
+=== RESULTS: 13/13 passed, 0 failed ===

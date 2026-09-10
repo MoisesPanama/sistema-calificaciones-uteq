@@ -1,0 +1,39 @@
+# Evidencia — Pruebas manuales de API (validaciones de negocio)
+
+Fecha: 2026-09-10 (re-validado contra repositorio actualizado, migraciones 01-20)
+Entorno: localhost:3000 · PostgreSQL 18 · sesiones por cookie · search_path = colegio, public
+
+## CP-03 — Cédula duplicada → HTTP 409
+
+POST /api/estudiantes/ {"nombres":"Ana","apellidos":"Garcia","cedula":"1250001111","fecha_nacimiento":"2012-04-05","id_representante":1}
+{"error":"Ya existe un estudiante registrado con esa cedula."}
+HTTP:409
+
+## CP-12 — Periodo con fechas inválidas → HTTP 400
+
+POST /api/periodos/ {"nombre":"P Test","fecha_inicio":"2026-09-01","fecha_fin":"2026-01-01"}
+{"error":"La fecha de fin debe ser posterior a la fecha de inicio."}
+HTTP:400
+
+## CP-06 — Nota fuera de rango → HTTP 400
+
+POST /api/calificaciones/ {"id_estudiante":1,"id_materia":3,"id_periodo":1,"id_tipo_evaluacion":1,"valor":11}
+{"error":"La calificacion 11 esta fuera de rango (0 a 10)"}
+HTTP:400
+
+## CP-07 — Profesor en materia no asignada → HTTP 403
+
+POST /api/calificaciones/ (sesión Elena Romero) {"id_estudiante":1,"id_materia":1,"id_periodo":1,"id_tipo_evaluacion":1,"valor":8.5}
+{"error":"No tiene asignada esta materia en el periodo: no puede registrar la nota."}
+HTTP:403
+
+## CP-09 — Reporte de promedios (periodo activo 1)
+
+GET /api/reportes/?id_periodo=1 → 10 filas
+Top 3: Daniel 9.22 · Sofia 9.10 · Camila 9.03
+Escala: "Domina los aprendizajes requeridos"
+
+## CP-10 — Auditoría (admin)
+
+GET /api/auditoria/?page=1&limit=3 → total=1117 registros, JSONB antes/después, usuario de la app.
+(e2e_test.js verifica usuario de la app en cada fila y bloqueo a profesor/representante/psicóloga.)

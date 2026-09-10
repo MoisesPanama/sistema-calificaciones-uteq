@@ -1,0 +1,86 @@
+
+=== 1. LOGIN (5 roles) ===
+  OK Login administrador 
+  OK Login profesor 
+  OK Login profesor 
+  OK Login representante 
+  OK Login psicologo 
+
+=== 2. DESCUBRIR IDS (sin hardcodear) ===
+  OK Periodo activo id=1
+  OK Hay ciclos Quimestre 1
+  OK Hay parciales Parcial 1
+
+=== 3. CALIFICACIONES CON PARCIAL/CICLO (Elena) ===
+  OK Contexto usable mat=3 est=8 tipo=3
+  OK Lote con parcial/ciclo Se guardaron 1 calificaciones.
+  OK Parcial invalido -> 400 El parcial seleccionado no pertenece al periodo activo.
+
+=== 4. AUDITORIA DETALLE + RESUMEN ===
+  OK Audit query total=833
+  OK Audit has user UPDATE id_usuario_app=6
+  OK Resumen por categorias 5 bloques
+  OK Filtro por fecha 
+  OK Filtro por categoria 
+  OK Categoria invalida -> 400 
+  OK Elena blocked from audit 
+
+=== 5. PAGINACION UNICA (10 por pagina) ===
+  OK Estudiantes {datos,paginacion} total=110
+  OK Estudiantes default limit=10 limit=10
+  OK Reportes {datos,paginacion} total=110
+  OK Psicologo paginado + resumen total=110 alertas=10
+
+=== 6. CRUD CATALOGOS + REGLAS ===
+  OK Crear curso 
+  OK Curso duplicado -> 409 
+  OK Editar curso 
+  OK Borrar curso sin uso 
+  OK Crear ciclo (+pesos) {"ok":true,"id_ciclo":11,"advertencia":"La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00)."}
+  INFO advertencia suma pesos: La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00).
+  OK Pesos que no suman 1 -> 400 
+  OK Crear parcial 
+  OK Borrar parcial sin notas 
+  OK Borrar ciclo sin notas 
+  OK Crear tipo 
+  OK Borrar tipo sin notas 
+  OK Borrar tipo CON notas -> 409 
+
+=== 7. DESGLOSE POR MATERIA ===
+  OK Desglose materia ciclos=2 minimo=2
+
+=== 8. RESPALDOS + LOG ===
+  OK Respaldo manual respaldo_20260909_235501.sql
+  OK Historial paginado 5 filas
+
+=== 9. ACCESS CONTROL ===
+  OK Elena blocked from respaldos 
+  OK Fernando (representante) can see consulta 
+  OK Representante blocked from cursos POST 
+
+=== 10. CONSULTA POR MATRICULA (refactor) ===
+  OK Materias desde asignacion (no solo con notas) totales=3
+  OK Contadores coherentes con notas=3
+  OK Sin calificar tiene promedio null 0 sin calificar
+
+=== 11. REPRESENTANTES + DASHBOARD POR ROL ===
+  OK Buscar representantes 1 resultados
+  OK Crear representante 
+  OK Duplicado -> 409 con id 
+  OK Borrar representante sin uso 
+  OK Borrar representante CON hijos -> 409 
+  OK Dashboard admin 
+  OK Dashboard profesor 1 materias
+  OK Dashboard representante 15 hijos
+  OK Dashboard psicologo 
+
+=== 12. CONSULTA POR BLOQUES + ASIGNACIONES ===
+  OK Bloques materia+paralelo 4 bloques
+  OK Nomina paginada del bloque total=60
+  OK Listar asignaciones 4
+  OK Opciones para formulario 
+  OK Asignar materia general 
+  OK Asignacion duplicada -> 409 
+  OK Quitar asignacion 
+
+=== RESULTS: 59/59 passed, 0 failed ===

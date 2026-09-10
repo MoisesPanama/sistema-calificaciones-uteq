@@ -1,0 +1,31 @@
+{
+  "name": "sistema-calificaciones-uteq",
+  "version": "1.0.0",
+  "description": "Sistema web para la gestión de calificaciones de un colegio, desarrollado como proyecto para la materia **Taller de Funciones**, Ingeniería en Sistemas — Universidad Técnica Estatal de Quevedo (UTEQ).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm run test:e2e-backend",
+    "test:e2e-backend": "npm test --prefix backend",
+    "test:e2e-ui": "npm run test:e2e --prefix backend",
+    "test:report": "echo 'Ver reporter HTML en backend/tests/report/index.html'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoisesPanama/sistema-calificaciones-uteq.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MoisesPanama/sistema-calificaciones-uteq/issues"
+  },
+  "homepage": "https://github.com/MoisesPanama/sistema-calificaciones-uteq#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

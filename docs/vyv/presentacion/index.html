@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V&V — Sistema de Registro de Calificaciones UTEQ</title>
+  <link rel="stylesheet" href="vendor/reveal/dist/reset.css">
+  <link rel="stylesheet" href="vendor/reveal/dist/reveal.css">
+  <link rel="stylesheet" href="vendor/reveal/dist/theme/white.css" id="theme">
+  <link rel="stylesheet" href="vendor/reveal/dist/plugin/highlight/monokai.css">
+  <style>
+    :root { --uteq-green: #0b6e4f; --uteq-dark: #12372a; --accent: #ffb703; }
+    .presentation-title {
+      font-size: 2.4em; color: var(--uteq-dark); font-weight: 800;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .presentation-sub { color: var(--uteq-green); font-weight: 600; margin-top: .4em; }
+    .brand { position: fixed; top: 14px; left: 20px; z-index: 5;
+      font-size: .9em; color: var(--uteq-green); font-weight: 700; }
+    .slide-number-palette { color: var(--uteq-dark); }
+    .reveal h1, .reveal h2, .reveal h3 { color: var(--uteq-dark); }
+    .reveal h2 { font-size: 1.5em; margin-bottom: .35em; }
+    .reveal h3 { font-size: 1.1em; color: var(--uteq-green); }
+    .reveal .section-title { border-bottom: 4px solid var(--accent); display: inline-block;
+      padding-bottom: .15em; text-transform: uppercase; letter-spacing: .04em; }
+    .reveal table { font-size: .52em; margin: 0 auto; }
+    .reveal table th { background: var(--uteq-green); color: #fff; }
+    .reveal table td, .reveal table th { padding: .15em .45em; }
+    .reveal .ok { color: #1a7f37; font-weight: 700; }
+    .reveal .bad { color: #d1242f; font-weight: 700; }
+    .reveal .kpi { font-size: 2.6em; color: var(--uteq-green); font-weight: 800; }
+    .reveal ul { font-size: .72em; }
+    .reveal li { margin: .2em 0; }
+    .reveal code { font-size: .7em; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; text-align: left; font-size: .75em; }
+    .box { border: 1px solid #cfd8d3; border-left: 6px solid var(--uteq-green);
+      border-radius: 6px; padding: .6em .9em; background: #f6faf8; }
+    .box h4 { margin: 0 0 .3em 0; color: var(--uteq-dark); font-size: 1em; }
+    .footnote { font-size: .55em; color: #667; margin-top: 1.5em; }
+    .slides { text-align: left; }
+    header.goal { background: #12372a; color:#fff; padding: .6em; border-radius: 8px;
+      font-size: 1.05em; }
+    .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6em; margin-top: .3em; }
+    .shots img, .shot { max-height: 120px; width: auto; margin: 0 auto; display: block;
+      border: 1px solid #cfd8d3; border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+    .shot-label { font-size: .55em; color: #556; margin-top: .15em; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="brand">V&V · Sistema de Calificaciones · UTEQ</div>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1. Portada -->
+      <section>
+        <h1 class="presentation-title">Verificación y Validación de Software</h1>
+        <h2 class="presentation-sub">Sistema de Registro de Calificaciones</h2>
+        <p style="margin-top:1.2em; font-size:1em;">Universidad Técnica Estatal de Quevedo (UTEQ)</p>
+        <p style="font-size:.8em;">Materia: Verificación y Validación de Software<br>Septiembre 2026</p>
+        <p style="font-size:.8em; margin-top:.6em;">
+          <b>Integrantes:</b> Castro Espinoza Kevin Moisés · Vélez López Ricardo Elías<br>
+          <b>Docente:</b> Ing. Cordero Bazurto José Steven
+        </p>
+        <aside class="notes">Buenos días. Hoy presentamos la verificación y validación del Sistema de Registro de Calificaciones.</aside>
+      </section>
+
+      <!-- 2. Presentación del proyecto -->
+      <section>
+        <h2 class="section-title">Presentación del proyecto</h2>
+        <div class="two-col">
+          <div class="box">
+            <h4>Problema</h4>
+            <p>Notas en planillas físicas y Excel distribuidos sin trazabilidad, promedios a mano y padres sin acceso remoto.</p>
+          </div>
+          <div class="box">
+            <h4>Objetivo</h4>
+            <p>Implementar un sistema web de calificaciones <b>verificado y validado</b> antes de producción.</p>
+          </div>
+          <div class="box">
+            <h4>Tecnología</h4>
+            <p>Node.js + Express · PostgreSQL 18 (esquema <code>colegio</code>) · HTML/CSS/JS · Playwright.</p>
+          </div>
+          <div class="box">
+            <h4>Roles</h4>
+            <p>administrador · profesor · representante · psicóloga<br>(control de acceso por rol).</p>
+          </div>
+        </div>
+        <p class="footnote">Ver: 01_personas.md · 02_historias_usuario.md</p>
+      </section>
+
+      <!-- 3. Personas -->
+      <section>
+        <h2 class="section-title">Técnica Personas</h2>
+        <ul>
+          <li><b>Moisés Panamá</b> (admin) — control centralizado y trazable → auditoría, respaldos.</li>
+          <li><b>Elena Romero</b> (docente) — registrar notas rápido y sin errores → rango 0-10, planilla masiva.</li>
+          <li><b>Fernando Castillo</b> (representante) — consultar notas por su hijo → consulta restringida por rol.</li>
+          <li><b>María Torres</b> (psicóloga) — identificar estudiantes en riesgo → panel de rendimiento.</li>
+        </ul>
+        <p class="footnote">Detalle completo: 01_personas.md</p>
+        <aside class="notes">Las personas orientaron historias de usuario y el foco de las pruebas.</aside>
+      </section>
+
+      <!-- 4. Historias de usuario -->
+      <section>
+        <h2 class="section-title">Historias de usuario y criterios de aceptación</h2>
+        <table>
+          <tr><th>HU</th><th>Usuario</th><th>Funcionalidad</th></tr>
+          <tr><td>HU-01</td><td>admin</td><td>Iniciar sesión</td></tr>
+          <tr><td>HU-02</td><td>admin</td><td>Gestión de estudiantes</td></tr>
+          <tr><td>HU-03</td><td>profesor</td><td>Registro de calificaciones (0-10, masivo, auditado)</td></tr>
+          <tr><td>HU-04</td><td>representante</td><td>Consulta de notas por estudiante</td></tr>
+          <tr><td>HU-05</td><td>representante/admin</td><td>Reporte de promedios por periodo</td></tr>
+          <tr><td>HU-06</td><td>admin</td><td>Auditoría de cambios</td></tr>
+          <tr><td>HU-07</td><td>admin</td><td>Un único periodo activo</td></tr>
+          <tr><td>HU-08</td><td>admin</td><td>Respaldo de la BD</td></tr>
+          <tr><td>HU-09</td><td>psicóloga</td><td>Rendimiento académico</td></tr>
+        </table>
+        <p class="footnote">Ejemplo HU-03: rango 0-10 · guardado masivo · upsert auditado · materia no asignada → 403</p>
+      </section>
+
+      <!-- 5. Casos de prueba -->
+      <section>
+        <h2 class="section-title">Casos de prueba</h2>
+        <p style="font-size:.68em; margin-bottom:.2em;">14 casos manuales cubriendo las 9 historias:</p>
+        <table>
+          <tr><th>Validación</th><th>Esperado</th><th>Obtenido</th><th>Resultado</th></tr>
+          <tr><td>Cédula duplicada</td><td>409</td><td>409 + mensaje</td><td class="ok">PASS</td></tr>
+          <tr><td>Nota fuera de rango (11)</td><td>400</td><td>400 "fuera de rango 0 a 10"</td><td class="ok">PASS</td></tr>
+          <tr><td>Materia no asignada al prof.</td><td>403</td><td>403 + mensaje</td><td class="ok">PASS</td></tr>
+          <tr><td>Fechas de periodo inválidas</td><td>400</td><td>400 + mensaje</td><td class="ok">PASS</td></tr>
+          <tr><td>Acceso no-admin a auditoría</td><td>Bloqueado</td><td>Error de permiso</td><td class="ok">PASS</td></tr>
+          <tr><td colspan="3"><b>Total</b></td><td class="ok">14/14 PASS</td></tr>
+        </table>
+        <div class="shots">
+          <div>
+            <img class="shot" src="../evidencias/playwright-05-profesor-notas.png" alt="Captura: registro de notas (profesor)">
+            <div class="shot-label">CP-05 · Registro de notas (profesor)</div>
+          </div>
+          <div>
+            <img class="shot" src="../evidencias/playwright-06-representante-consulta.png" alt="Captura: consulta del representante">
+            <div class="shot-label">CP-08 · Consulta del representante</div>
+          </div>
+        </div>
+        <p class="footnote">Evidencias: evidencias/pruebas_api_manuales.txt + capturas playwright-0X-*.png</p>
+      </section>
+
+      <!-- 6. Automatización -->
+      <section>
+        <h2 class="section-title">Automatización de pruebas — Playwright</h2>
+        <div class="two-col">
+          <div class="box">
+            <h4>UI (Playwright) — 26 tests</h4>
+            <ul>
+              <li>Login de los 4 roles / password incorrecta</li>
+              <li>Calificaciones (ciclo + parcial) y catálogos</li>
+              <li>Consulta por bloques y nómina paginada</li>
+              <li>Dashboards admin, profesora, representante, psicóloga</li>
+              <li>Respaldos, auditoría, rendimiento (máx 10 filas)</li>
+              <li>403 admin en rendimiento / profesor sin catálogos</li>
+            </ul>
+            <p class="ok">26/26 PASS (45 s)</p>
+          </div>
+          <div class="box">
+            <h4>API (e2e_test.js) — 59 checks</h4>
+            <ul>
+              <li>Login y contexto de roles/asignaciones</li>
+              <li>Upsert de calificaciones + verificación en BD</li>
+              <li>Auditoría con usuario de la app (JSONB)</li>
+              <li>403 materia no asignada / auditoría</li>
+              <li>Paginación, respaldos, dashboards, 409/400/403</li>
+            </ul>
+            <p class="ok">59/59 PASS</p>
+          </div>
+        </div>
+        <p class="footnote">Total automatizado: <b>85/85 PASS</b> · Evidencias: e2e_test_repo_59.txt · playwright_repo_26.txt</p>
+        <div class="shots">
+          <div>
+            <img class="shot" src="../evidencias/playwright-02-login-fallido.png" alt="Captura: login fallido">
+            <div class="shot-label">Puerta de entrada protegida (login)</div>
+          </div>
+          <div>
+            <img class="shot" src="../evidencias/playwright-07-acceso-denegado.png" alt="Captura: acceso denegado">
+            <div class="shot-label">Control de acceso por rol (403)</div>
+          </div>
+        </div>
+        <aside class="notes">Demostración: npm test (API) y npm run test:e2e --prefix backend (UI).</aside>
+      </section>
+
+      <!-- 7. UAT -->
+      <section>
+        <h2 class="section-title">Casos de prueba de aceptación (UAT)</h2>
+        <table>
+          <tr><th>#</th><th>Historia</th><th>Resultado</th><th>Decisión</th></tr>
+          <tr><td>UAT-01</td><td>HU-01 Login admin</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-02</td><td>HU-02 Gestión de estudiantes</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-03</td><td>HU-03 Registro de notas</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-04</td><td>HU-04 Consulta representante</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-05</td><td>HU-05 Reporte de promedios</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-06</td><td>HU-06 Auditoría</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+          <tr><td>UAT-07</td><td>HU-09 Rendimiento psicóloga</td><td class="ok">PASS</td><td class="ok">ACEPTADO</td></tr>
+        </table>
+        <p class="footnote">100% de criterios de aceptación cumplidos → aprobado para producción.</p>
+      </section>
+
+      <!-- 8. Prueba Beta -->
+      <section>
+        <h2 class="section-title">Prueba de la versión Beta</h2>
+        <ul>
+          <li><b>Participantes:</b> 6 usuarios finales (2 representantes, 2 docentes, 1 psicóloga, 1 admin).</li>
+          <li><b>Duración:</b> 7 días · <b>Dispositivos:</b> 4 laptop + 2 móvil (Chrome/Edge).</li>
+          <li><b>Funcionalidades probadas:</b> login, registro y consulta de notas, rendimiento, reportes, auditoría.</li>
+          <li><b>Resultado:</b> 0 errores funcionales · 2 dificultades de uso · 6 sugerencias.</li>
+        </ul>
+        <p class="footnote">Datos de participantes simulados (confidencialidad) · 06_prueba_beta.md</p>
+      </section>
+
+      <!-- 9. Observaciones Beta -->
+      <section>
+        <h2 class="section-title">Registro de observaciones Beta</h2>
+        <div class="two-col">
+          <div class="box">
+            <h4>Errores funcionales</h4>
+            <p class="ok">0</p>
+          </div>
+          <div class="box">
+            <h4>Dificultades de uso</h4>
+            <p class="bad">2</p>
+            <p style="font-size:.85em;">Selector de estudiante poco visible · tablas estrechas en móvil.</p>
+          </div>
+          <div class="box">
+            <h4>Sugerencias</h4>
+            <p class="bad">6</p>
+            <p style="font-size:.85em;">Editar sin recarga (ya cubierto), exportar CSV/Excel, gráfico de tendencia, recordar estudiante, vista móvil, descargar respaldo.</p>
+          </div>
+          <div class="box">
+            <h4>Acciones</h4>
+            <p style="font-size:.85em;">Mejoras críticas ya cubiertas por el sistema; resto en backlog priorizado.</p>
+          </div>
+        </div>
+        <p class="footnote">07_observaciones_beta.md</p>
+      </section>
+
+      <!-- 10. Encuesta -->
+      <section>
+        <h2 class="section-title">Encuesta de satisfacción</h2>
+        <ul>
+          <li>Diseñada en <b>Google Forms</b> (exportable a PDF).</li>
+          <li>Escala <b>Likert 1-5</b>, 6 preguntas cerradas + 1 abierta.</li>
+          <li>Aplicada a los 6 participantes de la Beta (respuestas simuladas).</li>
+          <li>Dimensiones: facilidad de uso, confiabilidad, apariencia, rendimiento, utilidad, recomendación.</li>
+        </ul>
+        <p class="footnote">08_encuesta_satisfaccion.md</p>
+      </section>
+
+      <!-- 11. Resultados encuesta -->
+      <section>
+        <h2 class="section-title">Resultados de la encuesta</h2>
+        <table>
+          <tr><th>Dimensión</th><th>Promedio</th></tr>
+          <tr><td>P1 Facilidad de uso</td><td>4.7</td></tr>
+          <tr><td>P2 Confiabilidad</td><td class="ok">5.0</td></tr>
+          <tr><td>P3 Apariencia</td><td>4.2</td></tr>
+          <tr><td>P4 Rendimiento</td><td>4.7</td></tr>
+          <tr><td>P5 Utilidad</td><td>4.8</td></tr>
+          <tr><td>P6 Recomendación</td><td>4.8</td></tr>
+        </table>
+        <p>Satisfacción global: <span class="kpi">4.7 / 5</span> <span style="font-size:1.2em;">(94%)</span></p>
+        <p class="footnote">Interpretación: confiabilidad = punto fuerte; apariencia y móvil = oportunidad de mejora.</p>
+      </section>
+
+      <!-- 12. Hallazgos / correcciones -->
+      <section>
+        <h2 class="section-title">Hallazgos detectados y corregidos (V&V)</h2>
+        <table>
+          <tr><th>#</th><th>Hallazgo</th><th>Severidad</th></tr>
+          <tr><td>H1/H2</td><td>Migraciones: periodos 2 y 3 no creados · setup.ps1 omitía scripts</td><td class="bad">Alta/Media</td></tr>
+          <tr><td>H3/H4</td><td>IDs hardcodeados en seeds (materia inexistente, rol psicólogo id=4)</td><td class="bad">Media</td></tr>
+          <tr><td>H5</td><td>fn_auditoria_generica sin search_path → fallaba</td><td class="bad">Alta</td></tr>
+          <tr><td>H6</td><td>sp_registrar_calificacion ambiguo (2 sobrecargas)</td><td class="bad">Alta</td></tr>
+          <tr><td>H7/H11</td><td>Tests con IDs hardcodeados / ventana de auditoría frágil</td><td class="bad">Media</td></tr>
+          <tr><td>H8</td><td>Playwright sin navegador instalado</td><td>Baja</td></tr>
+          <tr><td>H9/H10</td><td>Credenciales doc-REAL · ruta llamaba SP inexistente</td><td>Baja/Alta</td></tr>
+          <tr><td>H12/H15</td><td>Seeds sin search_path · pool.on('connect') mal aplicado → «no existe la relación»</td><td class="bad">Alta</td></tr>
+          <tr><td>H13/H14</td><td>profesores.id_usuario desalineado · representante sin enlazar (dashboard vacío)</td><td class="bad">Alta</td></tr>
+        </table>
+        <p class="footnote">Todos los hallazgos cerrados · suites en verde.</p>
+        <aside class="notes">La verificación temprana evitó que errores de migración/SP llegaran a producción.</aside>
+      </section>
+
+      <!-- 13. Conclusiones -->
+      <section>
+        <h2 class="section-title">Conclusiones</h2>
+        <ul>
+          <li class="ok"><b>Pruebas manuales:</b> 14/14 PASS</li>
+          <li class="ok"><b>Pruebas automatizadas:</b> 85/85 PASS (59 API + 26 UI)</li>
+          <li class="ok"><b>Casos UAT:</b> 7/7 ACEPTADO</li>
+          <li class="ok"><b>Satisfacción:</b> 4.7/5 (94%)</li>
+        </ul>
+        <p style="margin-top:1em;">El sistema queda <b>validado para producción</b>.</p>
+        <p style="font-size:.8em;">Mejoras futuras: exportación CSV/Excel, gráfica de tendencia, recordar estudiante, vista móvil.</p>
+        <p class="footnote">¡Gracias! ¿Preguntas?</p>
+        <aside class="notes">Abrimos ronda de preguntas.</aside>
+      </section>
+
+      <!-- 14. Demostración final -->
+      <section>
+        <h2 class="section-title">Demostración final</h2>
+        <p style="font-size:.85em;">Recorrido en vivo (~5 min):</p>
+        <table>
+          <tr><th>Paso</th><th>Acción</th><th>Rol</th></tr>
+          <tr><td>1</td><td>Login <code>admin@uteq.edu.ec / UTEQ2026</code></td><td>admin</td></tr>
+          <tr><td>2</td><td>Materias del periodo activo + planilla con ciclo/parcial</td><td>Elena (profesora)</td></tr>
+          <tr><td>3</td><td>Guardar notas → verificación en auditoría con usuario de la app</td><td>admin</td></tr>
+          <tr><td>4</td><td>Consulta de notas y promedios de sus hijos</td><td>Fernando (representante)</td></tr>
+          <tr><td>5</td><td>Panel de rendimiento (resumen + alertas, máx 10 filas)</td><td>María (psicóloga)</td></tr>
+          <tr><td>6</td><td><code>npm test</code> (59 API) y <code>npm run test:e2e --prefix backend</code> (26 UI)</td><td>—</td></tr>
+        </table>
+        <p class="footnote">Preparado: backend en :3000, BD con migraciones 01-20 y 110 estudiantes.</p>
+      </section>
+
+      <!-- 15. Enlace de recursos -->
+      <section>
+        <h2 class="section-title">Enlace de recursos</h2>
+        <ul>
+          <li><b>Repositorio:</b> <code>github.com/MoisesPanama/sistema-calificaciones-uteq</code></li>
+          <li><b>Base de datos:</b> PostgreSQL 18, esquema <code>colegio</code>, migraciones 01-20 · 110 estudiantes</li>
+          <li><b>Evidencias:</b> <code>docs/vyv/evidencias/</code> (resultados y capturas)</li>
+          <li><b>Documento técnico:</b> <code>docs/vyv/INFORME_TECNICO_VYV.md</code> (PDF/DOCX)</li>
+          <li><b>Presentación:</b> <code>docs/vyv/presentacion/index.html</code></li>
+          <li><b>Suites:</b> <code>backend/e2e_test.js</code> · <code>backend/tests/</code></li>
+        </ul>
+        <p class="footnote">Aplicación completa + base de datos + recursos listos para la defensa.</p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="vendor/reveal/dist/reveal.js"></script>
+  <script src="vendor/reveal/dist/plugin/markdown/markdown.js"></script>
+  <script src="vendor/reveal/dist/plugin/notes/notes.js"></script>
+  <script src="vendor/reveal/dist/plugin/highlight/highlight.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      transition: 'slide',
+      controls: true,
+      progress: true,
+      plugins: [RevealMarkdown, RevealNotes, RevealHighlight]
+    });
+  </script>
+</body>
+</html>

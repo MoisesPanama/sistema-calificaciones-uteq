@@ -34,14 +34,18 @@ test('crear estudiante con representante nuevo inline', async ({ page }) => {
   await page.goto('/pages/estudiante-form.html');
   const tag = Date.now().toString(36);
   await page.locator('#cedula').fill('19' + String(Date.now()).slice(-8));
-  await page.locator('#nombres').fill('PWEst' + tag);
-  await page.locator('#apellidos').fill('Prueba');
+  await page.locator('#nombre1').fill('PWEst' + tag);
+  await page.locator('#nombre2').fill('Auto');
+  await page.locator('#apellido1').fill('Prueba');
+  await page.locator('#apellido2').fill('V&V');
   await page.locator('#fecha_nacimiento').fill('2011-03-04');
   // Buscar algo inexistente y crearlo inline.
   await page.locator('#rep-buscar').fill('ZZZ-sin-coincidencia-' + tag);
   await expect(page.locator('#rep-resultados')).toContainText('Sin coincidencias', { timeout: 10000 });
-  await page.locator('#rep-nombres').fill('PWRep' + tag);
-  await page.locator('#rep-apellidos').fill('Prueba');
+  await page.locator('#rep-nombre1').fill('PWRep' + tag);
+  await page.locator('#rep-nombre2').fill('Auto');
+  await page.locator('#rep-apellido1').fill('Prueba');
+  await page.locator('#rep-apellido2').fill('V&V');
   await page.locator('#rep-telefono').fill('0990000' + String(Date.now()).slice(-3));
   await page.locator('#rep-crear').click();
   await expect(page.locator('#rep-elegido')).toContainText('Elegido:', { timeout: 10000 });
