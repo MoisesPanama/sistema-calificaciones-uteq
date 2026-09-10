@@ -384,6 +384,12 @@
       const usuario = await initPage();
       if (!usuario) return;
       const esEstudiante = usuario.nombre_rol === 'estudiante';
+      if (esEstudiante) {
+        // El estudiante solo ve su detalle propio: sin botones
+        // de regreso a bloques/nomina (no le corresponden).
+        document.getElementById('btn-grupos').style.display = 'none';
+        document.getElementById('btn-nomina').style.display = 'none';
+      }
       document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
       document.getElementById('btn-nomina').onclick = () => mostrar(2);
       try {
