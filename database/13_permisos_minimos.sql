@@ -111,10 +111,12 @@ GRANT SELECT ON roles TO app_uteq;
 GRANT SELECT, INSERT ON auditoria TO app_uteq;
 
 -- ---------------------------------------------------------
--- 4. SESIONES: la gestiona connect-pg-simple, que SI necesita
---    borrar (limpia sesiones expiradas). Unico caso con DELETE.
+-- 4. SESIONES: la gestiona connect-pg-simple, que necesita
+--    SELECT/INSERT/UPDATE/DELETE (limpia sesiones expiradas).
+--    Se listan explicitos (no ALL) para no otorgar de paso
+--    TRUNCATE/TRIGGER, que la app jamas usa.
 -- ---------------------------------------------------------
-GRANT ALL ON sesiones TO app_uteq;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sesiones TO app_uteq;
 
 -- ---------------------------------------------------------
 -- 5. SECUENCIAS: USAGE + SELECT en TODAS.

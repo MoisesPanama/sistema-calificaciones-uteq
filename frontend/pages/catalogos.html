@@ -379,6 +379,10 @@
         await cargarTipos();
 
         document.getElementById('cur-periodo').onchange = (e) => { periodoId = e.target.value; cargarCursos().catch(showError); };
+        document.getElementById('par-ciclo').onchange = (e) => {
+          cicloSel = e.target.value;
+          cargarParciales().catch(showError);
+        };
         document.getElementById('cic-periodo').onchange = (e) => {
           periodoId = e.target.value; cicloSel = '';
           mostrarAdvertencia(null);

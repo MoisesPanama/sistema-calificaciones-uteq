@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "seed:test-users": "node scripts/seed-test-users.js"
+    "seed:test-users": "node scripts/seed-test-users.js",
+    "test": "node e2e_test.js"
   },
   "keywords": [],
   "author": "Moises Panama",

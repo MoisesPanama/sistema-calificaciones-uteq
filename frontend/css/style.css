@@ -546,3 +546,15 @@ select {
     .td-actions { text-align: left; }
     .search-bar { flex-wrap: wrap; }
 }
+
+/* Controles de paginacion compartidos (Fase 4: frontend/js/pagination.js).
+   Antes vivian inline solo en auditoria.html; ahora son globales. */
+.pagination { display: flex; gap: 0.4rem; justify-content: center; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
+.pagination button {
+  padding: 0.35rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px;
+  background: white; cursor: pointer; font-size: 0.82rem;
+}
+.pagination button:hover:not(:disabled) { background: #f3f4f6; }
+.pagination button.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+.pagination .page-info { font-size: 0.82rem; color: #6b7280; margin: 0 0.5rem; }
