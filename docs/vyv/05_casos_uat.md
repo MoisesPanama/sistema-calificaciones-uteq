@@ -18,7 +18,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Veo mi panel de administración con mi nombre |
 | Resultado obtenido | Acceso correcto al dashboard, nombre y rol visibles |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/01_uat_login_admin.png` |
+| Evidencia | `evidencias/uat-01_login_admin.png` |
 
 ## UAT-02 — "Puedo registrar y buscar estudiantes"
 
@@ -31,7 +31,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | El estudiante aparece en la lista y es localizable por cédula |
 | Resultado obtenido | Registro exitoso y búsqueda devuelve la fila correcta |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/02_uat_estudiantes.png` |
+| Evidencia | `evidencias/uat-02_estudiantes.png` |
 
 ## UAT-03 — "Puedo registrar las notas de mi materia fácilmente"
 
@@ -44,7 +44,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Todas las notas se guardan a la vez y veo confirmación |
 | Resultado obtenido | "Se guardaron N calificaciones." y notas reflejadas en consulta |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/03_uat_profesor_notas.png` |
+| Evidencia | `evidencias/uat-03b_profesor_notas.png` |
 
 ## UAT-04 — "Veo las notas de mi hijo sin ver las de otros"
 
@@ -57,7 +57,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Solo veo las notas de mis hijos, con promedio y escala |
 | Resultado obtenido | Consulta restringida correctamente a los hijos del representante |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/04_uat_representante.png` |
+| Evidencia | `evidencias/uat-04b_consulta_representante.png` |
 
 ## UAT-05 — "Veo el reporte de promedios del periodo"
 
@@ -70,7 +70,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Listado ordenado por promedio con escala cualitativa |
 | Resultado obtenido | 10 estudiantes ordenados de mayor a menor promedio |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/05_uat_reportes.png` |
+| Evidencia | `evidencias/uat-05_reportes.png` |
 
 ## UAT-06 — "Puedo auditar qué cambió y quién lo hizo"
 
@@ -96,7 +96,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Resumen de rendimiento, listado de estudiantes y detalle por materia |
 | Resultado obtenido | Resumen con total y alertas, y detalle por estudiante |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/07_uat_psicologa.png` |
+| Evidencia | `evidencias/uat-07b_psicologa_panel.png` |
 
 ---
 
