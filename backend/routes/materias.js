@@ -30,12 +30,17 @@ router.post('/', requireAuth, async (req, res) => {
     try {
         const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
                 'INSERT INTO materias (nombre, descripcion) VALUES ($1, $2) RETURNING id_materia',
                 [nombre, descripcion || null]
             );
+            await client.query('COMMIT');
             res.status(201).json({ ok: true, id_materia: r.rows[0].id_materia });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }
@@ -58,15 +63,20 @@ router.post('/:id/editar', requireAuth, async (req, res) => {
     try {
         const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
                 'UPDATE materias SET nombre = $1, descripcion = $2 WHERE id_materia = $3 RETURNING id_materia',
                 [nombre, descripcion || null, req.params.id]
             );
+            await client.query('COMMIT');
             if (r.rows.length === 0) {
                 return res.status(404).json({ error: 'Materia no encontrada.' });
             }
             res.json({ ok: true, mensaje: 'Materia actualizada correctamente.' });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }

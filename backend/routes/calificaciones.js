@@ -146,8 +146,8 @@ router.post('/lote', requireAuth, async (req, res) => {
 
     const client = await pool.connect();
     try {
-        await client.query("SELECT set_config('app.current_user_id', $1, false)", [String(req.session.usuario.id_usuario)]);
         await client.query('BEGIN');
+        await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         for (const e of entradas) {
             const valor = Number(String(e.crudo).replace(',', '.'));
             if (!Number.isFinite(valor)) {
@@ -194,12 +194,17 @@ router.post('/', requireAuth, async (req, res) => {
     try {
         const client = await pool.connect();
         try {
-            await client.query("SELECT set_config('app.current_user_id', $1, false)", [String(req.session.usuario.id_usuario)]);
+            await client.query('BEGIN');
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             await client.query(
                 'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
                 [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario]
             );
+            await client.query('COMMIT');
             res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }

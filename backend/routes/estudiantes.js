@@ -93,14 +93,17 @@ router.post('/', requireAuth, async (req, res) => {
 
     const client = await pool.connect();
     try {
+        await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const r = await client.query(
             `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante)
              VALUES ($1, $2, $3, $4, $5) RETURNING id_estudiante`,
             [cedula, nombres, apellidos, fecha_nacimiento, id_representante]
         );
+        await client.query('COMMIT');
         res.status(201).json({ ok: true, id_estudiante: r.rows[0].id_estudiante });
     } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
         console.error('Error al crear estudiante:', error.message);
         if (error.code === '23505') {
             return res.status(409).json({ error: 'Ya existe un estudiante registrado con esa cedula.' });
@@ -121,6 +124,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     const client = await pool.connect();
     try {
+        await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const resultado = await client.query(
             `UPDATE estudiantes
@@ -129,11 +133,13 @@ router.put('/:id', requireAuth, async (req, res) => {
              WHERE id_estudiante = $7`,
             [cedula, nombres, apellidos, fecha_nacimiento, id_representante, activo === true || activo === 'on', req.params.id]
         );
+        await client.query('COMMIT');
         if (resultado.rowCount === 0) {
             return res.status(404).json({ error: 'Estudiante no encontrado.' });
         }
         res.json({ ok: true });
     } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
         console.error('Error al actualizar estudiante:', error.message);
         if (error.code === '23505') {
             return res.status(409).json({ error: 'Ya existe un estudiante registrado con esa cedula.' });

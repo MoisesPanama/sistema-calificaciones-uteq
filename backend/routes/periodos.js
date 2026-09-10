@@ -35,12 +35,17 @@ router.post('/', requireAuth, async (req, res) => {
     try {
         const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
                 'INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin) VALUES ($1, $2, $3) RETURNING id_periodo',
                 [nombre, fecha_inicio, fecha_fin]
             );
+            await client.query('COMMIT');
             res.status(201).json({ ok: true, id_periodo: r.rows[0].id_periodo });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }
@@ -69,15 +74,20 @@ router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req
     try {
         const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
                 'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
                 [nombre, fecha_inicio, fecha_fin, req.params.id]
             );
+            await client.query('COMMIT');
             if (r.rows.length === 0) {
                 return res.status(404).json({ error: 'Periodo no encontrado.' });
             }
             res.json({ ok: true, mensaje: 'Periodo actualizado correctamente.' });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }
@@ -96,15 +106,20 @@ router.post('/:id/activar', requireAuth, requireRole('administrador'), async (re
     try {
         const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
                 'UPDATE periodos_academicos SET activo = TRUE WHERE id_periodo = $1 RETURNING nombre',
                 [req.params.id]
             );
+            await client.query('COMMIT');
             if (r.rows.length === 0) {
                 return res.status(404).json({ error: 'Periodo no encontrado.' });
             }
             res.json({ ok: true, mensaje: `Periodo "${r.rows[0].nombre}" activado. Todo el sistema opera ahora sobre este periodo.` });
+        } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
         } finally {
             client.release();
         }

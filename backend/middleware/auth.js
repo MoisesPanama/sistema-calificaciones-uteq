@@ -32,9 +32,14 @@ function requireRole(...rolesPermitidos) {
 // Antes de cada escritura en BD, setea app.current_user_id
 // para que el trigger de auditoria sepa que usuario hizo el cambio.
 // Si se pasa un client (pool.connect()), se usa esa conexion.
+// Usa SET LOCAL (is_local = true): el valor vive solo dentro de la
+// transaccion en curso y se descarta con COMMIT/ROLLBACK, asi el pool
+// nunca recicla una conexion con el usuario de otra request.
+// REQUISITO: el client DEBE estar dentro de BEGIN/COMMIT; fuera de
+// una transaccion SET LOCAL no tiene efecto.
 async function setUsuarioAuditoria(idUsuario, client) {
     const conn = client || pool;
-    await conn.query("SELECT set_config('app.current_user_id', $1, false)", [
+    await conn.query("SELECT set_config('app.current_user_id', $1, true)", [
         idUsuario ? String(idUsuario) : ''
     ]);
 }
