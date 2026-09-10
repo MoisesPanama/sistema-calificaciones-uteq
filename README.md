@@ -163,6 +163,7 @@ psql -U postgres -d calificaciones_uteq -f database/13_permisos_minimos.sql
 psql -U postgres -d calificaciones_uteq -f database/14_log_respaldos.sql
 psql -U postgres -d calificaciones_uteq -f database/15_triggers_catalogos.sql
 psql -U postgres -d calificaciones_uteq -f database/16_pesos_configurables.sql
+psql -U postgres -d calificaciones_uteq -f database/17_indices_rendimiento.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
