@@ -34,5 +34,5 @@ test('representante ve desglose por materia', async ({ page }) => {
   await expect(page.locator('#vista-detalle')).toBeVisible();
   await expect(page.locator('#resultado')).toContainText('Materias con notas');
   await expect(page.locator('#desglose .ciclo-card').first()).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('#desglose')).toContainText('Minimo esperado');
+await expect(page.locator('#desglose')).toContainText('Minimo esperado');
 });

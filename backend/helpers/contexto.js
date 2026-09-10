@@ -37,6 +37,17 @@ async function getProfesorId(client, idUsuario) {
     return r.rows.length > 0 ? r.rows[0].id_profesor : null;
 }
 
+// Estudiante vinculado al usuario (los estudiantes tienen login
+// propio desde el commit de dashboard-estudiante). NULL si el
+// usuario no es un estudiante (admin, profesor, etc.).
+async function getEstudianteId(client, idUsuario) {
+    const r = await client.query(
+        'SELECT id_estudiante FROM estudiantes WHERE id_usuario = $1',
+        [idUsuario]
+    );
+    return r.rows.length > 0 ? r.rows[0].id_estudiante : null;
+}
+
 // Materias del periodo que el usuario puede calificar.
 // Admin: las que tienen asignacion en el periodo (maestro de
 // datos real). Profesor: solo las SUYAS en ese periodo.
@@ -102,6 +113,7 @@ module.exports = {
     getPeriodoActivo,
     esAdmin,
     getProfesorId,
+    getEstudianteId,
     getMateriasPermitidas,
     getCursosPermitidos
 };

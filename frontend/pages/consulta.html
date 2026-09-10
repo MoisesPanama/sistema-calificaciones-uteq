@@ -211,14 +211,20 @@
     async function verDetalle(idEstudiante) {
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}` +
         `&id_estudiante=${idEstudiante}&id_materia=${grupo.id_materia}`);
-      renderDetalle(d);
+      await renderDetalle(d);
       mostrar(3);
       window.scrollTo(0, 0);
     }
 
-    function renderDetalle(d) {
+    async function renderDetalle(d) {
       const div = document.getElementById('resultado');
-      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      // Sin notas NO es error si hay materias: se muestran en
+      // "Sin calificar" y el mensaje pasa a nota informativa.
+      const hayMaterias = (d.materias || []).length > 0;
+      if (d.mensajeSinNotas && !hayMaterias) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const aviso = (d.mensajeSinNotas && hayMaterias)
+        ? `<div class="form-box"><p><small>${esc(d.mensajeSinNotas)} Se muestran sus materias pendientes de calificar.</small></p></div>`
+        : '';
       const contador = (d.materiasTotales != null)
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
@@ -226,7 +232,7 @@
         `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o mas.</small></p></div>`;
       const soloEsta = (d.materias || []).filter(m => String(m.id_materia) === String(grupo.id_materia));
       const lista = soloEsta.length > 0 ? soloEsta : d.materias;
-      div.innerHTML = contador + headerMat +
+      div.innerHTML = aviso + contador + headerMat +
         lista.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
@@ -256,7 +262,7 @@
           </div>`
         : '';
       div.innerHTML += promGeneralBox;
-      cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
+      await cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
     }
 
     function badgeEscala(escala) {
@@ -265,15 +271,15 @@
       return `<span class="badge-escala ${cls}">${e}</span>`;
     }
 
-    async function cargarDesglose(d) {
+    async function cargarDesglose(d, append = false) {
       const div = document.getElementById('desglose');
-      div.innerHTML = '';
+      if (!append) div.innerHTML = '';
       if (!d.idMateria || !d.idEstudiante) return;
       try {
         const g = await apiGet(`/consulta/materia/${d.idMateria}?id_estudiante=${d.idEstudiante}&id_periodo=${d.idPeriodo}`);
         if (!g.ciclos || g.ciclos.length === 0) return;
 
-        div.innerHTML = `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial</h3>
+        div.innerHTML += `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial${append && g.materia ? ' — ' + esc(g.materia.nombre) : ''}</h3>
           <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.</p>` +
           g.ciclos.map((c, ci) => {
             const promStr = c.promedio != null ? esc(c.promedio) : '—';
@@ -320,23 +326,29 @@
 
     async function verDetallePropio() {
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}`);
-      if (d.mensajeSinNotas) {
-        document.getElementById('resultado').innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`;
-        mostrar(3);
-        return;
-      }
-      renderDetalleDirecto(d);
       mostrar(3);
+      renderDetalleDirecto(d);
+      // Desglose por cada materia con notas (vista propia del estudiante).
+      document.getElementById('desglose').innerHTML = '';
+      for (const m of (d.materias || [])) {
+        if (!m.sin_notas) {
+          await cargarDesglose({ idMateria: m.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo }, true);
+        }
+      }
     }
 
     function renderDetalleDirecto(d) {
       const div = document.getElementById('resultado');
-      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const hayMaterias = (d.materias || []).length > 0;
+      if (d.mensajeSinNotas && !hayMaterias) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const aviso = (d.mensajeSinNotas && hayMaterias)
+        ? `<div class="form-box"><p><small>${esc(d.mensajeSinNotas)} Se muestran sus materias pendientes de calificar.</small></p></div>`
+        : '';
       const contador = (d.materiasTotales != null)
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
       const lista = d.materias || [];
-      div.innerHTML = contador +
+      div.innerHTML = aviso + contador +
         lista.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
@@ -372,6 +384,12 @@
       const usuario = await initPage();
       if (!usuario) return;
       const esEstudiante = usuario.nombre_rol === 'estudiante';
+      if (esEstudiante) {
+        // El estudiante solo ve su detalle propio: sin botones
+        // de regreso a bloques/nomina (no le corresponden).
+        document.getElementById('btn-grupos').style.display = 'none';
+        document.getElementById('btn-nomina').style.display = 'none';
+      }
       document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
       document.getElementById('btn-nomina').onclick = () => mostrar(2);
       try {

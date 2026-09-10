@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRole } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
@@ -20,7 +20,9 @@ function evaluarEscala(nota) {
     return 'D';
 }
 
-router.get('/', requireAuth, async (req, res) => {
+// El estudiante NO entra aqui: tiene su consulta propia.
+// (psicologo tampoco: usa su vista de rendimiento).
+router.get('/', requireAuth, requireRole('administrador', 'profesor', 'representante'), async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
         if (!periodoActivo) {

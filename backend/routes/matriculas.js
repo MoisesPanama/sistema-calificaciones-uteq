@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
+const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
@@ -91,8 +91,8 @@ router.get('/opciones', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/matriculas/ — matricular estudiante
-router.post('/', requireAuth, async (req, res) => {
+// POST /api/matriculas/ — matricular estudiante (solo admin)
+router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
     const { id_estudiante, id_periodo, id_curso } = req.body || {};
     if (!id_estudiante || !id_periodo) {
         return res.status(400).json({ error: 'Falta id_estudiante o id_periodo.' });
@@ -124,8 +124,8 @@ router.post('/', requireAuth, async (req, res) => {
     }
 });
 
-// DELETE /api/matriculas/:id — desmatricular
-router.delete('/:id', requireAuth, async (req, res) => {
+// DELETE /api/matriculas/:id — desmatricular (solo admin)
+router.delete('/:id', requireAuth, requireRole('administrador'), async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

@@ -248,7 +248,7 @@ const loginAs = async (email) => {
   await loginAs('admin@uteq.edu.ec');
   const busq = await get('/representantes/?q=castillo&limit=5');
   log('Buscar representantes', busq.status === 200 && busq.body.datos?.length > 0, `${busq.body.datos?.length} resultados`);
-  const nomRep = `Administrador${stamp} Alfa`;
+  const nomRep = `Ewe${stamp} Alfa`;
   const apeRep = `Beta${stamp} Gamma`;
   const creaRep = await post('/representantes/', { nombres: nomRep, apellidos: apeRep, telefono: '0990000001' });
   log('Crear representante', creaRep.status === 201 && !!creaRep.body.id_representante, creaRep.body.error || '');
@@ -299,6 +299,62 @@ const loginAs = async (email) => {
   if (creaAsg1.body.id_asignacion) {
     const borraAsg = await del(`/asignaciones/${creaAsg1.body.id_asignacion}`);
     log('Quitar asignacion', borraAsg.status === 200, borraAsg.body.error || '');
+  }
+
+  console.log('\n=== 13. ROL ESTUDIANTE: SOLO LO SUYO, SIN REPORTES ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag13 = Date.now().toString(36);
+  const creaEst = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Uno', apellidos: 'Prueba Dos',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  log('Crear estudiante con usuario', creaEst.status === 201 && !!creaEst.body.email, creaEst.body.email || creaEst.body.error);
+  const emailEst = creaEst.body.email;
+  // Matricularlo en periodo activo para que tenga algo que ver.
+  const per13 = await get('/periodos/');
+  const idPer13 = per13.body.periodoActivo?.id_periodo || per13.body.periodos?.[0]?.id_periodo;
+  const idEst13 = creaEst.body.id_estudiante;
+  await post('/matriculas/', { id_estudiante: idEst13, id_periodo: idPer13, id_curso: null });
+  await loginAs(emailEst);
+  // Intenta ver a OTRO estudiante (id 1): debe devolver lo PROPIO.
+  const espia = await get('/consulta/?id_periodo=' + idPer13 + '&id_estudiante=1');
+  log('No puede ver a otro (fuerza propio)',
+    espia.status === 200 && String(espia.body.idEstudiante) === String(idEst13),
+    `devuelve idEstudiante=${espia.body.idEstudiante}`);
+  const repEst = await get('/reportes/?id_periodo=' + idPer13);
+  log('Estudiante bloqueado de reportes (403)', repEst.status === 403, '');
+  const gruposEst = await get('/consulta/grupos?id_periodo=' + idPer13);
+  log('Bloques propios', gruposEst.status === 200 && Array.isArray(gruposEst.body.grupos), `${gruposEst.body.grupos?.length} bloques`);
+  const mat0 = await get('/consulta/materia/1?id_periodo=' + idPer13 + '&id_estudiante=1');
+  log('Desglose ajeno fuerza propio',
+    mat0.status === 200 && String(mat0.body.estudiante?.id_estudiante) === String(idEst13), '');
+
+  console.log('\n=== 14. VISTA PROPIA SIN NOTAS + FILTRO SIN-CURSO ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag14 = Date.now().toString(36);
+  const creaSin = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Nulo', apellidos: 'Sin Notas',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  const idSin = creaSin.body.id_estudiante;
+  await post('/matriculas/', { id_estudiante: idSin, id_periodo: idPer13, id_curso: null });
+  await loginAs(creaSin.body.email);
+  const propiaVacia = await get('/consulta/?id_periodo=' + idPer13);
+  log('Sin notas ve tarjetas, no solo error',
+    propiaVacia.status === 200 && (propiaVacia.body.materias || []).length > 0
+    && (propiaVacia.body.materias || []).every(m => m.sin_notas),
+    `materias=${(propiaVacia.body.materias || []).length}`);
+  await loginAs('admin@uteq.edu.ec');
+  const cursos14 = await get('/cursos/?id_periodo=' + idPer13);
+  const cursoA = (cursos14.body.cursos || [])[0];
+  if (cursoA) {
+    const ctxFiltrado = await get(`/calificaciones/contexto?id_periodo=${idPer13}&id_materia=1&id_curso=${cursoA.id_curso}&page=1&limit=50`);
+    const filas = ctxFiltrado.body.estudiantes || [];
+    log('Filtro por curso incluye Sin-curso',
+      filas.length > 0 && filas.some(e => e.id_curso == null),
+      `${filas.length} filas`);
   }
 
   // --- Summary ---

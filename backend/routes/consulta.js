@@ -7,8 +7,16 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { getPeriodoActivo, getProfesorId, esAdmin } = require('../helpers/contexto');
+const { getPeriodoActivo, getProfesorId, getEstudianteId, esAdmin } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
+
+// Rol estudiante: SOLO ve sus propias notas. Devuelve su
+// id_estudiante o null si el usuario no esta vinculado.
+// El frontend nunca decide esto: se impone en el backend.
+async function idPropioEstudiante(req) {
+    if (req.session.usuario.nombre_rol !== 'estudiante') return undefined;
+    return await getEstudianteId(pool, req.session.usuario.id_usuario);
+}
 
 function evaluarEscala(nota) {
     if (nota == null) return 'S/N';
@@ -38,8 +46,16 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
         const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
-        const idEstudiante = req.query.id_estudiante || '';
+        let idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.params.id_materia;
+        // Estudiante: ignora el parametro y usa el propio siempre.
+        const propioMateria = await idPropioEstudiante(req);
+        if (propioMateria !== undefined) {
+            if (!propioMateria) {
+                return res.status(403).json({ error: 'Tu usuario no esta vinculado a ningun estudiante.' });
+            }
+            idEstudiante = String(propioMateria);
+        }
         if (!idEstudiante) {
             return res.status(400).json({ error: 'Falta id_estudiante.' });
         }
@@ -170,8 +186,9 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
 });
 
 // GET /api/consulta/grupos?id_periodo= — bloques Materia＋Paralelo
-// del periodo con conteo de estudiantes. El profesor solo ve sus
-// asignaciones; el resto ve todos (el detalle filtra por rol).
+// del periodo con conteo de estudiantes. Profesor: solo sus
+// asignaciones. Estudiante: solo sus materias. El resto ve todos
+// (el detalle filtra por rol).
 router.get('/grupos', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -180,13 +197,22 @@ router.get('/grupos', requireAuth, async (req, res) => {
         }
         const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
         const params = [idPeriodo];
-        let filtroProf = '';
+        let filtroExtra = '';
         if (!esAdmin(req.session.usuario)) {
-            const idProfesor = await getProfesorId(pool, req.session.usuario.id_usuario);
             if (req.session.usuario.nombre_rol === 'profesor') {
+                const idProfesor = await getProfesorId(pool, req.session.usuario.id_usuario);
                 if (!idProfesor) return res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
                 params.push(idProfesor);
-                filtroProf = ` AND pmp.id_profesor = $${params.length}`;
+                filtroExtra = ` AND pmp.id_profesor = $${params.length}`;
+            } else if (req.session.usuario.nombre_rol === 'estudiante') {
+                const idPropio = await getEstudianteId(pool, req.session.usuario.id_usuario);
+                if (!idPropio) return res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
+                params.push(idPropio);
+                filtroExtra = ` AND EXISTS (
+                    SELECT 1 FROM matriculas m2
+                    WHERE m2.id_periodo = pmp.id_periodo AND m2.id_estudiante = $${params.length}
+                      AND (pmp.id_curso IS NULL OR m2.id_curso IS NULL OR m2.id_curso = pmp.id_curso)
+                )`;
             }
         }
         const r = await pool.query(
@@ -199,7 +225,7 @@ router.get('/grupos', requireAuth, async (req, res) => {
              JOIN materias m ON m.id_materia = pmp.id_materia
              LEFT JOIN cursos c ON c.id_curso = pmp.id_curso
              LEFT JOIN matriculas mat ON mat.id_periodo = pmp.id_periodo
-             WHERE pmp.id_periodo = $1${filtroProf}
+             WHERE pmp.id_periodo = $1${filtroExtra}
              GROUP BY m.id_materia, m.nombre, c.id_curso, c.nombre, c.paralelo
              ORDER BY m.nombre, c.nombre NULLS FIRST, c.paralelo NULLS FIRST`,
             params
@@ -220,7 +246,7 @@ router.get('/grupos', requireAuth, async (req, res) => {
 
 // GET /api/consulta/grupo?id_materia=&id_periodo=&id_curso=&page=
 // Nomina paginada (10) del bloque. Profesor: solo sus grupos.
-// Representante: solo sus hijos.
+// Representante: solo sus hijos. Estudiante: solo el mismo.
 router.get('/grupo', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -264,6 +290,15 @@ router.get('/grupo', requireAuth, async (req, res) => {
             if (rep.rows.length > 0) {
                 where += ` AND e.id_representante = $${params.length + 1}`;
                 params.push(rep.rows[0].id_representante);
+            } else {
+                where += ' AND 1 = 0';
+            }
+        }
+        if (req.session.usuario.nombre_rol === 'estudiante') {
+            const idPropio = await getEstudianteId(pool, req.session.usuario.id_usuario);
+            if (idPropio) {
+                where += ` AND e.id_estudiante = $${params.length + 1}`;
+                params.push(idPropio);
             } else {
                 where += ' AND 1 = 0';
             }
@@ -314,8 +349,15 @@ router.get('/', requireAuth, async (req, res) => {
         );
 
         const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
-        const idEstudiante = req.query.id_estudiante || '';
+        let idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.query.id_materia || '';
+
+        // Estudiante: ignora el parametro y usa el propio siempre.
+        // Sin vinculo estudiante-usuario no ve ningun detalle.
+        const propioDetalle = await idPropioEstudiante(req);
+        if (propioDetalle !== undefined) {
+            idEstudiante = propioDetalle ? String(propioDetalle) : '';
+        }
 
         const periodoSel = periodos.rows.find(p => String(p.id_periodo) === String(idPeriodo));
         const periodoNombre = periodoSel ? periodoSel.nombre : periodoActivo.nombre;
