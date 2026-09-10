@@ -111,8 +111,19 @@
         const max = Math.max(r.bajos, r.bien, 1);
         bloques += tarjeta('Rendimiento del periodo',
           barra('Bajo (< 7)', r.bajos, max, '#dc2626') +
-          barra('Bien (≥ 7)', r.bien, max, '#16a34a') +
-          `<p style="font-size:0.85rem;"><a href="psicologo.html">Abrir vista de rendimiento →</a></p>`);
+          barra('Bien (>= 7)', r.bien, max, '#16a34a') +
+          `<p style="font-size:0.85rem;"><a href="psicologo.html">Abrir vista de rendimiento &rarr;</a></p>`);
+      } else if (rol === 'estudiante') {
+        const mats = d.misMaterias || [];
+        const prom = d.promedioGeneral;
+        metricas = (prom != null ? metrica('Promedio general', prom) : metrica('Promedio', 'Sin notas')) +
+          metrica('Materias', mats.length);
+        const max = 10;
+        bloques += tarjeta('Mis materias',
+          mats.length === 0 ? '<p style="color:#6b7280;">No tienes materias asignadas en este periodo.</p>' :
+          mats.map(m => barra(m.nombre, m.promedio != null ? m.promedio : 0, max,
+            m.promedio == null ? '#9ca3af' : (m.promedio < 7 ? '#dc2626' : '#16a34a'))).join('') +
+          `<p style="font-size:0.8rem;color:#6b7280;">Escala 0-10. Aprueba con 7. <a href="consulta.html">Ver detalle &rarr;</a></p>`);
       }
 
       document.getElementById('metricas').innerHTML = metricas;

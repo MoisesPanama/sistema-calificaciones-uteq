@@ -154,12 +154,11 @@ router.delete('/:id', requireAuth, requireRole('administrador'), async (req, res
     const client = await pool.connect();
     try {
         const uso = await client.query(
-            `SELECT (SELECT COUNT(*) FROM calificaciones WHERE id_ciclo = $1)::int AS notas_ciclo,
-                    (SELECT COUNT(*) FROM calificaciones WHERE id_parcial IN
+            `SELECT (SELECT COUNT(*) FROM calificaciones WHERE id_parcial IN
                         (SELECT id_parcial FROM parciales WHERE id_ciclo = $1))::int AS notas_parciales`,
             [req.params.id]
         );
-        if (uso.rows[0].notas_ciclo > 0 || uso.rows[0].notas_parciales > 0) {
+        if (uso.rows[0].notas_parciales > 0) {
             return res.status(409).json({
                 error: 'No se puede eliminar: el ciclo (o sus parciales) tiene calificaciones registradas.'
             });

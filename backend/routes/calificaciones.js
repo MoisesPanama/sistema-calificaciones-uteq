@@ -18,14 +18,24 @@ const {
     getCursosPermitidos
 } = require('../helpers/contexto');
 
+// Tipos de evaluacion permitidos en el formulario de carga.
+const TIPOS_PERMITIDOS = new Set([1, 2, 3, 4, 6, 9]);
+// Parcial 1, Parcial 2, Parcial 3, Tarea, Taller Grupal, Evaluacion Diagnostica
+
 // Carga estudiantes matriculados + notas existentes (reutilizable)
-async function cargarTabla(idPeriodo, idMateria, idCurso) {
+async function cargarTabla(idPeriodo, idMateria, idCurso, page, limit) {
     let estudiantes = [];
     const notasExistentes = {};
-    if (!idMateria) return { estudiantes, notasExistentes };
+    if (!idMateria) return { estudiantes, notasExistentes, total: 0 };
 
+    let sqlCount;
     let sqlEst;
     try {
+        sqlCount = `SELECT COUNT(*)::int AS total
+                  FROM matriculas m
+                  JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                  LEFT JOIN cursos c ON c.id_curso = m.id_curso
+                  WHERE m.id_periodo = $1`;
         sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
                          m.id_curso, COALESCE(c.nombre, 'Sin curso') AS curso_nombre, COALESCE(c.paralelo, '') AS paralelo
                   FROM matriculas m
@@ -34,19 +44,36 @@ async function cargarTabla(idPeriodo, idMateria, idCurso) {
                   WHERE m.id_periodo = $1`;
         await pool.query(sqlEst + ' LIMIT 0', [idPeriodo]);
     } catch (_) {
+        sqlCount = `SELECT COUNT(*)::int AS total
+                  FROM matriculas m
+                  JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                  WHERE m.id_periodo = $1`;
         sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
                          NULL AS id_curso, 'Sin curso' AS curso_nombre, '' AS paralelo
                   FROM matriculas m
                   JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
                   WHERE m.id_periodo = $1`;
     }
-    const params = [idPeriodo];
+    const paramsCount = [idPeriodo];
+    const paramsEst = [idPeriodo];
+    let countIdx = 1;
+    let estIdx = 1;
     if (idCurso) {
-        sqlEst += ' AND m.id_curso = $2';
-        params.push(idCurso);
+        sqlCount += ` AND m.id_curso = $${++countIdx}`;
+        paramsCount.push(idCurso);
+        sqlEst += ` AND m.id_curso = $${++estIdx}`;
+        paramsEst.push(idCurso);
     }
+
+    const countResult = await pool.query(sqlCount, paramsCount);
+    const total = countResult.rows[0].total;
+
     sqlEst += ' ORDER BY e.apellidos, e.nombres';
-    const rEst = await pool.query(sqlEst, params);
+    if (page && limit) {
+        sqlEst += ` LIMIT $${++estIdx} OFFSET $${++estIdx}`;
+        paramsEst.push(limit, (page - 1) * limit);
+    }
+    const rEst = await pool.query(sqlEst, paramsEst);
     estudiantes = rEst.rows;
 
     if (estudiantes.length > 0) {
@@ -63,7 +90,7 @@ async function cargarTabla(idPeriodo, idMateria, idCurso) {
             notasExistentes[n.id_estudiante][n.id_tipo_evaluacion] = n.valor;
         });
     }
-    return { estudiantes, notasExistentes };
+    return { estudiantes, notasExistentes, total };
 }
 
 // GET /api/calificaciones/contexto -> todo lo que necesita la pantalla
@@ -78,11 +105,16 @@ router.get('/contexto', requireAuth, async (req, res) => {
         const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
         const tiposRes = await pool.query(
             `SELECT id_tipo_evaluacion, nombre, peso
-             FROM tipos_evaluacion ORDER BY nombre`
+             FROM tipos_evaluacion
+             WHERE id_tipo_evaluacion = ANY($1)
+             ORDER BY nombre`,
+            [Array.from(TIPOS_PERMITIDOS)]
         );
 
         const idMateria = req.query.id_materia || '';
         const idCurso = req.query.id_curso || '';
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(5, parseInt(req.query.limit) || 10));
 
         let periodoNombre = periodoActivo.nombre;
         if (String(idPeriodo) !== String(periodoActivo.id_periodo)) {
@@ -93,7 +125,7 @@ router.get('/contexto', requireAuth, async (req, res) => {
             if (rp.rows.length > 0) periodoNombre = rp.rows[0].nombre;
         }
 
-        const { estudiantes, notasExistentes } = await cargarTabla(idPeriodo, idMateria, idCurso);
+        const { estudiantes, notasExistentes, total } = await cargarTabla(idPeriodo, idMateria, idCurso, page, limit);
 
         res.json({
             periodoActivo,
@@ -103,7 +135,8 @@ router.get('/contexto', requireAuth, async (req, res) => {
             cursos,
             tiposEvaluacion: tiposRes.rows,
             estudiantes,
-            notasExistentes
+            notasExistentes,
+            paginacion: { page, limit, total, totalPages: Math.ceil(total / limit) }
         });
     } catch (error) {
         console.error('Error al cargar contexto de calificaciones:', error.message);

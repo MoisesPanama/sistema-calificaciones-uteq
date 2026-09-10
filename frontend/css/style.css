@@ -24,8 +24,10 @@ body {
     max-width: 400px;
     text-align: center;
 }
+.login-logo { width: 160px; height: auto; margin-bottom: 0.8rem; }
 .login-box h1 { font-size: 1.5rem; color: #1e3a8a; margin-bottom: 0.3rem; }
-.login-box h2 { font-size: 0.9rem; font-weight: normal; color: #6b7280; margin-bottom: 1.5rem; }
+.login-box h2 { font-size: 1.3rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.2rem; }
+.login-box h3 { font-size: 0.85rem; font-weight: normal; color: #6b7280; margin-bottom: 1.5rem; }
 .login-box form { display: flex; flex-direction: column; text-align: left; }
 .login-box label { margin-top: 1rem; font-size: 0.85rem; font-weight: 600; color: #374151; }
 .login-box input {
@@ -73,6 +75,7 @@ body {
     border-bottom: 1px solid rgba(255,255,255,0.1);
     white-space: nowrap;
 }
+.sidebar-logo { width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0; }
 .sidebar-nav {
     flex: 1;
     padding: 0.6rem 0;
@@ -546,19 +549,125 @@ select {
     table tbody td::before { content: attr(data-label); font-weight: 600; color: #6b7280; }
     .td-actions { text-align: left; }
     .search-bar { flex-wrap: wrap; }
+    .pagination { gap: 0.3rem; padding: 0.6rem 0.7rem; flex-wrap: wrap; }
+    .pagination button { min-width: 32px; height: 32px; font-size: 0.78rem; }
+    .pagination .pag-arrow { min-width: 34px; height: 34px; }
+    .pagination .pag-arrow svg { width: 14px; height: 14px; }
+    .pagination .pag-info { font-size: 0.72rem; }
+    .pagination .pag-jump { font-size: 0.72rem; }
 }
 
-/* Controles de paginacion compartidos (Fase 4: frontend/js/pagination.js).
-   Antes vivian inline solo en auditoria.html; ahora son globales. */
-.pagination { display: flex; gap: 0.4rem; justify-content: center; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
-.pagination button {
-  padding: 0.35rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px;
-  background: white; cursor: pointer; font-size: 0.82rem;
+/* Controles de paginación compartidos (pagination.js). */
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.2rem;
+  background: #f8f9fb;
+  border: 1px solid #e2e6ed;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
-.pagination button:hover:not(:disabled) { background: #f3f4f6; }
-.pagination button.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
-.pagination button:disabled { opacity: 0.4; cursor: default; }
-.pagination .page-info { font-size: 0.82rem; color: #6b7280; margin: 0 0.5rem; }
+.pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 0.65rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #4b5563;
+  transition: all 0.18s ease;
+}
+.pagination button:hover:not(:disabled):not(.active) {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.pagination button.active,
+.pagination .pag-num.active {
+  background: #5b21b6;
+  color: white;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.35);
+  cursor: default;
+}
+.pagination button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.pagination .pag-of {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  font-weight: 400;
+  margin: 0 0.15rem;
+}
+.pagination .pag-info {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin: 0 0.6rem;
+  white-space: nowrap;
+}
+.pagination .pag-arrow {
+  padding: 0;
+  min-width: 40px;
+  height: 40px;
+}
+.pagination .pag-arrow svg {
+  flex-shrink: 0;
+}
+.pagination .pag-arrow-active {
+  background: #5b21b6;
+  color: white;
+  border-radius: 50%;
+}
+.pagination .pag-arrow-active:hover:not(:disabled) {
+  background: #6d28d9;
+}
+.pagination .pag-arrow-active svg {
+  stroke: white;
+}
+.pagination .pag-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.pagination .pag-select {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.pagination .pag-select:focus {
+  border-color: #5b21b6;
+  box-shadow: 0 0 0 2px rgba(91, 33, 182, 0.15);
+}
+.pagination .page-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 38px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  letter-spacing: 1px;
+}
 
 /* Tarjetas de bloques (auditoria, consulta): resumen clicable. */
 .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
@@ -588,3 +697,14 @@ select {
 
 /* Login: separar el boton del ultimo campo */
 .login-box .btn-primary { margin-top: 1.4rem; width: 100%; }
+
+/* Toggle activo/inactivo */
+.btn-toggle {
+  border: none; border-radius: 6px; padding: 0.25rem 0.7rem;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-toggle.activo { background: #dcfce7; color: #166534; }
+.btn-toggle.activo:hover { background: #bbf7d0; }
+.btn-toggle.inactivo { background: #fee2e2; color: #991b1b; }
+.btn-toggle.inactivo:hover { background: #fecaca; }

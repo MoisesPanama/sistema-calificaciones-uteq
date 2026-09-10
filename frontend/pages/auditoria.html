@@ -166,7 +166,22 @@
       document.getElementById('vista-resumen').style.display = 'none';
       document.getElementById('vista-detalle').style.display = 'block';
       document.getElementById('detalle-titulo').textContent = nombreCat(categoria);
+      cargarTablasFiltro(categoria);
       cargarAuditoria(1).catch(showError);
+    }
+
+    async function cargarTablasFiltro(categoria) {
+      const sel = document.getElementById('filter-tabla');
+      sel.innerHTML = '<option value="">Todas</option>';
+      try {
+        const url = `/auditoria/tablas${categoria ? '?categoria=' + encodeURIComponent(categoria) : ''}`;
+        const { tablas } = await apiGet(url);
+        (tablas || []).forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t; opt.textContent = t;
+          sel.appendChild(opt);
+        });
+      } catch (_) {}
     }
 
     function volverResumen() {
@@ -230,22 +245,16 @@
     (async () => {
       if (!await initPage({ adminOnly: true })) return;
       try {
-        const sel = document.getElementById('filter-tabla');
-        const tablasConocidas = ['calificaciones', 'periodos_academicos', 'materias', 'estudiantes', 'usuarios', 'profesores', 'representantes', 'matriculas', 'tipos_evaluacion', 'profesor_materia_periodo', 'ciclos_evaluativos', 'parciales', 'cursos'];
-        tablasConocidas.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t; opt.textContent = t;
-          sel.appendChild(opt);
-        });
         document.getElementById('btn-volver').onclick = volverResumen;
         document.getElementById('btn-filtrar').onclick = () => {
+          const sel = document.getElementById('filter-tabla');
           state.tabla = sel.value;
           state.desde = document.getElementById('filter-desde').value;
           state.hasta = document.getElementById('filter-hasta').value;
           cargarAuditoria(1).catch(showError);
         };
         document.getElementById('btn-limpiar').onclick = () => {
-          sel.value = '';
+          document.getElementById('filter-tabla').value = '';
           document.getElementById('filter-desde').value = '';
           document.getElementById('filter-hasta').value = '';
           state.tabla = ''; state.desde = ''; state.hasta = '';

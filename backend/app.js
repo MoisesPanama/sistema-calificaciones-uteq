@@ -73,6 +73,7 @@ app.use('/api/parciales', require('./routes/parciales'));
 app.use('/api/tipos', require('./routes/tipos_evaluacion'));
 app.use('/api/respaldos', require('./routes/respaldos'));
 app.use('/api/psicologo', require('./routes/psicologo'));
+app.use('/api/matriculas', require('./routes/matriculas'));
 
 // 404 JSON (antes: render de vista error)
 app.use((req, res) => {

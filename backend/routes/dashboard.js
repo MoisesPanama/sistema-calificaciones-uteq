@@ -121,6 +121,42 @@ router.get('/', requireAuth, async (req, res) => {
             out.hijos = hijos;
         }
 
+        if (rol === 'estudiante' && idPeriodo) {
+            const rEst = await pool.query(
+                'SELECT id_estudiante FROM estudiantes WHERE id_usuario = $1',
+                [req.session.usuario.id_usuario]
+            );
+            const idEst = rEst.rows.length > 0 ? rEst.rows[0].id_estudiante : null;
+            if (idEst) {
+                let promedioGeneral = null;
+                try {
+                    const rP = await pool.query('SELECT fn_promedio_general($1, $2) AS promedio', [idEst, idPeriodo]);
+                    promedioGeneral = rP.rows[0].promedio;
+                } catch (_) { /* sin notas */ }
+                const rMaterias = await pool.query(
+                    `SELECT DISTINCT pmp.id_materia, mat.nombre
+                     FROM profesor_materia_periodo pmp
+                     JOIN materias mat ON mat.id_materia = pmp.id_materia
+                     JOIN matriculas m ON m.id_periodo = pmp.id_periodo
+                     WHERE m.id_estudiante = $1 AND pmp.id_periodo = $2
+                       AND (pmp.id_curso IS NULL OR pmp.id_curso = m.id_curso)
+                     ORDER BY mat.nombre`,
+                    [idEst, idPeriodo]
+                );
+                const materias = [];
+                for (const m of rMaterias.rows) {
+                    let promedio = null;
+                    try {
+                        const rP = await pool.query('SELECT fn_promedio_materia($1, $2, $3) AS promedio', [idEst, m.id_materia, idPeriodo]);
+                        promedio = rP.rows[0].promedio;
+                    } catch (_) { /* sin notas */ }
+                    materias.push({ id_materia: m.id_materia, nombre: m.nombre, promedio });
+                }
+                out.misMaterias = materias;
+                out.promedioGeneral = promedioGeneral;
+            }
+        }
+
         if (rol === 'psicologo' && idPeriodo) {
             const r = await pool.query(
                 `SELECT COUNT(DISTINCT CASE WHEN mm.promedio < 7 THEN m.id_estudiante END)::int AS bajos,

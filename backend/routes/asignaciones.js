@@ -82,7 +82,6 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
         res.status(201).json({ ok: true, id_asignacion: r.rows[0].id_asignacion });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        console.error('Error al asignar:', error.message);
         if (error.code === '23505' || error.code === '23503') {
             return res.status(409).json({
                 error: 'No se pudo asignar: esa materia en ese curso/periodo ya la dicta otro profesor (o algún dato no existe).'

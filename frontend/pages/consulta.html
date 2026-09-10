@@ -19,6 +19,81 @@
     .mat-escala { font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; background: #eff6ff; color: #1e40af; }
     .mat-escala.na { background: #f3f4f6; color: #6b7280; }
     .mat-detalle { margin-top: 0.8rem; border-top: 1px solid #f3f4f6; padding-top: 0.8rem; }
+
+    /* Desglose: cards por ciclo */
+    .ciclo-card {
+      background: white; border-radius: 12px; margin-bottom: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+    .ciclo-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 1.2rem; cursor: pointer; user-select: none;
+      background: linear-gradient(135deg, #1e3a8a, #3b5998);
+      color: white; transition: opacity 0.15s;
+    }
+    .ciclo-header:hover { opacity: 0.92; }
+    .ciclo-header-left { display: flex; align-items: center; gap: 0.8rem; flex: 1; }
+    .ciclo-nombre { font-weight: 700; font-size: 0.95rem; }
+    .ciclo-meta { font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
+    .ciclo-header-right { display: flex; align-items: center; gap: 0.7rem; }
+    .ciclo-prom-badge {
+      font-size: 1.3rem; font-weight: 800; background: rgba(255,255,255,0.2);
+      padding: 0.3rem 0.8rem; border-radius: 8px;
+    }
+    .ciclo-escala-badge {
+      font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem;
+      border-radius: 6px; background: rgba(255,255,255,0.25);
+    }
+    .ciclo-chevron {
+      transition: transform 0.2s; font-size: 1.1rem;
+    }
+    .ciclo-card.abierto .ciclo-chevron { transform: rotate(180deg); }
+    .ciclo-body {
+      display: none; padding: 0;
+    }
+    .ciclo-card.abierto .ciclo-body { display: block; }
+
+    /* Parcial row dentro del ciclo */
+    .parcial-row {
+      display: grid; grid-template-columns: 1fr 80px 60px 100px;
+      align-items: center; padding: 0.65rem 1.2rem;
+      border-bottom: 1px solid #f3f4f6; font-size: 0.88rem;
+      transition: background 0.1s;
+    }
+    .parcial-row:last-child { border-bottom: none; }
+    .parcial-row:hover { background: #f9fafb; }
+    .parcial-nombre { font-weight: 600; color: #374151; }
+    .parcial-prom { font-weight: 700; color: #1e3a8a; text-align: center; }
+    .parcial-prom.vacio { color: #9ca3af; font-weight: 400; }
+    .badge-escala {
+      display: inline-block; font-size: 0.75rem; font-weight: 700;
+      padding: 0.15rem 0.5rem; border-radius: 5px; text-align: center;
+    }
+    .badge-AD { background: #dcfce7; color: #166534; }
+    .badge-A  { background: #dbeafe; color: #1e40af; }
+    .badge-AB { background: #fef3c7; color: #92400e; }
+    .badge-B  { background: #fee2e2; color: #991b1b; }
+    .badge-SN { background: #f3f4f6; color: #6b7280; }
+    .parcial-ins { text-align: right; font-size: 0.78rem; }
+    .ins-ok { color: #16a34a; font-weight: 600; }
+    .ins-falta { color: #dc2626; }
+
+    /* Promedio general al fondo */
+    .prom-general-box {
+      background: white; border-radius: 12px; padding: 1.2rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex; align-items: center; gap: 1rem;
+      border: 2px solid #1e3a8a; margin-top: 1.2rem;
+    }
+    .prom-general-label { font-size: 0.9rem; font-weight: 600; color: #374151; flex: 1; }
+    .prom-general-valor { font-size: 1.8rem; font-weight: 800; color: #1e3a8a; }
+
+    @media (max-width: 600px) {
+      .parcial-row { grid-template-columns: 1fr 60px 50px 80px; font-size: 0.8rem; }
+      .ciclo-header { flex-wrap: wrap; gap: 0.5rem; }
+      .ciclo-prom-badge { font-size: 1rem; }
+    }
   </style>
 </head>
 <body>
@@ -148,7 +223,7 @@
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
       const headerMat =
-        `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o más.</small></p></div>`;
+        `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o mas.</small></p></div>`;
       const soloEsta = (d.materias || []).filter(m => String(m.id_materia) === String(grupo.id_materia));
       const lista = soloEsta.length > 0 ? soloEsta : d.materias;
       div.innerHTML = contador + headerMat +
@@ -169,13 +244,25 @@
               <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
-              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
+              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluacion</th><th>Nota</th></tr></thead>
               <tbody>${filas}</tbody></table></div>
             </div>
           </div>`;
-        }).join('') +
-        `<div class="form-box"><h2>Promedio general del periodo: ${esc(d.promedioGeneral)}</h2></div>`;
+        }).join('');
+      const promGeneralBox = d.promedioGeneral != null
+        ? `<div class="prom-general-box">
+            <span class="prom-general-label">Promedio general del periodo</span>
+            <span class="prom-general-valor">${esc(d.promedioGeneral)}</span>
+          </div>`
+        : '';
+      div.innerHTML += promGeneralBox;
       cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
+    }
+
+    function badgeEscala(escala) {
+      const e = (escala || 'S/N').toUpperCase();
+      const cls = e === 'AD' ? 'badge-AD' : e === 'A' ? 'badge-A' : e === 'AB' ? 'badge-AB' : e === 'B' ? 'badge-B' : 'badge-SN';
+      return `<span class="badge-escala ${cls}">${e}</span>`;
     }
 
     async function cargarDesglose(d) {
@@ -185,25 +272,115 @@
       try {
         const g = await apiGet(`/consulta/materia/${d.idMateria}?id_estudiante=${d.idEstudiante}&id_periodo=${d.idPeriodo}`);
         if (!g.ciclos || g.ciclos.length === 0) return;
-        div.innerHTML = `<div class="form-box"><h2>Desglose por ciclo y parcial</h2>
-          <p><small>Mínimo esperado de insumos por parcial en esta materia: <strong>${g.minimo_insumos}</strong>.</small></p></div>` +
-          g.ciclos.map(c => `<table><thead><tr><th colspan="4">${esc(c.nombre)} (peso anual ${esc(c.peso)} · formativa ${esc(c.peso_formativa)} / examen ${esc(c.peso_sumativa)})</th></tr>
-            <tr><th>Parcial</th><th>Promedio</th><th>Escala</th><th>Insumos</th></tr></thead><tbody>` +
-            c.parciales.map(p => `<tr><td>${esc(p.nombre)}</td>
-              <td>${p.promedio != null ? esc(p.promedio) : '—'}</td><td>${esc(p.escala)}</td>
-              <td>${p.n_insumos != null ? `${p.n_insumos}/${p.minimo}` + (p.faltan > 0 ? ` (faltan ${p.faltan})` : ' ✓') : '—'}</td></tr>`).join('') +
-            `<tr><td><strong>Promedio del ciclo</strong></td><td><strong>${c.promedio != null ? esc(c.promedio) : '—'}</strong></td>
-              <td colspan="2">${esc(c.escala)}</td></tr></tbody></table>`).join('');
+
+        div.innerHTML = `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial</h3>
+          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.</p>` +
+          g.ciclos.map((c, ci) => {
+            const promStr = c.promedio != null ? esc(c.promedio) : '—';
+            const escalaStr = c.escala || 'S/N';
+            const abierto = ci === 0 ? ' abierto' : '';
+            const parciales = c.parciales.map(p => {
+              const insHtml = p.n_insumos != null
+                ? (p.faltan > 0
+                  ? `<span class="ins-falta">${p.n_insumos}/${p.minimo} (faltan ${p.faltan})</span>`
+                  : `<span class="ins-ok">${p.n_insumos}/${p.minimo} &#10003;</span>`)
+                : '<span style="color:#9ca3af;">—</span>';
+              return `<div class="parcial-row">
+                <span class="parcial-nombre">${esc(p.nombre)}</span>
+                <span class="parcial-prom${p.promedio == null ? ' vacio' : ''}">${p.promedio != null ? esc(p.promedio) : '—'}</span>
+                <span>${badgeEscala(p.escala)}</span>
+                <span class="parcial-ins">${insHtml}</span>
+              </div>`;
+            }).join('');
+
+            return `<div class="ciclo-card${abierto}" id="ciclo-${ci}">
+              <div class="ciclo-header" onclick="document.getElementById('ciclo-${ci}').classList.toggle('abierto')">
+                <div class="ciclo-header-left">
+                  <div>
+                    <div class="ciclo-nombre">${esc(c.nombre)}</div>
+                    <div class="ciclo-meta">Peso anual ${esc(c.peso)} &middot; Formativa ${esc(c.peso_formativa)} / Examen ${esc(c.peso_sumativa)}</div>
+                  </div>
+                </div>
+                <div class="ciclo-header-right">
+                  <span class="ciclo-prom-badge">${promStr}</span>
+                  <span class="ciclo-escala-badge">${badgeEscala(escalaStr)}</span>
+                  <span class="ciclo-chevron">&#9660;</span>
+                </div>
+              </div>
+              <div class="ciclo-body">
+                <div class="parcial-row" style="background:#f8f9fb;font-weight:700;color:#6b7280;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.03em;">
+                  <span>Parcial</span><span style="text-align:center;">Promedio</span><span>Escala</span><span style="text-align:right;">Insumos</span>
+                </div>
+                ${parciales}
+              </div>
+            </div>`;
+          }).join('');
       } catch (err) { showError(err.message); }
     }
 
+    async function verDetallePropio() {
+      const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}`);
+      if (d.mensajeSinNotas) {
+        document.getElementById('resultado').innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`;
+        mostrar(3);
+        return;
+      }
+      renderDetalleDirecto(d);
+      mostrar(3);
+    }
+
+    function renderDetalleDirecto(d) {
+      const div = document.getElementById('resultado');
+      if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
+      const contador = (d.materiasTotales != null)
+        ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
+        : '';
+      const lista = d.materias || [];
+      div.innerHTML = contador +
+        lista.map((m, i) => {
+          const filas = m.parciales.length > 0
+            ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
+            : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
+          const prom = m.sin_notas
+            ? `<span class="mat-prom na">Sin calificar</span>`
+            : `<span class="mat-prom">${esc(m.promedio)}</span>`;
+          const esc_ = m.sin_notas
+            ? `<span class="mat-escala na">pendiente</span>`
+            : `<span class="mat-escala">${esc(m.escala)}</span>`;
+          return `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
+            <div class="mat-top">
+              <span class="mat-nombre">${esc(m.nombre)}</span>
+              ${prom}${esc_}
+              <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
+            </div>
+            <div class="mat-detalle" id="mat-det-${i}" style="display:none">
+              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluacion</th><th>Nota</th></tr></thead>
+              <tbody>${filas}</tbody></table></div>
+            </div>
+          </div>`;
+        }).join('');
+      const promGeneralBox = d.promedioGeneral != null
+        ? `<div class="prom-general-box">
+            <span class="prom-general-label">Promedio general del periodo</span>
+            <span class="prom-general-valor">${esc(d.promedioGeneral)}</span>
+          </div>`
+        : '';
+      div.innerHTML += promGeneralBox;
+    }
+
     (async () => {
-      if (!await initPage()) return;
+      const usuario = await initPage();
+      if (!usuario) return;
+      const esEstudiante = usuario.nombre_rol === 'estudiante';
       document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
       document.getElementById('btn-nomina').onclick = () => mostrar(2);
       try {
         await cargarPeriodos();
-        await cargarGrupos();
+        if (esEstudiante) {
+          await verDetallePropio();
+        } else {
+          await cargarGrupos();
+        }
       } catch (err) { showError(err.message); }
       document.getElementById('sel-periodo').onchange = async () => {
         const id = document.getElementById('sel-periodo').value;

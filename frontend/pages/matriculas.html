@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matriculas - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .mat-form-card {
+      background: white; border-radius: 12px; padding: 1.2rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1.5rem;
+    }
+    .mat-form-card h3 { font-size: 1rem; color: #1e3a8a; margin-bottom: 1rem; }
+    .mat-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
+    .mat-form-grid select { padding: 0.5rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.88rem; }
+    .mat-count { font-size: 0.82rem; color: #6b7280; margin-bottom: 0.5rem; }
+    @media (max-width: 768px) { .mat-form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Matriculas</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+
+    <div class="form-box">
+      <label for="sel-periodo">Periodo</label>
+      <select id="sel-periodo"></select>
+    </div>
+
+    <div class="mat-form-card" id="form-matricula">
+      <h3>Matricular estudiante</h3>
+      <div class="mat-form-grid">
+        <div>
+          <label for="sel-estudiante">Estudiante</label>
+          <select id="sel-estudiante"><option value="">Seleccionar...</option></select>
+        </div>
+        <div>
+          <label for="sel-curso">Curso</label>
+          <select id="sel-curso"><option value="">Sin curso</option></select>
+        </div>
+        <button class="btn-primary btn-sm" id="btn-matricular">Matricular</button>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="busqueda" placeholder="Buscar por nombre, apellido o cedula...">
+      <button class="btn-primary btn-sm" id="btn-buscar">Buscar</button>
+    </div>
+
+    <p class="mat-count" id="contador"></p>
+    <div id="lista"></div>
+    <div class="pagination" id="paginacion"></div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
+  <script>
+    let periodoId = '';
+    let page = 1;
+
+    async function cargarPeriodos() {
+      const per = await apiGet('/periodos/');
+      const sel = document.getElementById('sel-periodo');
+      sel.innerHTML = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
+      periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      sel.value = periodoId;
+    }
+
+    async function cargarOpciones() {
+      const d = await apiGet('/matriculas/opciones?id_periodo=' + encodeURIComponent(periodoId));
+      const selEst = document.getElementById('sel-estudiante');
+      selEst.innerHTML = '<option value="">Seleccionar...</option>' +
+        (d.estudiantes || []).map(e => `<option value="${e.id_estudiante}">${esc(e.apellidos)} ${esc(e.nombres)} (${esc(e.cedula)})</option>`).join('');
+      const selCur = document.getElementById('sel-curso');
+      selCur.innerHTML = '<option value="">Sin curso</option>' +
+        (d.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+    }
+
+    async function cargarLista(p) {
+      page = p || 1;
+      const q = document.getElementById('busqueda').value.trim();
+      let url = `/matriculas/?id_periodo=${encodeURIComponent(periodoId)}&page=${page}&limit=15`;
+      if (q) url += `&q=${encodeURIComponent(q)}`;
+      const d = await apiGet(url);
+      const div = document.getElementById('lista');
+      document.getElementById('contador').textContent = `${d.paginacion?.total || 0} estudiante(s) matriculado(s)`;
+
+      if (!d.datos || d.datos.length === 0) {
+        div.innerHTML = '<p>No hay estudiantes matriculados en este periodo.</p>';
+        renderPaginacion('paginacion', d.paginacion, () => {});
+        return;
+      }
+
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Cedula</th><th>Nombres</th><th>Apellidos</th><th>Curso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>` +
+        d.datos.map(e => `<tr>
+          <td>${esc(e.cedula)}</td>
+          <td>${esc(e.nombres)}</td>
+          <td>${esc(e.apellidos)}</td>
+          <td>${e.curso_nombre ? esc(e.curso_nombre) + ' ' + esc(e.paralelo || '') : '<em style="color:#9ca3af;">Sin curso</em>'}</td>
+          <td>${e.activo ? '<span style="color:#16a34a;font-weight:600;">Activo</span>' : '<span style="color:#dc2626;font-weight:600;">Inactivo</span>'}</td>
+          <td class="td-actions">
+            <button class="btn-delete btn-sm" data-id="${e.id_matricula}" data-nom="${esc(e.nombres)} ${esc(e.apellidos)}">Desmatricular</button>
+          </td>
+        </tr>`).join('') + '</tbody></table></div>';
+
+      renderPaginacion('paginacion', d.paginacion, (p) => cargarLista(p).catch(showError));
+
+      div.querySelectorAll('[data-id]').forEach(b => {
+        b.onclick = async () => {
+          if (!confirm(`Desmatricular a ${b.dataset.nom}?`)) return;
+          try {
+            await apiDelete('/matriculas/' + b.dataset.id);
+            cargarLista(page).catch(showError);
+            cargarOpciones().catch(showError);
+          } catch (err) { showError(err.message); }
+        };
+      });
+    }
+
+    (async () => {
+      if (!await initPage({ adminOnly: true })) return;
+      try {
+        await cargarPeriodos();
+        await Promise.all([cargarOpciones(), cargarLista(1)]);
+        document.getElementById('sel-periodo').onchange = async () => {
+          periodoId = document.getElementById('sel-periodo').value;
+          await Promise.all([cargarOpciones(), cargarLista(1)]);
+        };
+        document.getElementById('btn-buscar').onclick = () => cargarLista(1).catch(showError);
+        document.getElementById('busqueda').onkeydown = (e) => { if (e.key === 'Enter') cargarLista(1).catch(showError); };
+        document.getElementById('btn-matricular').onclick = async () => {
+          const idEst = document.getElementById('sel-estudiante').value;
+          const idCur = document.getElementById('sel-curso').value;
+          if (!idEst) { showError('Selecciona un estudiante.'); return; }
+          try {
+            await apiPost('/matriculas/', {
+              id_estudiante: Number(idEst),
+              id_periodo: Number(periodoId),
+              id_curso: idCur ? Number(idCur) : null
+            });
+            await Promise.all([cargarOpciones(), cargarLista(1)]);
+          } catch (err) { showError(err.message); }
+        };
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

@@ -32,6 +32,9 @@ function categoriaCase(columna = 'a.tabla_afectada') {
     return `(CASE ${whens} ELSE 'otros' END)`;
 }
 
+// Tablas internas que no deben aparecer en el filtro del frontend.
+const TABLAS_INTernerNA = ['profesor_materia_periodo', 'ciclos_evaluativos', 'parciales', 'tipos_evaluacion'];
+
 function tablasDeCategoria(categoria) {
     return CATEGORIAS[categoria] || null;
 }
@@ -60,6 +63,35 @@ router.get('/resumen', requireAuth, requireRole('administrador'), async (req, re
     } catch (error) {
         console.error('Error al cargar resumen de auditoria:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el resumen de auditoria.' });
+    }
+});
+
+// GET /api/auditoria/tablas?categoria= — tablas disponibles para el filtro
+router.get('/tablas', requireAuth, requireRole('administrador'), async (req, res) => {
+    try {
+        const categoria = req.query.categoria || '';
+        const wheres = [`a.tabla_afectada NOT IN (${TABLAS_EXCLUIDAS.map((t) => `'${t}'`).join(', ')})`];
+        const params = [];
+        if (categoria) {
+            const tablas = tablasDeCategoria(categoria);
+            if (tablas) {
+                wheres.push(`a.tabla_afectada IN (${tablas.map((t) => `'${t}'`).join(', ')})`);
+            }
+        }
+        const r = await pool.query(
+            `SELECT DISTINCT a.tabla_afectada
+             FROM auditoria a
+             WHERE ${wheres.join(' AND ')}
+             ORDER BY a.tabla_afectada`,
+            params
+        );
+        const tablas = r.rows
+            .map((row) => row.tabla_afectada)
+            .filter((t) => !TABLAS_INTernerNA.includes(t));
+        res.json({ tablas });
+    } catch (error) {
+        console.error('Error al cargar tablas de auditoria:', error.message);
+        res.status(500).json({ error: 'No se pudieron cargar las tablas.' });
     }
 });
 

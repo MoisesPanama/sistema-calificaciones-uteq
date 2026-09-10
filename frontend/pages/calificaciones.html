@@ -27,6 +27,7 @@
       <select id="sel-parcial"><option value="">-- Sin parcial específico --</option></select>
     </div>
     <div id="tabla"></div>
+    <div class="pagination" id="paginacion-cal"></div>
     <p><small>Las celdas vacias no se guardan (conservan la nota anterior). Aprueba con 7.</small></p>
     </main>
   </div>
@@ -34,9 +35,11 @@
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
     let ctx = null;
     let hayCambiosSinGuardar = false;
+    let calPage = 1;
 
     function params() {
       const p = new URLSearchParams();
@@ -45,6 +48,8 @@
       const c = document.getElementById('sel-curso').value;
       if (m) p.set('id_materia', m);
       if (c) p.set('id_curso', c);
+      p.set('page', calPage);
+      p.set('limit', 10);
       return p.toString();
     }
 
@@ -80,6 +85,7 @@
         await cargarCiclos();
       }
       renderTabla(data);
+      renderPaginacion('paginacion-cal', data.paginacion, (p) => { calPage = p; cargar(); });
       limpiarCambios();
     }
 
@@ -210,10 +216,12 @@
       await cargar(true).catch(showError);
       document.getElementById('sel-materia').onchange = async () => {
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de materia?')) return;
+        calPage = 1;
         await cargar().catch(showError);
       };
       document.getElementById('sel-curso').onchange = async () => {
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de curso?')) return;
+        calPage = 1;
         await cargar().catch(showError);
       };
       document.getElementById('sel-ciclo').onchange = async () => {

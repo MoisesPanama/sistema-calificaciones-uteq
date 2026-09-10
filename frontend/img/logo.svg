@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="200" height="220">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="100" cy="95" r="85"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Outer circle border -->
+  <circle cx="100" cy="95" r="88" fill="none" stroke="#1e3a5f" stroke-width="6"/>
+  <circle cx="100" cy="95" r="82" fill="none" stroke="#1e3a5f" stroke-width="2"/>
+  
+  <!-- Inner circle background -->
+  <circle cx="100" cy="95" r="82" fill="#f0f4f8"/>
+  
+  <!-- Open book -->
+  <g clip-path="url(#circleClip)">
+    <!-- Book spine -->
+    <rect x="96" y="80" width="8" height="75" fill="#1e3a5f"/>
+    
+    <!-- Left page -->
+    <path d="M 40 85 Q 40 75, 55 72 L 96 68 L 96 155 L 40 150 Z" fill="white" stroke="#c0c8d0" stroke-width="1"/>
+    <!-- Right page -->
+    <path d="M 160 85 Q 160 75, 145 72 L 104 68 L 104 155 L 160 150 Z" fill="white" stroke="#c0c8d0" stroke-width="1"/>
+    
+    <!-- Lines on left page -->
+    <line x1="50" y1="92" x2="90" y2="90" stroke="#b0c4de" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="102" x2="90" y2="100" stroke="#b0c4de" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="112" x2="90" y2="110" stroke="#b0c4de" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="122" x2="90" y2="120" stroke="#b0c4de" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="132" x2="75" y2="130" stroke="#b0c4de" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Grades on right page -->
+    <text x="115" y="96" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#2d5a27">A+</text>
+    <text x="120" y="110" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e3a5f">A</text>
+    <text x="113" y="124" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#c8a000">B+</text>
+    <text x="120" y="138" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e3a5f">A</text>
+    
+    <!-- Graduation cap -->
+    <!-- Cap base (diamond shape) -->
+    <polygon points="100,25 55,50 100,65 145,50" fill="#1e3a5f"/>
+    <!-- Cap top -->
+    <rect x="72" y="44" width="56" height="6" rx="1" fill="#1e3a5f"/>
+    <!-- Tassel -->
+    <line x1="145" y1="50" x2="155" y2="58" stroke="#d4a017" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="155" cy="60" r="4" fill="#d4a017"/>
+    <line x1="155" y1="64" x2="155" y2="78" stroke="#d4a017" stroke-width="2"/>
+    <line x1="153" y1="78" x2="157" y2="78" stroke="#d4a017" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text below circle -->
+  <text x="100" y="200" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="bold" fill="#1e3a5f">Gestión de Notas</text>
+  <text x="100" y="217" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" letter-spacing="4" fill="#d4a017">ACADÉMICAS</text>
+</svg>

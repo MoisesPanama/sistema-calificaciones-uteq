@@ -91,7 +91,6 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
         res.status(201).json({ ok: true, id_curso: r.rows[0].id_curso });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        console.error('Error al crear curso:', error.message);
         if (error.code === '23505') {
             return res.status(409).json({ error: 'Ya existe ese curso y paralelo en el periodo.' });
         }

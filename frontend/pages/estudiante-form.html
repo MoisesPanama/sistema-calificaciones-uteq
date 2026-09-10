@@ -17,10 +17,29 @@
     <form id="form-est" class="form-box">
       <label for="cedula">Cedula</label>
       <input type="text" id="cedula" required>
-      <label for="nombres">Nombres</label>
-      <input type="text" id="nombres" required>
-      <label for="apellidos">Apellidos</label>
-      <input type="text" id="apellidos" required>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+        <div>
+          <label for="nombre1">Primer nombre</label>
+          <input type="text" id="nombre1" required>
+        </div>
+        <div>
+          <label for="nombre2">Segundo nombre</label>
+          <input type="text" id="nombre2" required>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+        <div>
+          <label for="apellido1">Primer apellido</label>
+          <input type="text" id="apellido1" required>
+        </div>
+        <div>
+          <label for="apellido2">Segundo apellido</label>
+          <input type="text" id="apellido2" required>
+        </div>
+      </div>
+      <div id="email-preview" style="background:#eff6ff;padding:0.5rem 0.8rem;border-radius:8px;font-size:0.85rem;color:#1e3a8a;margin:0.5rem 0;display:none;">
+        Email generado: <strong id="email-gen"></strong> | Password: <strong>UTEQ2026</strong>
+      </div>
       <label for="fecha_nacimiento">Fecha de nacimiento</label>
       <input type="date" id="fecha_nacimiento" required>
       <label for="rep-buscar">Representante (escribe para buscar; si no existe, créalo abajo)</label>
@@ -29,20 +48,33 @@
       <div id="rep-resultados" style="border:1px solid #e5e7eb;border-radius:8px;margin-top:0.3rem;max-height:180px;overflow-y:auto;display:none;"></div>
       <p id="rep-elegido" style="font-size:0.85rem;color:#1e3a8a;margin-top:0.4rem;"></p>
       <div class="card" style="margin-top:0.8rem;background:#f8fafc;">
-        <h3 style="font-size:0.88rem;color:#1e3a8a;margin-bottom:0.6rem;">＋ Nuevo representante</h3>
-        <label for="rep-nombres" style="font-size:0.82rem;font-weight:600;">Nombres</label>
-        <input type="text" id="rep-nombres" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.5rem;">
-        <label for="rep-apellidos" style="font-size:0.82rem;font-weight:600;">Apellidos</label>
-        <input type="text" id="rep-apellidos" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.5rem;">
+        <h3 style="font-size:0.88rem;color:#1e3a8a;margin-bottom:0.6rem;">+ Nuevo representante</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
           <div>
-            <label for="rep-telefono" style="font-size:0.82rem;font-weight:600;">Teléfono</label>
-            <input type="text" id="rep-telefono" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+            <label style="font-size:0.82rem;font-weight:600;">Primer nombre</label>
+            <input type="text" id="rep-nombre1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
           </div>
           <div>
-            <label for="rep-email" style="font-size:0.82rem;font-weight:600;">Email</label>
-            <input type="email" id="rep-email" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+            <label style="font-size:0.82rem;font-weight:600;">Segundo nombre</label>
+            <input type="text" id="rep-nombre2" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
           </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
+          <div>
+            <label style="font-size:0.82rem;font-weight:600;">Primer apellido</label>
+            <input type="text" id="rep-apellido1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+          </div>
+          <div>
+            <label style="font-size:0.82rem;font-weight:600;">Segundo apellido</label>
+            <input type="text" id="rep-apellido2" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+          <label style="font-size:0.82rem;font-weight:600;">Telefono</label>
+          <input type="text" id="rep-telefono" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+        </div>
+        <div id="rep-email-preview" style="background:#eff6ff;padding:0.4rem 0.6rem;border-radius:8px;font-size:0.82rem;color:#1e3a8a;margin-top:0.5rem;display:none;">
+          Email generado: <strong id="rep-email-gen"></strong>
         </div>
         <button type="button" class="btn-secondary btn-sm" id="rep-crear" style="margin-top:0.7rem;">Crear y elegir</button>
       </div>
@@ -64,6 +96,45 @@
     const id = qs('id');
     let repTimer = null;
 
+    function generarEmail(nombres, apellidos) {
+      const pNom = nombres.trim().split(/\s+/);
+      const pApe = apellidos.trim().split(/\s+/);
+      const primera = pNom[0] ? pNom[0][0].toLowerCase() : '';
+      const primerApe = pApe[0] ? pApe[0].toLowerCase() : '';
+      const segunda = pApe[1] ? pApe[1][0].toLowerCase() : '';
+      return `${primera}${primerApe}${segunda}@uteq.edu.ec`;
+    }
+
+    function actualizarEmailPreview() {
+      const n1 = document.getElementById('nombre1').value.trim();
+      const n2 = document.getElementById('nombre2').value.trim();
+      const a1 = document.getElementById('apellido1').value.trim();
+      const a2 = document.getElementById('apellido2').value.trim();
+      const preview = document.getElementById('email-preview');
+      if (n1 && a1 && a2) {
+        const email = generarEmail(n1 + ' ' + n2, a1 + ' ' + a2);
+        document.getElementById('email-gen').textContent = email;
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+
+    function actualizarRepEmailPreview() {
+      const n1 = document.getElementById('rep-nombre1').value.trim();
+      const n2 = document.getElementById('rep-nombre2').value.trim();
+      const a1 = document.getElementById('rep-apellido1').value.trim();
+      const a2 = document.getElementById('rep-apellido2').value.trim();
+      const preview = document.getElementById('rep-email-preview');
+      if (n1 && a1 && a2) {
+        const email = generarEmail(n1 + ' ' + n2, a1 + ' ' + a2);
+        document.getElementById('rep-email-gen').textContent = email;
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+
     function elegirRepresentante(rep) {
       document.getElementById('id_representante').value = rep.id_representante;
       document.getElementById('rep-buscar').value = `${rep.nombres} ${rep.apellidos}`;
@@ -80,9 +151,8 @@
       try {
         const d = await apiGet('/representantes/?q=' + encodeURIComponent(q) + '&limit=8');
         if (!d.datos || d.datos.length === 0) {
-          div.innerHTML = '<p style="padding:0.6rem;font-size:0.85rem;color:#6b7280;">Sin coincidencias: créalo abajo.</p>';
+          div.innerHTML = '<p style="padding:0.6rem;font-size:0.85rem;color:#6b7280;">Sin coincidencias: crealo abajo.</p>';
         } else {
-          // Puede haber homonimos: se muestra telefono/email para distinguir.
           div.innerHTML = d.datos.map(r =>
             `<div data-rep='${JSON.stringify({ id_representante: r.id_representante, nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono, email: r.email })}'
               style="padding:0.55rem 0.7rem;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:0.87rem;">
@@ -101,6 +171,14 @@
 
     (async () => {
       if (!await initPage()) return;
+      // Email preview listeners for student
+      ['nombre1', 'nombre2', 'apellido1', 'apellido2'].forEach(id => {
+        document.getElementById(id).addEventListener('input', actualizarEmailPreview);
+      });
+      // Email preview listeners for representante
+      ['rep-nombre1', 'rep-nombre2', 'rep-apellido1', 'rep-apellido2'].forEach(id => {
+        document.getElementById(id).addEventListener('input', actualizarRepEmailPreview);
+      });
       const buscar = document.getElementById('rep-buscar');
       buscar.addEventListener('input', () => {
         document.getElementById('id_representante').value = '';
@@ -109,20 +187,18 @@
         repTimer = setTimeout(() => buscarRepresentantes(buscar.value), 300);
       });
       document.getElementById('rep-crear').onclick = async () => {
-        const nom = document.getElementById('rep-nombres').value.trim();
-        const ape = document.getElementById('rep-apellidos').value.trim();
+        const nom = (document.getElementById('rep-nombre1').value.trim() + ' ' + document.getElementById('rep-nombre2').value.trim()).trim();
+        const ape = (document.getElementById('rep-apellido1').value.trim() + ' ' + document.getElementById('rep-apellido2').value.trim()).trim();
         try {
           const r = await apiPost('/representantes/', {
             nombres: nom,
             apellidos: ape,
-            telefono: document.getElementById('rep-telefono').value || null,
-            email: document.getElementById('rep-email').value || null
+            telefono: document.getElementById('rep-telefono').value || null
           });
           const det = await apiGet('/representantes/' + r.id_representante);
           elegirRepresentante(det.representante);
-          showOk('Representante creado y elegido.');
+          showOk(`Representante creado. Email: ${r.email} | Password: UTEQ2026`);
         } catch (err) {
-          // 409 = ya existe uno igual: re-buscar y elegir el existente.
           if (/ya existe/i.test(err.message) && nom && ape) {
             try {
               const d = await apiGet('/representantes/?q=' + encodeURIComponent(nom + ' ' + ape) + '&limit=5');
@@ -130,10 +206,10 @@
                 r.nombres.toLowerCase() === nom.toLowerCase() && r.apellidos.toLowerCase() === ape.toLowerCase());
               if (igual) {
                 elegirRepresentante(igual);
-                showOk('Ya existía: elegido el representante existente.');
+                showOk('Ya existia: elegido el representante existente.');
                 return;
               }
-            } catch (_) { /* cae al error original */ }
+            } catch (_) {}
           }
           showError(err.message);
         }
@@ -143,36 +219,50 @@
         document.getElementById('wrap-activo').style.display = 'flex';
         const { estudiante } = await apiGet('/estudiantes/' + id);
         document.getElementById('cedula').value = estudiante.cedula || '';
-        document.getElementById('nombres').value = estudiante.nombres || '';
-        document.getElementById('apellidos').value = estudiante.apellidos || '';
+        // Split names
+        const nomParts = (estudiante.nombres || '').split(/\s+/);
+        document.getElementById('nombre1').value = nomParts[0] || '';
+        document.getElementById('nombre2').value = nomParts.slice(1).join(' ');
+        const apeParts = (estudiante.apellidos || '').split(/\s+/);
+        document.getElementById('apellido1').value = apeParts[0] || '';
+        document.getElementById('apellido2').value = apeParts.slice(1).join(' ');
+        actualizarEmailPreview();
         document.getElementById('fecha_nacimiento').value =
           estudiante.fecha_nacimiento ? new Date(estudiante.fecha_nacimiento).toISOString().split('T')[0] : '';
         if (estudiante.id_representante) {
           try {
             const det = await apiGet('/representantes/' + estudiante.id_representante);
             elegirRepresentante(det.representante);
-          } catch (_) { /* representante borrado: elegir de nuevo */ }
+          } catch (_) {}
         }
         document.getElementById('activo').checked = !!estudiante.activo;
       }
       document.getElementById('form-est').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!document.getElementById('id_representante').value) {
-          showError('Busca y elige un representante (o créalo abajo).');
+          showError('Busca y elige un representante (o crealo abajo).');
           return;
         }
+        const nombres = (document.getElementById('nombre1').value.trim() + ' ' + document.getElementById('nombre2').value.trim()).trim();
+        const apellidos = (document.getElementById('apellido1').value.trim() + ' ' + document.getElementById('apellido2').value.trim()).trim();
         const body = {
           cedula: document.getElementById('cedula').value,
-          nombres: document.getElementById('nombres').value,
-          apellidos: document.getElementById('apellidos').value,
+          nombres,
+          apellidos,
           fecha_nacimiento: document.getElementById('fecha_nacimiento').value,
           id_representante: document.getElementById('id_representante').value,
           activo: document.getElementById('activo').checked
         };
         try {
-          if (id) await apiPut('/estudiantes/' + id, body);
-          else await apiPost('/estudiantes/', body);
-          location.href = 'estudiantes.html';
+          let res;
+          if (id) res = await apiPut('/estudiantes/' + id, body);
+          else res = await apiPost('/estudiantes/', body);
+          if (res.email) {
+            showOk(`Estudiante guardado. Email: ${res.email} | Password: UTEQ2026`);
+            setTimeout(() => { location.href = 'estudiantes.html'; }, 2000);
+          } else {
+            location.href = 'estudiantes.html';
+          }
         } catch (err) { showError(err.message); }
       });
     })();

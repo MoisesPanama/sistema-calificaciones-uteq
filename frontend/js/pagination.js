@@ -1,11 +1,9 @@
 // =========================================================
-// pagination.js — Plan v2 Fase 4 (paginacion transversal)
-// Componente COMPARTIDO de controles de paginacion.
+// pagination.js — Paginación transversal estilo moderno
+// Componente COMPARTIDO de controles de paginación.
 // Uso: renderPaginacion('id-contenedor', pag, (nuevaPagina) => ...)
 // donde `pag` es el objeto `paginacion` de la API
 // ({ page, limit, total, totalPages }).
-// Requiere los estilos .pagination de style.css (o los que cada
-// pagina defina con las mismas clases).
 // =========================================================
 
 function renderPaginacion(contenedorId, pag, onPage) {
@@ -14,19 +12,62 @@ function renderPaginacion(contenedorId, pag, onPage) {
     : contenedorId;
   if (!div) return;
   if (!pag || pag.totalPages <= 1) { div.innerHTML = ''; return; }
+
+  const isFirst = pag.page <= 1;
+  const isLast = pag.page >= pag.totalPages;
+  const current = pag.page;
+  const total = pag.totalPages;
+
   let html = '';
-  html += `<button ${pag.page <= 1 ? 'disabled' : ''} data-pag="${pag.page - 1}">Anterior</button>`;
-  const start = Math.max(1, pag.page - 2);
-  const end = Math.min(pag.totalPages, pag.page + 2);
-  if (start > 1) html += `<button data-pag="1">1</button><span class="page-info">...</span>`;
-  for (let p = start; p <= end; p++) {
-    html += `<button class="${p === pag.page ? 'active' : ''}" data-pag="${p}">${p}</button>`;
+
+  // Botones de navegación: primero, anterior
+  html += `<button class="pag-arrow" ${isFirst ? 'disabled' : ''} data-pag="1" title="Primera pagina">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><line x1="18" y1="6" x2="6" y2="6"/></svg>
+  </button>`;
+  html += `<button class="pag-arrow" ${isFirst ? 'disabled' : ''} data-pag="${current - 1}" title="Pagina anterior">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>`;
+
+  // Página actual
+  html += `<button class="pag-num active" data-pag="${current}">${current}</button>`;
+
+  // "of" + total de páginas
+  html += `<span class="pag-of">of</span>`;
+  html += `<button class="pag-num" data-pag="${total}">${total}</button>`;
+
+  // Siguiente, último
+  html += `<button class="pag-arrow pag-arrow-active" ${isLast ? 'disabled' : ''} data-pag="${current + 1}" title="Pagina siguiente">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>`;
+  html += `<button class="pag-arrow pag-arrow-active" ${isLast ? 'disabled' : ''} data-pag="${total}" title="Ultima pagina">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><line x1="6" y1="6" x2="18" y2="6"/></svg>
+  </button>`;
+
+  // Texto informativo
+  html += `<span class="pag-info">Page ${current} of ${total}</span>`;
+
+  // Selector de página
+  html += `<span class="pag-jump">Page <select class="pag-select" data-role="jump">`;
+  for (let i = 1; i <= total; i++) {
+    html += `<option value="${i}"${i === current ? ' selected' : ''}>${i}</option>`;
   }
-  if (end < pag.totalPages) html += `<span class="page-info">...</span><button data-pag="${pag.totalPages}">${pag.totalPages}</button>`;
-  html += `<button ${pag.page >= pag.totalPages ? 'disabled' : ''} data-pag="${pag.page + 1}">Siguiente</button>`;
-  html += `<span class="page-info">Página ${pag.page} de ${pag.totalPages} (${pag.total} registros)</span>`;
+  html += `</select> of ${total}</span>`;
+
   div.innerHTML = html;
-  div.querySelectorAll('[data-pag]').forEach(b => {
-    b.onclick = () => onPage(Number(b.dataset.pag));
+
+  // Eventos: botones numéricos
+  div.querySelectorAll('.pag-num[data-pag], .pag-arrow[data-pag]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!b.disabled && !b.classList.contains('active')) {
+        onPage(Number(b.dataset.pag));
+      }
+    });
+  });
+
+  // Evento: selector de página
+  div.querySelectorAll('.pag-select[data-role="jump"]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      onPage(Number(sel.value));
+    });
   });
 }

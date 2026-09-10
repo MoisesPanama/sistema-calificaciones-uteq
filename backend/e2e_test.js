@@ -248,10 +248,11 @@ const loginAs = async (email) => {
   await loginAs('admin@uteq.edu.ec');
   const busq = await get('/representantes/?q=castillo&limit=5');
   log('Buscar representantes', busq.status === 200 && busq.body.datos?.length > 0, `${busq.body.datos?.length} resultados`);
-  const nomRep = `E2E-Rep-${stamp}`;
-  const creaRep = await post('/representantes/', { nombres: nomRep, apellidos: 'Prueba', telefono: '0990000001' });
+  const nomRep = `Administrador${stamp} Alfa`;
+  const apeRep = `Beta${stamp} Gamma`;
+  const creaRep = await post('/representantes/', { nombres: nomRep, apellidos: apeRep, telefono: '0990000001' });
   log('Crear representante', creaRep.status === 201 && !!creaRep.body.id_representante, creaRep.body.error || '');
-  const dupRep = await post('/representantes/', { nombres: nomRep, apellidos: 'Prueba', telefono: '0990000001' });
+  const dupRep = await post('/representantes/', { nombres: nomRep, apellidos: apeRep, telefono: '0990000001' });
   log('Duplicado -> 409 con id', dupRep.status === 409 && !!dupRep.body.id_representante, '');
   if (creaRep.body.id_representante) {
     const borraRep = await del(`/representantes/${creaRep.body.id_representante}`);

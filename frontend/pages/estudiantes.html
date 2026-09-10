@@ -46,9 +46,19 @@
           d.datos.map(e => `<tr><td>${esc(e.cedula)}</td><td>${esc(e.nombres)}</td>
             <td>${esc(e.apellidos)}</td><td>${new Date(e.fecha_nacimiento).toLocaleDateString('es-EC')}</td>
             <td>${esc(e.rep_nombres)} ${esc(e.rep_apellidos)}</td>
-            <td>${e.activo ? 'Activo' : 'Inactivo'}</td>
-            <td><a href="estudiante-form.html?id=${e.id_estudiante}">Editar</a></td></tr>`).join('') +
+            <td><button class="btn-toggle ${e.activo ? 'activo' : 'inactivo'}" data-toggle="${e.id_estudiante}" title="Click para cambiar estado">${e.activo ? 'Activo' : 'Inactivo'}</button></td>
+            <td class="td-actions"><a href="estudiante-form.html?id=${e.id_estudiante}">Editar</a></td></tr>`).join('') +
           '</tbody></table>';
+
+        div.querySelectorAll('[data-toggle]').forEach(btn => {
+          btn.onclick = async () => {
+            try {
+              const r = await api('/estudiantes/' + btn.dataset.toggle + '/activo', { method: 'PATCH' });
+              btn.className = 'btn-toggle ' + (r.activo ? 'activo' : 'inactivo');
+              btn.textContent = r.activo ? 'Activo' : 'Inactivo';
+            } catch (err) { showError(err.message); }
+          };
+        });
         renderPaginacion('paginacion-est', d.paginacion, (p) => cargar(estState.q, p));
       } catch (err) { showError(err.message); }
     }
