@@ -161,6 +161,7 @@ psql -U postgres -d calificaciones_uteq -f database/11_notas_realistas.sql
 psql -U postgres -d calificaciones_uteq -f database/12_fix_permisos_hashes.sql
 psql -U postgres -d calificaciones_uteq -f database/13_permisos_minimos.sql
 psql -U postgres -d calificaciones_uteq -f database/14_log_respaldos.sql
+psql -U postgres -d calificaciones_uteq -f database/15_triggers_catalogos.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -281,6 +282,15 @@ sistema-calificaciones-uteq/
 | GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
 | GET | `/api/catalogos/ciclos` | Ciclos del periodo (`?id_periodo=`) |
 | GET | `/api/catalogos/parciales` | Parciales del ciclo (`?id_ciclo=`) |
+| GET/POST | `/api/cursos/` | Cursos del periodo / crear (solo admin) |
+| PUT/DELETE | `/api/cursos/:id` | Editar / eliminar si no tiene uso (solo admin) |
+| GET | `/api/cursos/tutores` | Profesores para tutor |
+| GET/POST | `/api/ciclos/` | Ciclos del periodo / crear (solo admin, avisa si Σ pesos ≠ 1) |
+| PUT/DELETE | `/api/ciclos/:id` | Editar / eliminar si no tiene notas (solo admin) |
+| GET/POST | `/api/parciales/` | Parciales del ciclo / crear (solo admin) |
+| PUT/DELETE | `/api/parciales/:id` | Editar / eliminar si no tiene notas (solo admin) |
+| GET/POST | `/api/tipos/` | Tipos de evaluación / crear (solo admin) |
+| PUT/DELETE | `/api/tipos/:id` | Editar / eliminar si no tiene notas (solo admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

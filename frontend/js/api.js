@@ -22,6 +22,7 @@ async function api(path, options = {}) {
 async function apiGet(path) { return api(path); }
 async function apiPost(path, body) { return api(path, { method: 'POST', body }); }
 async function apiPut(path, body) { return api(path, { method: 'PUT', body }); }
+async function apiDelete(path) { return api(path, { method: 'DELETE' }); }
 
 function qs(name) { return new URLSearchParams(location.search).get(name); }
 function esc(s) {

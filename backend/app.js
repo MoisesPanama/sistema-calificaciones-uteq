@@ -65,6 +65,10 @@ app.use('/api/consulta', require('./routes/consulta'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/auditoria', require('./routes/auditoria'));
 app.use('/api/catalogos', require('./routes/catalogos'));
+app.use('/api/cursos', require('./routes/cursos'));
+app.use('/api/ciclos', require('./routes/ciclos'));
+app.use('/api/parciales', require('./routes/parciales'));
+app.use('/api/tipos', require('./routes/tipos_evaluacion'));
 app.use('/api/respaldos', require('./routes/respaldos'));
 app.use('/api/psicologo', require('./routes/psicologo'));
 

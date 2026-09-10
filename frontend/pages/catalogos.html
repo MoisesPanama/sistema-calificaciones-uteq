@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogos - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+    .tabs button {
+      padding: 0.5rem 1.1rem; border: 1px solid #d1d5db; border-radius: 8px;
+      background: white; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #374151;
+    }
+    .tabs button.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .advertencia {
+      background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;
+      border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.85rem; margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Catálogos (Maestro de Datos)</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+
+    <div class="tabs">
+      <button id="tab-btn-cursos" class="active">Cursos</button>
+      <button id="tab-btn-ciclos">Ciclos y Parciales</button>
+      <button id="tab-btn-tipos">Tipos de Evaluación</button>
+    </div>
+
+    <!-- ============ CURSOS ============ -->
+    <section id="tab-cursos" class="tab-panel active">
+      <div class="form-box">
+        <label for="cur-periodo">Periodo</label>
+        <select id="cur-periodo"></select>
+      </div>
+      <div class="grid-2">
+        <div id="lista-cursos"></div>
+        <div class="card">
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;" id="cur-form-titulo">Nuevo curso</h2>
+          <input type="hidden" id="cur-id">
+          <label for="cur-nombre" style="font-size:0.82rem;font-weight:600;">Nombre</label>
+          <input type="text" id="cur-nombre" placeholder="Octavo EGB" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="cur-paralelo" style="font-size:0.82rem;font-weight:600;">Paralelo</label>
+          <input type="text" id="cur-paralelo" placeholder="A" maxlength="10" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="cur-tutor" style="font-size:0.82rem;font-weight:600;">Tutor (opcional)</label>
+          <select id="cur-tutor" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Sin tutor --</option></select>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" id="cur-guardar">Guardar</button>
+            <button class="btn-secondary" id="cur-cancelar" style="display:none;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CICLOS Y PARCIALES ============ -->
+    <section id="tab-ciclos" class="tab-panel">
+      <div class="form-box">
+        <label for="cic-periodo">Periodo</label>
+        <select id="cic-periodo"></select>
+      </div>
+      <div id="cic-advertencia"></div>
+      <div class="grid-2">
+        <div>
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.6rem;">Ciclos del periodo</h2>
+          <div id="lista-ciclos"></div>
+          <h2 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Parciales del ciclo seleccionado</h2>
+          <div id="lista-parciales"><p style="color:#6b7280;font-size:0.9rem;">Seleccione un ciclo.</p></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:1rem;">
+            <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;" id="cic-form-titulo">Nuevo ciclo</h2>
+            <input type="hidden" id="cic-id">
+            <label for="cic-nombre" style="font-size:0.82rem;font-weight:600;">Nombre</label>
+            <input type="text" id="cic-nombre" placeholder="Quimestre 1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <label for="cic-tipo" style="font-size:0.82rem;font-weight:600;">Tipo</label>
+            <select id="cic-tipo" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+              <option value="quimestre">Quimestre</option>
+              <option value="trimestre">Trimestre</option>
+              <option value="bimestre">Bimestre</option>
+              <option value="semestre">Semestre</option>
+              <option value="otro">Otro</option>
+            </select>
+            <label for="cic-orden" style="font-size:0.82rem;font-weight:600;">Orden</label>
+            <input type="number" id="cic-orden" min="1" step="1" value="1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <label for="cic-peso" style="font-size:0.82rem;font-weight:600;">Peso (0.01 – 1.00)</label>
+            <input type="number" id="cic-peso" min="0.01" max="1" step="0.01" value="0.50" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;">
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn-primary" id="cic-guardar">Guardar</button>
+              <button class="btn-secondary" id="cic-cancelar" style="display:none;">Cancelar</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;" id="par-form-titulo">Nuevo parcial</h2>
+            <input type="hidden" id="par-id">
+            <label for="par-ciclo" style="font-size:0.82rem;font-weight:600;">Ciclo</label>
+            <select id="par-ciclo" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
+            <label for="par-nombre" style="font-size:0.82rem;font-weight:600;">Nombre</label>
+            <input type="text" id="par-nombre" placeholder="Parcial 1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <label for="par-orden" style="font-size:0.82rem;font-weight:600;">Orden</label>
+            <input type="number" id="par-orden" min="1" step="1" value="1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;">
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn-primary" id="par-guardar">Guardar</button>
+              <button class="btn-secondary" id="par-cancelar" style="display:none;">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TIPOS ============ -->
+    <section id="tab-tipos" class="tab-panel">
+      <div class="grid-2">
+        <div id="lista-tipos"></div>
+        <div class="card">
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;" id="tip-form-titulo">Nuevo tipo</h2>
+          <input type="hidden" id="tip-id">
+          <label for="tip-nombre" style="font-size:0.82rem;font-weight:600;">Nombre</label>
+          <input type="text" id="tip-nombre" placeholder="Tarea" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="tip-peso" style="font-size:0.82rem;font-weight:600;">Peso (0.01 – 1.00)</label>
+          <input type="number" id="tip-peso" min="0.01" max="1" step="0.01" value="1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="tip-categoria" style="font-size:0.82rem;font-weight:600;">Categoría</label>
+          <select id="tip-categoria" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <option value="formativa">Formativa</option>
+            <option value="sumativa">Sumativa</option>
+            <option value="diagnostica">Diagnóstica (no promedia)</option>
+          </select>
+          <label style="font-size:0.85rem;display:block;margin-bottom:0.4rem;"><input type="checkbox" id="tip-examen"> Es examen de ciclo</label>
+          <label style="font-size:0.85rem;display:block;margin-bottom:0.8rem;"><input type="checkbox" id="tip-cuenta" checked> Cuenta para el promedio</label>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" id="tip-guardar">Guardar</button>
+            <button class="btn-secondary" id="tip-cancelar" style="display:none;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    let periodoId = '';
+    let cicloSel = '';
+
+    function tabs() {
+      const defs = [['cursos'], ['ciclos'], ['tipos']];
+      defs.forEach(([n]) => {
+        document.getElementById('tab-btn-' + n).onclick = () => {
+          defs.forEach(([m]) => {
+            document.getElementById('tab-btn-' + m).classList.toggle('active', m === n);
+            document.getElementById('tab-' + m).classList.toggle('active', m === n);
+          });
+        };
+      });
+    }
+
+    function botonesEditarEliminar(id, tipo) {
+      return `<td class="td-actions" style="display:flex;gap:0.4rem;">
+        <button class="btn-secondary btn-sm" data-editar-${tipo}="${id}">Editar</button>
+        <button class="btn-secondary btn-sm btn-danger-text" data-eliminar-${tipo}="${id}">Eliminar</button>
+      </td>`;
+    }
+
+    // ---------- CURSOS ----------
+    async function cargarCursos() {
+      const d = await apiGet('/cursos/?id_periodo=' + encodeURIComponent(periodoId));
+      const div = document.getElementById('lista-cursos');
+      if (!d.cursos || d.cursos.length === 0) { div.innerHTML = '<p>No hay cursos en este periodo.</p>'; return; }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Curso</th><th>Paralelo</th><th>Tutor</th><th></th></tr></thead><tbody>` +
+        d.cursos.map(c => `<tr><td>${esc(c.nombre)}</td><td>${esc(c.paralelo)}</td>
+          <td>${c.tutor ? esc(c.tutor) : '—'}</td>${botonesEditarEliminar(c.id_curso, 'cur')}</tr>`).join('') +
+        '</tbody></table></div>';
+      div.querySelectorAll('[data-editar-cur]').forEach(b => b.onclick = async () => {
+        const c = d.cursos.find(x => String(x.id_curso) === b.dataset.editarCur);
+        document.getElementById('cur-id').value = c.id_curso;
+        document.getElementById('cur-nombre').value = c.nombre;
+        document.getElementById('cur-paralelo').value = c.paralelo;
+        document.getElementById('cur-tutor').value = c.id_tutor || '';
+        document.getElementById('cur-form-titulo').textContent = 'Editar curso';
+        document.getElementById('cur-cancelar').style.display = 'inline-block';
+      });
+      div.querySelectorAll('[data-eliminar-cur]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Eliminar este curso?')) return;
+        try {
+          const r = await apiDelete('/cursos/' + b.dataset.eliminarCur);
+          showOk(r.mensaje); await cargarCursos();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    function limpiarCurso() {
+      document.getElementById('cur-id').value = '';
+      document.getElementById('cur-nombre').value = '';
+      document.getElementById('cur-paralelo').value = '';
+      document.getElementById('cur-tutor').value = '';
+      document.getElementById('cur-form-titulo').textContent = 'Nuevo curso';
+      document.getElementById('cur-cancelar').style.display = 'none';
+    }
+
+    // ---------- CICLOS ----------
+    async function cargarCiclos() {
+      const d = await apiGet('/ciclos/?id_periodo=' + encodeURIComponent(periodoId));
+      const div = document.getElementById('lista-ciclos');
+      const selPar = document.getElementById('par-ciclo');
+      if (!d.ciclos || d.ciclos.length === 0) {
+        div.innerHTML = '<p>No hay ciclos en este periodo.</p>';
+        selPar.innerHTML = '';
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Orden</th><th>Nombre</th><th>Tipo</th><th>Peso</th><th>Parciales</th><th></th></tr></thead><tbody>` +
+        d.ciclos.map(c => `<tr style="${String(c.id_ciclo) === String(cicloSel) ? 'background:#eff6ff;' : ''}">
+          <td>${c.orden}</td><td><a href="#" data-ver-ciclo="${c.id_ciclo}">${esc(c.nombre)}</a></td>
+          <td>${esc(c.tipo)}</td><td>${esc(c.peso)}</td><td>${c.n_parciales}</td>
+          ${botonesEditarEliminar(c.id_ciclo, 'cic')}</tr>`).join('') +
+        '</tbody></table></div>';
+      selPar.innerHTML = d.ciclos.map(c => `<option value="${c.id_ciclo}" ${String(c.id_ciclo) === String(cicloSel) ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('');
+      if (!cicloSel) cicloSel = String(d.ciclos[0].id_ciclo);
+      div.querySelectorAll('[data-ver-ciclo]').forEach(a => a.onclick = (e) => {
+        e.preventDefault();
+        cicloSel = a.dataset.verCiclo;
+        document.getElementById('par-ciclo').value = cicloSel;
+        cargarCiclos().then(cargarParciales).catch(showError);
+      });
+      div.querySelectorAll('[data-editar-cic]').forEach(b => b.onclick = async () => {
+        const c = d.ciclos.find(x => String(x.id_ciclo) === b.dataset.editarCic);
+        document.getElementById('cic-id').value = c.id_ciclo;
+        document.getElementById('cic-nombre').value = c.nombre;
+        document.getElementById('cic-tipo').value = c.tipo;
+        document.getElementById('cic-orden').value = c.orden;
+        document.getElementById('cic-peso').value = c.peso;
+        document.getElementById('cic-form-titulo').textContent = 'Editar ciclo';
+        document.getElementById('cic-cancelar').style.display = 'inline-block';
+      });
+      div.querySelectorAll('[data-eliminar-cic]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Eliminar este ciclo?')) return;
+        try {
+          const r = await apiDelete('/ciclos/' + b.dataset.eliminarCic);
+          showOk(r.mensaje); cicloSel = '';
+          await cargarCiclos(); await cargarParciales();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    function limpiarCiclo() {
+      document.getElementById('cic-id').value = '';
+      document.getElementById('cic-nombre').value = '';
+      document.getElementById('cic-orden').value = '1';
+      document.getElementById('cic-peso').value = '0.50';
+      document.getElementById('cic-form-titulo').textContent = 'Nuevo ciclo';
+      document.getElementById('cic-cancelar').style.display = 'none';
+    }
+
+    // ---------- PARCIALES ----------
+    async function cargarParciales() {
+      const div = document.getElementById('lista-parciales');
+      if (!cicloSel) { div.innerHTML = '<p style="color:#6b7280;font-size:0.9rem;">Seleccione un ciclo.</p>'; return; }
+      const d = await apiGet('/parciales/?id_ciclo=' + encodeURIComponent(cicloSel));
+      if (!d.parciales || d.parciales.length === 0) { div.innerHTML = '<p>Este ciclo aún no tiene parciales.</p>'; return; }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Orden</th><th>Nombre</th><th>Notas</th><th></th></tr></thead><tbody>` +
+        d.parciales.map(p => `<tr><td>${p.orden}</td><td>${esc(p.nombre)}</td><td>${p.n_notas}</td>` +
+          botonesEditarEliminar(p.id_parcial, 'par')).join('') +
+        '</tbody></table></div>';
+      div.querySelectorAll('[data-editar-par]').forEach(b => b.onclick = async () => {
+        const p = d.parciales.find(x => String(x.id_parcial) === b.dataset.editarPar);
+        document.getElementById('par-id').value = p.id_parcial;
+        document.getElementById('par-ciclo').value = cicloSel;
+        document.getElementById('par-nombre').value = p.nombre;
+        document.getElementById('par-orden').value = p.orden;
+        document.getElementById('par-form-titulo').textContent = 'Editar parcial';
+        document.getElementById('par-cancelar').style.display = 'inline-block';
+      });
+      div.querySelectorAll('[data-eliminar-par]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Eliminar este parcial?')) return;
+        try {
+          const r = await apiDelete('/parciales/' + b.dataset.eliminarPar);
+          showOk(r.mensaje); await cargarParciales(); await cargarCiclos();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    function limpiarParcial() {
+      document.getElementById('par-id').value = '';
+      document.getElementById('par-nombre').value = '';
+      document.getElementById('par-orden').value = '1';
+      document.getElementById('par-form-titulo').textContent = 'Nuevo parcial';
+      document.getElementById('par-cancelar').style.display = 'none';
+    }
+
+    // ---------- TIPOS ----------
+    async function cargarTipos() {
+      const d = await apiGet('/tipos/');
+      const div = document.getElementById('lista-tipos');
+      if (!d.tiposEvaluacion || d.tiposEvaluacion.length === 0) { div.innerHTML = '<p>No hay tipos registrados.</p>'; return; }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Nombre</th><th>Peso</th><th>Categoría</th><th>Examen</th><th>Promedia</th><th></th></tr></thead><tbody>` +
+        d.tiposEvaluacion.map(t => `<tr><td>${esc(t.nombre)}</td><td>${esc(t.peso)}</td>
+          <td>${esc(t.categoria || '')}</td><td>${t.es_examen ? 'Sí' : 'No'}</td>
+          <td>${t.cuenta_para_promedio ? 'Sí' : 'No'}</td>${botonesEditarEliminar(t.id_tipo_evaluacion, 'tip')}</tr>`).join('') +
+        '</tbody></table></div>';
+      div.querySelectorAll('[data-editar-tip]').forEach(b => b.onclick = async () => {
+        const t = d.tiposEvaluacion.find(x => String(x.id_tipo_evaluacion) === b.dataset.editarTip);
+        document.getElementById('tip-id').value = t.id_tipo_evaluacion;
+        document.getElementById('tip-nombre').value = t.nombre;
+        document.getElementById('tip-peso').value = t.peso;
+        document.getElementById('tip-categoria').value = t.categoria || 'formativa';
+        document.getElementById('tip-examen').checked = !!t.es_examen;
+        document.getElementById('tip-cuenta').checked = t.cuenta_para_promedio !== false;
+        document.getElementById('tip-form-titulo').textContent = 'Editar tipo';
+        document.getElementById('tip-cancelar').style.display = 'inline-block';
+      });
+      div.querySelectorAll('[data-eliminar-tip]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Eliminar este tipo de evaluación?')) return;
+        try {
+          const r = await apiDelete('/tipos/' + b.dataset.eliminarTip);
+          showOk(r.mensaje); await cargarTipos();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    function limpiarTipo() {
+      document.getElementById('tip-id').value = '';
+      document.getElementById('tip-nombre').value = '';
+      document.getElementById('tip-peso').value = '1';
+      document.getElementById('tip-categoria').value = 'formativa';
+      document.getElementById('tip-examen').checked = false;
+      document.getElementById('tip-cuenta').checked = true;
+      document.getElementById('tip-form-titulo').textContent = 'Nuevo tipo';
+      document.getElementById('tip-cancelar').style.display = 'none';
+    }
+
+    function mostrarAdvertencia(adv) {
+      const div = document.getElementById('cic-advertencia');
+      div.innerHTML = adv ? `<div class="advertencia">${esc(adv)}</div>` : '';
+    }
+
+    (async () => {
+      if (!await initPage({ adminOnly: true })) return;
+      tabs();
+      try {
+        const per = await apiGet('/periodos/');
+        const opts = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
+        document.getElementById('cur-periodo').innerHTML = opts;
+        document.getElementById('cic-periodo').innerHTML = opts;
+        periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+        document.getElementById('cur-periodo').value = periodoId;
+        document.getElementById('cic-periodo').value = periodoId;
+
+        const tut = await apiGet('/cursos/tutores');
+        document.getElementById('cur-tutor').innerHTML = '<option value="">-- Sin tutor --</option>' +
+          (tut.tutores || []).map(t => `<option value="${t.id_profesor}">${esc(t.nombre)}</option>`).join('');
+
+        await cargarCursos();
+        await cargarCiclos();
+        await cargarParciales();
+        await cargarTipos();
+
+        document.getElementById('cur-periodo').onchange = (e) => { periodoId = e.target.value; cargarCursos().catch(showError); };
+        document.getElementById('cic-periodo').onchange = (e) => {
+          periodoId = e.target.value; cicloSel = '';
+          mostrarAdvertencia(null);
+          cargarCiclos().then(cargarParciales).catch(showError);
+        };
+
+        document.getElementById('cur-guardar').onclick = async () => {
+          const id = document.getElementById('cur-id').value;
+          const body = {
+            nombre: document.getElementById('cur-nombre').value,
+            paralelo: document.getElementById('cur-paralelo').value || 'A',
+            id_periodo: periodoId,
+            id_tutor: document.getElementById('cur-tutor').value || null
+          };
+          try {
+            const r = id ? await apiPut('/cursos/' + id, body) : await apiPost('/cursos/', body);
+            showOk(r.mensaje || 'Curso guardado.'); limpiarCurso(); await cargarCursos();
+          } catch (err) { showError(err.message); }
+        };
+        document.getElementById('cur-cancelar').onclick = limpiarCurso;
+
+        document.getElementById('cic-guardar').onclick = async () => {
+          const id = document.getElementById('cic-id').value;
+          const body = {
+            nombre: document.getElementById('cic-nombre').value,
+            tipo: document.getElementById('cic-tipo').value,
+            orden: Number(document.getElementById('cic-orden').value),
+            peso: Number(document.getElementById('cic-peso').value),
+            id_periodo: periodoId
+          };
+          try {
+            const r = id ? await apiPut('/ciclos/' + id, body) : await apiPost('/ciclos/', body);
+            showOk(r.mensaje || 'Ciclo guardado.');
+            mostrarAdvertencia(r.advertencia || null);
+            limpiarCiclo(); await cargarCiclos();
+          } catch (err) { showError(err.message); }
+        };
+        document.getElementById('cic-cancelar').onclick = limpiarCiclo;
+
+        document.getElementById('par-guardar').onclick = async () => {
+          const id = document.getElementById('par-id').value;
+          const idCiclo = document.getElementById('par-ciclo').value;
+          if (!idCiclo) { showError('Seleccione un ciclo primero.'); return; }
+          const body = {
+            nombre: document.getElementById('par-nombre').value,
+            orden: Number(document.getElementById('par-orden').value),
+            id_ciclo: idCiclo
+          };
+          try {
+            const r = id ? await apiPut('/parciales/' + id, body) : await apiPost('/parciales/', body);
+            showOk(r.mensaje || 'Parcial guardado.');
+            limpiarParcial(); cicloSel = idCiclo;
+            await cargarParciales(); await cargarCiclos();
+          } catch (err) { showError(err.message); }
+        };
+        document.getElementById('par-cancelar').onclick = limpiarParcial;
+
+        document.getElementById('tip-guardar').onclick = async () => {
+          const id = document.getElementById('tip-id').value;
+          const body = {
+            nombre: document.getElementById('tip-nombre').value,
+            peso: Number(document.getElementById('tip-peso').value),
+            categoria: document.getElementById('tip-categoria').value,
+            es_examen: document.getElementById('tip-examen').checked,
+            cuenta_para_promedio: document.getElementById('tip-cuenta').checked
+          };
+          try {
+            const r = id ? await apiPut('/tipos/' + id, body) : await apiPost('/tipos/', body);
+            showOk(r.mensaje || 'Tipo guardado.'); limpiarTipo(); await cargarTipos();
+          } catch (err) { showError(err.message); }
+        };
+        document.getElementById('tip-cancelar').onclick = limpiarTipo;
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>
