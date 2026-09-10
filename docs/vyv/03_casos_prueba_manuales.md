@@ -135,7 +135,7 @@
 | Resultado esperado | Total > 0, registros con `datos_anteriores`/`datos_nuevos` y usuario de la app |
 | Resultado obtenido | Total > 1000 registros, cada uno con JSONB (`datos_anteriores`/`datos_nuevos`) y usuario de la app |
 | Estado | ✅ PASS |
-| Evidencia | `evidencias/playwright-03-admin-auditoria.png` + `evidencias/e2e_test_repo_59.txt` |
+| Evidencia | `evidencias/playwright-03-admin-auditoria.png` + `evidencias/e2e_test_repo_66.txt` |
 
 ## CP-11 — Restricción de acceso a auditoría/respaldos (no admin)
 
@@ -194,4 +194,4 @@
 
 | Total | PASS | FAIL | Evidencias |
 |---|---|---|---|
-| 14 | 14 | 0 | Capturas Playwright + checks de API + suites del repo (59 API + 26 UI) |
+| 14 | 14 | 0 | Capturas Playwright + checks de API + suites del repo (66 API + 35 UI) |

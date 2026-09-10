@@ -33,8 +33,8 @@
 
 ## 6. Automatización (Playwright)
 - Herramienta, base URL, config.
-- 26 casos UI + 59 checks API = 85 PASS (repo actualizado a `origin/main`).
-- **[Demo]** correr `npm test` (API) y `npm run test:e2e` (UI) en vivo o mostrar evidencias `e2e_test_repo_59.txt` y `playwright_repo_26.txt`.
+- 35 casos UI + 66 checks API = 101 PASS (repo actualizado a `origin/main`).
+- **[Demo]** correr `npm test` (API) y `npm run test:e2e` (UI) en vivo o mostrar evidencias `e2e_test_repo_66.txt` y `playwright_repo_35.txt`.
 
 ## 7. Casos UAT
 - 7 casos UAT; tabla historia → decisión **ACEPTADO**.
@@ -61,7 +61,7 @@
 - Cierre: todas las suites en verde.
 
 ## 13. Conclusiones
-- 14/14 manuales, 85/85 automatizados, 7/7 UAT.
+- 14/14 manuales, 101/101 automatizados, 7/7 UAT.
 - Satisfacción 4.7/5 → listo para producción.
 - Mejoras futuras (exportación, gráficos, móvil).
 - **Cierre + ronda de preguntas.**
@@ -83,7 +83,7 @@
 | 2 | Login admin `admin@uteq.edu.ec / UTEQ2026` | 30 s |
 | 3 | Registrar nota como Elena (Ciencias Naturales, ciclo/parcial) | 1 min |
 | 4 | Consulta representante (Fernando → hijos con promedios) | 30 s |
-| 5 | `npm test` (59 API) y `npm run test:e2e --prefix backend` (26 UI) | 1 min |
+| 5 | `npm test` (66 API) y `npm run test:e2e --prefix backend` (35 UI) | 1 min |
 | 6 | Mostrar dashboard admin (movimientos, respaldos) | 30 s |
 | 7 | Mostrar encuesta/resultados | 30 s |
 

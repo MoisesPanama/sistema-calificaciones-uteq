@@ -83,7 +83,7 @@ Los casos UAT validan que el sistema cumple con **el criterio de aceptación del
 | Resultado esperado | Veo tabla de auditoría con datos antes/después y el usuario que operó |
 | Resultado obtenido | Más de 1000 registros con JSONB y usuario de la app; bloqueo a no-admin verificado |
 | Aceptación | ✅ **ACEPTADO** |
-| Evidencia | `evidencias/playwright-03-admin-auditoria.png` · `evidencias/e2e_test_repo_59.txt` |
+| Evidencia | `evidencias/playwright-03-admin-auditoria.png` · `evidencias/e2e_test_repo_66.txt` |
 
 ## UAT-07 — "La psicóloga ve el rendimiento de los estudiantes para dar acompañamiento"
 

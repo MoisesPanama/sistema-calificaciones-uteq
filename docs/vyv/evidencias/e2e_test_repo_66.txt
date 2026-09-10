@@ -1,4 +1,8 @@
 
+> sistema-calificaciones-uteq@1.0.0 test
+> node e2e_test.js
+
+
 === 1. LOGIN (5 roles) ===
   OK Login administrador 
   OK Login profesor 
@@ -12,12 +16,12 @@
   OK Hay parciales Parcial 1
 
 === 3. CALIFICACIONES CON PARCIAL/CICLO (Elena) ===
-  OK Contexto usable mat=3 est=8 tipo=3
+  OK Contexto usable mat=3 est=124 tipo=3
   OK Lote con parcial/ciclo Se guardaron 1 calificaciones.
   OK Parcial invalido -> 400 El parcial seleccionado no pertenece al periodo activo.
 
 === 4. AUDITORIA DETALLE + RESUMEN ===
-  OK Audit query total=846
+  OK Audit query total=855
   OK Audit has user UPDATE id_usuario_app=6
   OK Resumen por categorias 5 bloques
   OK Filtro por fecha 
@@ -26,17 +30,17 @@
   OK Elena blocked from audit 
 
 === 5. PAGINACION UNICA (10 por pagina) ===
-  OK Estudiantes {datos,paginacion} total=112
+  OK Estudiantes {datos,paginacion} total=139
   OK Estudiantes default limit=10 limit=10
-  OK Reportes {datos,paginacion} total=110
-  OK Psicologo paginado + resumen total=110 alertas=10
+  OK Reportes {datos,paginacion} total=124
+  OK Psicologo paginado + resumen total=111 alertas=10
 
 === 6. CRUD CATALOGOS + REGLAS ===
   OK Crear curso 
   OK Curso duplicado -> 409 
   OK Editar curso 
   OK Borrar curso sin uso 
-  OK Crear ciclo (+pesos) {"ok":true,"id_ciclo":23,"advertencia":"La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00)."}
+  OK Crear ciclo (+pesos) {"ok":true,"id_ciclo":32,"advertencia":"La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00)."}
   INFO advertencia suma pesos: La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00).
   OK Pesos que no suman 1 -> 400 
   OK Crear parcial 
@@ -50,7 +54,7 @@
   OK Desglose materia ciclos=2 minimo=2
 
 === 8. RESPALDOS + LOG ===
-  OK Respaldo manual respaldo_20260910_084821.sql
+  OK Respaldo manual respaldo_20260910_180550.sql
   OK Historial paginado 5 filas
 
 === 9. ACCESS CONTROL ===
@@ -60,8 +64,8 @@
 
 === 10. CONSULTA POR MATRICULA (refactor) ===
   OK Materias desde asignacion (no solo con notas) totales=4
-  OK Contadores coherentes con notas=3
-  OK Sin calificar tiene promedio null 1 sin calificar
+  OK Contadores coherentes con notas=1
+  OK Sin calificar tiene promedio null 3 sin calificar
 
 === 11. REPRESENTANTES + DASHBOARD POR ROL ===
   OK Buscar representantes 1 resultados
@@ -76,11 +80,22 @@
 
 === 12. CONSULTA POR BLOQUES + ASIGNACIONES ===
   OK Bloques materia+paralelo 5 bloques
-  OK Nomina paginada del bloque total=110
+  OK Nomina paginada del bloque total=124
   OK Listar asignaciones 5
   OK Opciones para formulario 
   OK Asignar materia general 
   OK Asignacion duplicada -> 409 
   OK Quitar asignacion 
 
-=== RESULTS: 59/59 passed, 0 failed ===
+=== 13. ROL ESTUDIANTE: SOLO LO SUYO, SIN REPORTES ===
+  OK Crear estudiante con usuario epruebad@uteq.edu.ec
+  OK No puede ver a otro (fuerza propio) devuelve idEstudiante=143
+  OK Estudiante bloqueado de reportes (403) 
+  OK Bloques propios 5 bloques
+  OK Desglose ajeno fuerza propio 
+
+=== 14. VISTA PROPIA SIN NOTAS + FILTRO SIN-CURSO ===
+  OK Sin notas ve tarjetas, no solo error materias=4
+  OK Filtro por curso incluye Sin-curso 50 filas
+
+=== RESULTS: 66/66 passed, 0 failed ===

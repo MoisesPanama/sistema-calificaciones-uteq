@@ -45,6 +45,9 @@
       border: 1px solid #cfd8d3; border-radius: 6px;
       box-shadow: 0 2px 6px rgba(0,0,0,.15); }
     .shot-label { font-size: .55em; color: #556; margin-top: .15em; text-align: center; }
+    .automatizacion .shots img, .automatizacion .shot { max-height: 72px; }
+    .automatizacion .footnote { margin-top: .5em; }
+    .automatizacion .box { padding: .35em .8em; }
   </style>
 </head>
 <body>
@@ -147,11 +150,11 @@
       </section>
 
       <!-- 6. Automatización -->
-      <section>
+      <section class="automatizacion">
         <h2 class="section-title">Automatización de pruebas — Playwright</h2>
         <div class="two-col">
           <div class="box">
-            <h4>UI (Playwright) — 26 tests</h4>
+            <h4>UI (Playwright) — 35 tests</h4>
             <ul>
               <li>Login de los 4 roles / password incorrecta</li>
               <li>Calificaciones (ciclo + parcial) y catálogos</li>
@@ -160,10 +163,10 @@
               <li>Respaldos, auditoría, rendimiento (máx 10 filas)</li>
               <li>403 admin en rendimiento / profesor sin catálogos</li>
             </ul>
-            <p class="ok">26/26 PASS (45 s)</p>
+            <p class="ok">35/35 PASS</p>
           </div>
           <div class="box">
-            <h4>API (e2e_test.js) — 59 checks</h4>
+            <h4>API (e2e_test.js) — 66 checks</h4>
             <ul>
               <li>Login y contexto de roles/asignaciones</li>
               <li>Upsert de calificaciones + verificación en BD</li>
@@ -171,10 +174,10 @@
               <li>403 materia no asignada / auditoría</li>
               <li>Paginación, respaldos, dashboards, 409/400/403</li>
             </ul>
-            <p class="ok">59/59 PASS</p>
+            <p class="ok">66/66 PASS</p>
           </div>
         </div>
-        <p class="footnote">Total automatizado: <b>85/85 PASS</b> · Evidencias: e2e_test_repo_59.txt · playwright_repo_26.txt</p>
+        <p class="footnote">Total automatizado: <b>101/101 PASS</b> · Evidencias: e2e_test_repo_66.txt · playwright_repo_35.txt</p>
         <div class="shots">
           <div>
             <img class="shot" src="../evidencias/playwright-02-login-fallido.png" alt="Captura: login fallido">
@@ -307,7 +310,7 @@
         <h2 class="section-title">Conclusiones</h2>
         <ul>
           <li class="ok"><b>Pruebas manuales:</b> 14/14 PASS</li>
-          <li class="ok"><b>Pruebas automatizadas:</b> 85/85 PASS (59 API + 26 UI)</li>
+          <li class="ok"><b>Pruebas automatizadas:</b> 101/101 PASS (66 API + 35 UI)</li>
           <li class="ok"><b>Casos UAT:</b> 7/7 ACEPTADO</li>
           <li class="ok"><b>Satisfacción:</b> 4.7/5 (94%)</li>
         </ul>
@@ -328,7 +331,7 @@
           <tr><td>3</td><td>Guardar notas → verificación en auditoría con usuario de la app</td><td>admin</td></tr>
           <tr><td>4</td><td>Consulta de notas y promedios de sus hijos</td><td>Fernando (representante)</td></tr>
           <tr><td>5</td><td>Panel de rendimiento (resumen + alertas, máx 10 filas)</td><td>María (psicóloga)</td></tr>
-          <tr><td>6</td><td><code>npm test</code> (59 API) y <code>npm run test:e2e --prefix backend</code> (26 UI)</td><td>—</td></tr>
+          <tr><td>6</td><td><code>npm test</code> (66 API) y <code>npm run test:e2e --prefix backend</code> (35 UI)</td><td>—</td></tr>
         </table>
         <p class="footnote">Preparado: backend en :3000, BD con migraciones 01-20 y 110 estudiantes.</p>
       </section>

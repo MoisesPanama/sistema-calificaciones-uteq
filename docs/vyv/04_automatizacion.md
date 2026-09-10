@@ -5,9 +5,9 @@
 
 Se automatizaron dos niveles de pruebas, alineados con el **Plan de Mejoras v2** del repositorio (Fases 1-8):
 
-1. **Nivel API (back-end):** `backend/e2e_test.js` (npm test) — cubre auth por rol, calificaciones con parcial/ciclo, auditoría, paginación, CRUD de catálogos con 409/400/403 y respaldos con log. Resultado: **59/59 PASS**.
+1. **Nivel API (back-end):** `backend/e2e_test.js` (npm test) — cubre auth por rol, calificaciones con parcial/ciclo, auditoría, paginación, CRUD de catálogos con 409/400/403 y respaldos con log. Resultado: **66/66 PASS**.
 
-2. **Nivel UI (front-end):** suite **Playwright** en `backend/tests/e2e/` (9 archivos de spec). Resultado: **26/26 PASS**.
+2. **Nivel UI (front-end):** suite **Playwright** en `backend/tests/e2e/` (10 archivos de spec). Resultado: **35/35 PASS**.
 
 ---
 
@@ -46,9 +46,9 @@ module.exports = defineConfig({
 
 ---
 
-## Automatización a nivel API (`backend/e2e_test.js` — 59 checks)
+## Automatización a nivel API (`backend/e2e_test.js` — 66 checks)
 
-El script valida el flujo de negocio completo por HTTP, descubre los IDs desde la BD (no hardcodea) y **limpia lo que crea** (cursos/ciclos/parciales/tipos E2E-*). Clasificación de los 59 checks:
+El script valida el flujo de negocio completo por HTTP, descubre los IDs desde la BD (no hardcodea) y **limpia lo que crea** (cursos/ciclos/parciales/tipos E2E-*). Clasificación de los 66 checks:
 
 | Área | Alcance |
 |---|---|
@@ -66,14 +66,14 @@ El script valida el flujo de negocio completo por HTTP, descubre los IDs desde l
 Resultado final:
 
 ```
-=== RESULTS: 59/59 passed, 0 failed ===
+=== RESULTS: 66/66 passed, 0 failed ===
 ```
 
-Evidencia completa: `evidencias/e2e_test_repo_59.txt`.
+Evidencia completa: `evidencias/e2e_test_repo_66.txt`.
 
 ---
 
-## Automatización a nivel UI (Playwright — 26 tests)
+## Automatización a nivel UI (Playwright — 35 tests)
 
 | Archivo | Tests | Alcance |
 |---|---|---|
@@ -92,7 +92,7 @@ Resultado:
   26 passed (45 s)
 ```
 
-Evidencia completa: `evidencias/playwright_repo_26.txt`.
+Evidencia completa: `evidencias/playwright_repo_35.txt`.
 
 ---
 
@@ -114,6 +114,6 @@ Al recrear la base desde el esquema del repo actualizado se detectaron y corrigi
 
 | Nivel | Casos | PASS | FAIL | Cobertura |
 |---|---|---|---|---|
-| API (e2e_test.js) | 59 | 59 | 0 | Auth, calificaciones, auditoría, catálogos, respaldos, consulta, dashboard, 403 |
+| API (e2e_test.js) | 66 | 66 | 0 | Auth, calificaciones, auditoría, catálogos, respaldos, consulta, dashboard, 403 |
 | UI (Playwright) | 26 | 26 | 0 | Login, calificaciones, catálogos, consulta, dashboard, psicóloga, auditoría |
 | **Total** | **85** | **85** | **0** | — |

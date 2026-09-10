@@ -123,24 +123,24 @@ Se ejecutaron **14 casos de prueba manuales** cubriendo las 9 historias.
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAM0lEQVR4nO3OMQ0AIAwAwdIgBKl1gjacsGCAiZDcTT9+q6oRETMAAPjF6ify6QYAADdyA9Y0AypN+bdfAAAAAElFTkSuQmCC)  
 **5. Automatización de pruebas**  
 **5.1 Herramienta**  
-**Playwright** (@playwright/test) para pruebas end-to-end de UI (26 tests) + script backend/e2e_test.js para el flujo de API (59 checks). Ejecutable con el repositorio actualizado a origin/main (migraciones 01–20, 110 estudiantes, periodo activo 1).  
+**Playwright** (@playwright/test) para pruebas end-to-end de UI (35 tests) + script backend/e2e_test.js para el flujo de API (66 checks). Ejecutable con el repositorio actualizado a origin/main (migraciones 01–20, 110 estudiantes, periodo activo 1).  
 **5.2 Ejecución API (**backend/e2e_test.js **)**  
-59 checks PASS en auth por rol, calificaciones con parcial/ciclo, auditoría (usuario de la app, resumen, filtros), paginación (formato {datos,paginacion}), CRUD de catálogos con 409/400/403, respaldos con log, consulta por bloques y dashboards por rol. Evidencia: evidencias/e2e_test_repo_59.txt.  
-=== RESULTS: 59/59 passed, 0 failed ===  
+66 checks PASS en auth por rol, calificaciones con parcial/ciclo, auditoría (usuario de la app, resumen, filtros), paginación (formato {datos,paginacion}), CRUD de catálogos con 409/400/403, respaldos con log, consulta por bloques y dashboards por rol. Evidencia: evidencias/e2e_test_repo_59.txt.  
+=== RESULTS: 66/66 passed, 0 failed ===  
    
    
    
 **5.3 Ejecución UI (Playwright)**  
   26 passed (45 s)  
    
-Suite en backend/tests/e2e/*.spec.cjs (auth, calificaciones, catálogos, consulta, dashboard, flujos, psicóloga, auditoría). Evidencia: evidencias/playwright_repo_26.txt.  
+Suite en backend/tests/e2e/*.spec.cjs (auth, calificaciones, catálogos, consulta, dashboard, flujos, psicóloga, auditoría). Evidencia: evidencias/playwright_repo_35.txt.  
 **5.4 Resumen de automatización**  
 | | | | |  
 |-|-|-|-|  
 | **Nivel** | **Casos** | **PASS** | **Cobertura** |   
-| API | 59 | 59 | Login/roles, notas, auditoría, respaldos, catálogos, consulta, dashboard, 403 |   
-| UI (Playwright) | 26 | 26 | Login, búsquedas, notas, catálogos, consulta, rendimiento, auditoría, logout |   
-| **Total** | **85** | **85** | — |   
+| API | 66 | 66 | Login/roles, notas, auditoría, respaldos, catálogos, consulta, dashboard, 403 |   
+| UI (Playwright) | 35 | 35 | Login, búsquedas, notas, catálogos, consulta, rendimiento, auditoría, logout |   
+| **Total** | **101** | **101** | — |   
    
 Detalle: docs/vyv/04_automatizacion.md.  
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANUlEQVR4nO3OQQmAABRAsSfYxKK/kJXEkyE8WcGbCFuCLTOzVXsAAPzFsVZ3dX4cAQDgvesB/vEF9H9odtUAAAAASUVORK5CYII=)  
@@ -226,10 +226,10 @@ Durante la fase de verificación se detectaron y corrigieron los siguientes hall
 | H14 | Representante Fernando sin id_usuario enlazado (seeds usan emails @gmail) → dashboard de representante sin hijos | Alta | Vinculación manual representantes.id_representante=7 → id_usuario=4 |   
 | H15 | pool.on('connect') en config/db.js ejecuta pool.query('SET search_path') sobre el pool completo (no la conexión recién abierta) → algunas consultas caen con «no existe la relación» | Alta | No depender del evento: search_path fijado a nivel de BD y rol |   
    
-**Estado final:** todos los hallazgos cerrados; suites automatizadas en verde (59 API + 26 UI) y casos manuales 100% PASS.  
+**Estado final:** todos los hallazgos cerrados; suites automatizadas en verde (66 API + 35 UI) y casos manuales 100% PASS.  
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OUQmAABBAsSeYxZyXSzCJASxgACv4J8KWYMvMbNURAAB/ca7VXe1fTwAAeO16AKe+BdmJqrPdAAAAAElFTkSuQmCC)  
 **12. Conclusiones técnicas de V&V**  
-1. **Funcionalidad correcta:** el 100% de los casos manuales (14/14), automatizados (85/85: 59 API + 26 UI) y UAT (7/7) superados demuestran que el sistema cumple los requisitos funcionales.  
+1. **Funcionalidad correcta:** el 100% de los casos manuales (14/14), automatizados (101/101: 66 API + 35 UI) y UAT (7/7) superados demuestran que el sistema cumple los requisitos funcionales.  
 2. **Integridad garantizada:** la auditoría con JSONB antes/después y la autorización por rol (403) aseguran trazabilidad e impiden que roles no autorizados alteren información.  
 3. **Validaciones de negocio efectivas:** rango 0–10, unicidad de cédula, fechas de periodo y asignación de materia se rechazan correctamente a nivel de API y de base de datos.  
 4. **Aceptación del usuario:** la prueba Beta no reportó fallas funcionales y la encuesta aplicada a 30 usuarios arrojó una satisfacción global de 4.7/5 (94%).  
@@ -238,8 +238,8 @@ Durante la fase de verificación se detectaron y corrigieron los siguientes hall
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAALUlEQVR4nO3OQQ0AIAwEsAMlSJ0UrOFkGngRklZBR1WtJDsAAPzizNcDAADuNcKwAyU+nb+5AAAAAElFTkSuQmCC)  
 **13. Anexos (evidencias)**  
 Listado de archivos de evidencia en docs/vyv/evidencias/:  
-- e2e_test_repo_59.txt — resultado 59/59 de la suite E2E de API del repositorio actualizado.  
-- playwright_repo_26.txt — resultado 26/26 de la suite Playwright del repositorio (backend/tests/report/ tiene el reporter HTML).  
+- e2e_test_repo_66.txt — resultado 66/66 de la suite E2E de API del repositorio actualizado.  
+- playwright_repo_35.txt — resultado 35/35 de la suite Playwright del repositorio (backend/tests/report/ tiene el reporter HTML).  
 - pruebas_api_manuales.txt — validaciones manuales (409, 400, 403, reportes, auditoría).  
 - playwright-01-login-admin.png … playwright-09-logout.png — capturas de los 9 casos UI.  
 Documentos de apoyo en docs/vyv/:  
