@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reportes - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .filtros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .filtro-bloque {
+      background: white; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 0.8rem 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .filtro-bloque label { display: block; font-size: 0.78rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .filtro-bloque select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; background: white; }
+    @media (max-width: 768px) { .filtros-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -16,12 +26,20 @@
     <p class="periodo-fijo" id="info-periodo"></p>
     <p class="alert alert-error" id="error" style="display:none"></p>
     <div class="form-box">
-      <label for="sel-periodo">Periodo</label>
-      <select id="sel-periodo"></select>
-      <label for="sel-curso">Curso</label>
-      <select id="sel-curso"><option value="">-- Todos los cursos --</option></select>
-      <label for="sel-mat">Materia (promedio específico)</label>
-      <select id="sel-mat"><option value="">-- Promedio general --</option></select>
+      <div class="filtros-grid">
+        <div class="filtro-bloque">
+          <label for="sel-periodo">Periodo</label>
+          <select id="sel-periodo"></select>
+        </div>
+        <div class="filtro-bloque">
+          <label for="sel-curso">Curso</label>
+          <select id="sel-curso"><option value="">-- Todos los cursos --</option></select>
+        </div>
+        <div class="filtro-bloque">
+          <label for="sel-mat">Materia</label>
+          <select id="sel-mat"><option value="">-- Promedio general --</option></select>
+        </div>
+      </div>
     </div>
     <div id="resultado"></div>
     <div class="pagination" id="paginacion-rep"></div>

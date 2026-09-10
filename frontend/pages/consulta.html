@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .mat-card {
+      background: white; border-radius: 12px; padding: 1rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 0.9rem;
+      border-left: 4px solid #2563eb;
+    }
+    .mat-card.sin-notas { border-left-color: #d1d5db; }
+    .mat-top { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .mat-nombre { font-weight: 700; font-size: 1rem; color: #1f2937; flex: 1; min-width: 160px; }
+    .mat-prom { font-size: 1.7rem; font-weight: 800; color: #1e3a8a; }
+    .mat-prom.na { font-size: 1rem; font-weight: 600; color: #9ca3af; }
+    .mat-escala { font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; background: #eff6ff; color: #1e40af; }
+    .mat-escala.na { background: #f3f4f6; color: #6b7280; }
+    .mat-detalle { margin-top: 0.8rem; border-top: 1px solid #f3f4f6; padding-top: 0.8rem; }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -68,15 +83,27 @@
         ? `<div class="form-box"><h2>Promedio en la materia seleccionada: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o más.</small></p></div>`
         : '';
       div.innerHTML = contador + headerMat +
-        d.materias.map(m => {
+        d.materias.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
             : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
-          const pie = m.sin_notas
-            ? `<tr><td><strong>Promedio de la materia</strong></td><td><strong>Sin calificar</strong></td></tr>`
-            : `<tr><td><strong>Promedio de la materia</strong></td><td><strong>${esc(m.promedio)}</strong> (${esc(m.escala)})</td></tr>`;
-          return `<table><thead><tr><th colspan="2">${esc(m.nombre)}</th></tr>
-          <tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead><tbody>${filas}${pie}</tbody></table>`;
+          const prom = m.sin_notas
+            ? `<span class="mat-prom na">Sin calificar</span>`
+            : `<span class="mat-prom">${esc(m.promedio)}</span>`;
+          const esc_ = m.sin_notas
+            ? `<span class="mat-escala na">pendiente</span>`
+            : `<span class="mat-escala">${esc(m.escala)}</span>`;
+          return `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
+            <div class="mat-top">
+              <span class="mat-nombre">${esc(m.nombre)}</span>
+              ${prom}${esc_}
+              <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
+            </div>
+            <div class="mat-detalle" id="mat-det-${i}" style="display:none">
+              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
+              <tbody>${filas}</tbody></table></div>
+            </div>
+          </div>`;
         }).join('') +
         `<div class="form-box"><h2>Promedio general del periodo: ${esc(d.promedioGeneral)}</h2></div>`;
       await cargarDesglose(d);

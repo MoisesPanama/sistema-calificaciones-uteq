@@ -265,9 +265,11 @@ sistema-calificaciones-uteq/
 | POST | `/api/auth/login` | Inicia sesión `{email,password}` |
 | GET | `/api/auth/me` | Sesión actual (guard del frontend) |
 | POST | `/api/auth/logout` | Cierra sesión |
-| GET | `/api/dashboard/` | Contadores generales |
+| GET | `/api/dashboard/` | Resumen por rol (métricas + bloques: movimientos, respaldos, materias, hijos, rendimiento) |
 | GET/POST | `/api/estudiantes/` | Listado (`?q=&page=&limit=`, formato `{datos,paginacion}`) / crear |
 | GET | `/api/estudiantes/representantes` | Select del formulario |
+| GET/POST | `/api/representantes/` | Buscador (`?q=&page=&limit=`) / crear (cualquiera autenticado) |
+| PUT/DELETE | `/api/representantes/:id` | Editar / eliminar si no tiene estudiantes |
 | GET/PUT | `/api/estudiantes/:id` | Obtener / actualizar |
 | GET/POST | `/api/materias/` | Listado / crear |
 | GET/POST | `/api/periodos/` | Listado + periodo activo / crear |

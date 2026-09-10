@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inicio - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .bar-row { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; font-size: 0.87rem; }
+    .bar-label { min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { flex: 1; background: #eef2f7; border-radius: 6px; height: 14px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; background: #2563eb; }
+    .bar-value { min-width: 44px; text-align: right; font-weight: 700; color: #1e3a8a; }
+    .mini-list { list-style: none; padding: 0; margin: 0; font-size: 0.87rem; }
+    .mini-list li { padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; gap: 0.6rem; }
+    .mini-list li:last-child { border-bottom: none; }
+    .mini-fecha { color: #6b7280; font-size: 0.78rem; white-space: nowrap; }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -14,12 +25,9 @@
     <main class="main-content">
     <h1 id="bienvenida">Bienvenido</h1>
     <p id="rol"></p>
-    <div class="cards-grid">
-      <div class="card"><h3>Estudiantes activos</h3><p class="card-number" id="c-est">—</p></div>
-      <div class="card"><h3>Materias</h3><p class="card-number" id="c-mat">—</p></div>
-      <div class="card"><h3>Periodos academicos</h3><p class="card-number" id="c-per">—</p></div>
-      <div class="card"><h3>Calificaciones registradas</h3><p class="card-number" id="c-cal">—</p></div>
-    </div>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="cards-grid" id="metricas"></div>
+    <div id="bloques"></div>
     </main>
   </div>
 </div>
@@ -27,17 +35,99 @@
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
   <script>
+    function barra(etiqueta, valor, maximo, color) {
+      const pct = maximo > 0 ? Math.min(100, Math.round((valor / maximo) * 100)) : 0;
+      return `<div class="bar-row"><span class="bar-label">${esc(etiqueta)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${pct}%;${color ? 'background:' + color + ';' : ''}"></span></span>
+        <span class="bar-value">${esc(valor)}</span></div>`;
+    }
+
+    function tarjeta(titulo, contenido) {
+      return `<div class="card" style="margin-bottom:1.2rem;"><h3 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">${esc(titulo)}</h3>${contenido}</div>`;
+    }
+
+    function metrica(titulo, valor) {
+      return `<div class="card"><h3>${esc(titulo)}</h3><p class="card-number">${esc(valor)}</p></div>`;
+    }
+
+    async function render(d, usuario) {
+      const rol = usuario.nombre_rol;
+      document.getElementById('bienvenida').textContent = `Bienvenido, ${usuario.nombres}`;
+      document.getElementById('rol').innerHTML = `Rol: <strong>${esc(rol)}</strong>` +
+        (d.periodoActivo ? ` · Periodo: <strong>${esc(d.periodoActivo.nombre)}</strong>` : '');
+      const c = d.contadores;
+      let metricas = '';
+      let bloques = '';
+
+      if (rol === 'administrador') {
+        metricas = metrica('Estudiantes activos', c.totalEstudiantes) +
+          metrica('Materias', c.totalMaterias) +
+          metrica('Calificaciones', c.totalCalificaciones) +
+          metrica('Periodos', c.totalPeriodos);
+        const max = Math.max(c.totalEstudiantes, c.totalMaterias, c.totalCalificaciones, 1);
+        bloques += tarjeta('Volumen del sistema',
+          barra('Estudiantes', c.totalEstudiantes, max) +
+          barra('Materias', c.totalMaterias, max) +
+          barra('Calificaciones', c.totalCalificaciones, max, '#16a34a'));
+        const ev = d.ultimosEventos || [];
+        bloques += tarjeta('Últimos movimientos',
+          ev.length === 0 ? '<p style="color:#6b7280;">Sin movimientos aún.</p>' :
+          `<ul class="mini-list">${ev.map(e =>
+            `<li><span><strong>${esc(e.operacion)}</strong> en ${esc(e.tabla_afectada)} — ${esc((e.usuario_nombres || '') + ' ' + (e.usuario_apellidos || ''))}</span>
+             <span class="mini-fecha">${new Date(e.fecha_evento).toLocaleString('es-EC')}</span></li>`).join('')}</ul>`);
+        const r = d.ultimoRespaldo;
+        bloques += tarjeta('Respaldos',
+          !r ? '<p style="color:#6b7280;">Aún no hay respaldos. <a href="respaldos.html">Crear uno</a>.</p>' :
+          `<p style="font-size:0.9rem;">Último: <strong>${esc(r.nombre_archivo || 'programado')}</strong>
+           (${esc(r.tipo)}) — ${r.exito ? '<span class="badge badge-success">éxito</span>' : '<span class="badge badge-warning">falló</span>'}
+           <span class="mini-fecha">${new Date(r.fecha).toLocaleString('es-EC')}</span></p>`);
+      } else if (rol === 'profesor') {
+        const mats = d.misMaterias || [];
+        const totalEst = mats.reduce((s, m) => s + (m.n_estudiantes || 0), 0);
+        metricas = metrica('Mis materias', mats.length) +
+          metrica('Mis estudiantes', totalEst) +
+          metrica('Notas registradas por mí', d.totalNotasMias != null ? d.totalNotasMias : 0);
+        const max = Math.max(...mats.map(m => m.n_estudiantes || 0), 1);
+        bloques += tarjeta('Mis materias y estudiantes',
+          mats.length === 0 ? '<p style="color:#6b7280;">Sin materias asignadas en este periodo.</p>' :
+          mats.map(m => barra(m.nombre, m.n_estudiantes || 0, max)).join(''));
+        const ult = d.ultimasNotas || [];
+        bloques += tarjeta('Mis últimas notas',
+          ult.length === 0 ? '<p style="color:#6b7280;">Aún no registras notas.</p>' :
+          `<ul class="mini-list">${ult.map(n =>
+            `<li><span>${esc(n.nombres)} ${esc(n.apellidos)} — ${esc(n.materia)}</span>
+             <span><strong>${esc(n.valor)}</strong> <span class="mini-fecha">${new Date(n.fecha_registro).toLocaleString('es-EC')}</span></span></li>`).join('')}</ul>`);
+      } else if (rol === 'representante') {
+        const hijos = d.hijos || [];
+        metricas = metrica('Mis representados', hijos.length) +
+          metrica('Periodo', d.periodoActivo ? d.periodoActivo.nombre : '—');
+        bloques += tarjeta('Promedios del periodo',
+          hijos.length === 0 ? '<p style="color:#6b7280;">Sin estudiantes asociados en este periodo.</p>' :
+          hijos.map(h => barra(`${h.nombres} ${h.apellidos}`, h.promedio != null ? h.promedio : 0, 10,
+            h.promedio == null ? '#9ca3af' : (h.promedio < 7 ? '#dc2626' : '#16a34a'))).join('') +
+          `<p style="font-size:0.8rem;color:#6b7280;">Escala 0–10 · Aprueba con 7. <a href="consulta.html">Ver detalle</a>.</p>`);
+      } else if (rol === 'psicologo') {
+        const r = d.rendimiento || { bajos: 0, bien: 0, evaluados: 0 };
+        metricas = metrica('Evaluados', r.evaluados) +
+          metrica('Bajo rendimiento', r.bajos) +
+          metrica('Bien', r.bien);
+        const max = Math.max(r.bajos, r.bien, 1);
+        bloques += tarjeta('Rendimiento del periodo',
+          barra('Bajo (< 7)', r.bajos, max, '#dc2626') +
+          barra('Bien (≥ 7)', r.bien, max, '#16a34a') +
+          `<p style="font-size:0.85rem;"><a href="psicologo.html">Abrir vista de rendimiento →</a></p>`);
+      }
+
+      document.getElementById('metricas').innerHTML = metricas;
+      document.getElementById('bloques').innerHTML = bloques;
+    }
+
     (async () => {
       const usuario = await initPage();
       if (!usuario) return;
-      document.getElementById('bienvenida').textContent = `Bienvenido, ${usuario.nombres}`;
-      document.getElementById('rol').innerHTML = `Rol: <strong>${esc(usuario.nombre_rol)}</strong>`;
       try {
         const d = await apiGet('/dashboard/');
-        document.getElementById('c-est').textContent = d.totalEstudiantes;
-        document.getElementById('c-mat').textContent = d.totalMaterias;
-        document.getElementById('c-per').textContent = d.totalPeriodos;
-        document.getElementById('c-cal').textContent = d.totalCalificaciones;
+        await render(d, usuario);
       } catch (err) { showError(err.message); }
     })();
   </script>

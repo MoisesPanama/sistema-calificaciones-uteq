@@ -49,6 +49,7 @@
     <!-- Lista de respaldos -->
     <h2 style="font-size:1rem;margin-bottom:0.8rem;color:#1e3a8a;">Respaldos Guardados</h2>
     <div id="lista-respaldos"></div>
+    <div class="pagination" id="paginacion-rep"></div>
 
     <!-- Historial de ejecuciones (migracion 14) -->
     <h2 style="font-size:1rem;margin:1.5rem 0 0.8rem;color:#1e3a8a;">Historial de Ejecuciones</h2>
@@ -98,9 +99,15 @@
       renderPaginacion('paginacion-hist', h.paginacion, (p) => cargarHistorial(p).catch(showError));
     }
 
+    let repPage = 1;
+
     async function cargar() {
       await cargarHistorial();
-      const d = await apiGet('/respaldos/');
+      await cargarLista();
+    }
+
+    async function cargarLista() {
+      const d = await apiGet(`/respaldos/?page=${repPage}&limit=10`);
 
       // Estado programado
       const prog = d.programado || {};
@@ -122,14 +129,18 @@
 
       // Lista de respaldos
       const div = document.getElementById('lista-respaldos');
-      if (!d.respaldos || d.respaldos.length === 0) {
+      const archivos = d.datos || [];
+      if (archivos.length === 0) {
+        // Si la pagina quedo vacia (p. ej. se borro el ultimo), retroceder.
+        if (repPage > 1) { repPage -= 1; await cargarLista(); return; }
         div.innerHTML = '<p style="color:#6b7280;font-size:0.9rem;">No hay respaldos guardados.</p>';
+        renderPaginacion('paginacion-rep', d.paginacion, () => {});
         return;
       }
       div.innerHTML = `<div class="table-responsive"><table>
         <thead><tr><th>Archivo</th><th>Tamano</th><th>Fecha</th><th></th></tr></thead>
         <tbody>
-        ${d.respaldos.map(r => `<tr>
+        ${archivos.map(r => `<tr>
           <td style="font-family:monospace;font-size:0.82rem;">${esc(r.nombre)}</td>
           <td>${formatoTamano(r.tamano)}</td>
           <td>${new Date(r.fecha).toLocaleString('es-EC')}</td>
@@ -139,6 +150,7 @@
           </td>
         </tr>`).join('')}
         </tbody></table></div>`;
+      renderPaginacion('paginacion-rep', d.paginacion, (p) => { repPage = p; cargarLista().catch(showError); });
 
       div.querySelectorAll('[data-descargar]').forEach(b => b.onclick = () => {
         const nombre = b.dataset.descargar;

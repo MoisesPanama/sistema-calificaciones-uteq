@@ -246,6 +246,36 @@ const loginAs = async (email) => {
     mats.filter(m => m.sin_notas).every(m => m.promedio === null && m.escala === 'Sin calificar'),
     `${mats.filter(m => m.sin_notas).length} sin calificar`);
 
+  console.log('\n=== 11. REPRESENTANTES + DASHBOARD POR ROL ===');
+  await loginAs('admin@uteq.edu.ec');
+  const busq = await get('/representantes/?q=castillo&limit=5');
+  log('Buscar representantes', busq.status === 200 && busq.body.datos?.length > 0, `${busq.body.datos?.length} resultados`);
+  const nomRep = `E2E-Rep-${stamp}`;
+  const creaRep = await post('/representantes/', { nombres: nomRep, apellidos: 'Prueba', telefono: '0990000001' });
+  log('Crear representante', creaRep.status === 201 && !!creaRep.body.id_representante, creaRep.body.error || '');
+  const dupRep = await post('/representantes/', { nombres: nomRep, apellidos: 'Prueba', telefono: '0990000001' });
+  log('Duplicado -> 409 con id', dupRep.status === 409 && !!dupRep.body.id_representante, '');
+  if (creaRep.body.id_representante) {
+    const borraRep = await del(`/representantes/${creaRep.body.id_representante}`);
+    log('Borrar representante sin uso', borraRep.status === 200, borraRep.body.error || '');
+  }
+  const repConHijos = await del('/representantes/7');
+  log('Borrar representante CON hijos -> 409', repConHijos.status === 409, '');
+  const dashAdmin = await get('/dashboard/');
+  log('Dashboard admin', dashAdmin.status === 200 && Array.isArray(dashAdmin.body.ultimosEventos)
+    && 'ultimoRespaldo' in dashAdmin.body, '');
+  await loginAs('elena.romero@uteq.edu.ec');
+  const dashProf = await get('/dashboard/');
+  log('Dashboard profesor', dashProf.status === 200 && Array.isArray(dashProf.body.misMaterias)
+    && Array.isArray(dashProf.body.ultimasNotas), `${dashProf.body.misMaterias?.length} materias`);
+  await loginAs('fernando.castillo@uteq.edu.ec');
+  const dashRep = await get('/dashboard/');
+  log('Dashboard representante', dashRep.status === 200 && Array.isArray(dashRep.body.hijos)
+    && dashRep.body.hijos.length > 0, `${dashRep.body.hijos?.length} hijos`);
+  await loginAs('maria.torres@uteq.edu.ec');
+  const dashPsi = await get('/dashboard/');
+  log('Dashboard psicologo', dashPsi.status === 200 && !!dashPsi.body.rendimiento, '');
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

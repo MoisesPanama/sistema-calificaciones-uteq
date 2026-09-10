@@ -100,9 +100,10 @@ function ejecutarRespald(callback) {
     });
 }
 
-// GET /api/respaldos — listar respaldos
+// GET /api/respaldos — listar respaldos (paginado de 10 en 10)
 router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
         const archivos = fs.readdirSync(BACKUP_DIR)
             .filter(f => f.endsWith('.sql'))
             .map(f => {
@@ -116,7 +117,7 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
             .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
         res.json({
-            respaldos: archivos,
+            ...respuestaPaginada(archivos.slice(offset, offset + limit), { page, limit, total: archivos.length }),
             programado: {
                 activo: programadoActivo,
                 hora: horaProgramada
