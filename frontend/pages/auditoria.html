@@ -59,10 +59,11 @@
     .audit-json .empty { color: #9ca3af; font-style: italic; font-size: 0.85rem; }
 
     .audit-filters { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
-    .audit-filters select {
+    .audit-filters select, .audit-filters input[type="date"] {
       padding: 0.4rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px;
       font-size: 0.85rem; background: white;
     }
+    .audit-filters label { font-size: 0.85rem; font-weight: 600; color: #374151; }
     .pagination { display: flex; gap: 0.4rem; justify-content: center; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; }
     .pagination button {
       padding: 0.35rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px;
@@ -72,6 +73,20 @@
     .pagination button.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
     .pagination button:disabled { opacity: 0.4; cursor: default; }
     .pagination .page-info { font-size: 0.82rem; color: #6b7280; margin: 0 0.5rem; }
+
+    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .cat-card {
+      background: white; border-radius: 12px; padding: 1.1rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+      border: 1px solid #e5e7eb; transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .cat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30,58,138,0.12); }
+    .cat-card h3 { font-size: 0.95rem; color: #1e3a8a; margin-bottom: 0.4rem; }
+    .cat-card .total { font-size: 1.6rem; font-weight: 700; color: #111827; }
+    .cat-card .meta { font-size: 0.78rem; color: #6b7280; margin-top: 0.3rem; }
+    .cat-card .hoy { display: inline-block; margin-top: 0.5rem; font-size: 0.72rem; font-weight: 700;
+      padding: 0.15rem 0.55rem; border-radius: 6px; background: #f3f4f6; color: #6b7280; }
+    .cat-card .hoy.activa { background: #dcfce7; color: #166534; }
 
     @media (max-width: 768px) {
       .audit-json { grid-template-columns: 1fr; }
@@ -88,13 +103,30 @@
     <main class="main-content">
     <h1>Auditoria del Sistema</h1>
     <p class="alert alert-error" id="error" style="display:none"></p>
-    <div class="audit-stats" id="stats"></div>
-    <div class="audit-filters">
-      <label for="filter-tabla">Tabla:</label>
-      <select id="filter-tabla"><option value="">Todas</option></select>
+
+    <!-- Nivel 1: bloques por categoria -->
+    <div id="vista-resumen">
+      <div class="cat-grid" id="resumen-cats"></div>
     </div>
-    <div id="resultado"><p>Cargando...</p></div>
-    <div class="pagination" id="paginacion"></div>
+
+    <!-- Nivel 2: detalle paginado de una categoria -->
+    <div id="vista-detalle" style="display:none">
+      <button class="btn-secondary" id="btn-volver" style="margin-bottom:1rem;">&larr; Volver al resumen</button>
+      <h2 id="detalle-titulo" style="font-size:1.05rem;color:#1e3a8a;margin-bottom:1rem;"></h2>
+      <div class="audit-stats" id="stats"></div>
+      <div class="audit-filters">
+        <label for="filter-tabla">Tabla:</label>
+        <select id="filter-tabla"><option value="">Todas</option></select>
+        <label for="filter-desde">Desde:</label>
+        <input type="date" id="filter-desde">
+        <label for="filter-hasta">Hasta:</label>
+        <input type="date" id="filter-hasta">
+        <button class="btn-primary btn-sm" id="btn-filtrar">Filtrar</button>
+        <button class="btn-secondary btn-sm" id="btn-limpiar">Limpiar</button>
+      </div>
+      <div id="resultado"><p>Cargando...</p></div>
+      <div class="pagination" id="paginacion"></div>
+    </div>
     </main>
   </div>
 </div>
@@ -102,8 +134,17 @@
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
   <script>
-    let currentPage = 1;
-    let currentTabla = '';
+    let state = { page: 1, categoria: '', tabla: '', desde: '', hasta: '' };
+
+    const NOMBRES_CATEGORIA = {
+      calificaciones: 'Calificaciones',
+      matriculas_estudiantes: 'Matrículas y estudiantes',
+      materias_asignaciones: 'Materias y asignaciones',
+      periodos_catalogos: 'Periodos y catálogos',
+      usuarios_accesos: 'Usuarios y accesos',
+      otros: 'Otros'
+    };
+    const nombreCat = (c) => NOMBRES_CATEGORIA[c] || c;
 
     function formatearJson(datos) {
       if (!datos) return '<span class="empty">Sin datos</span>';
@@ -118,11 +159,48 @@
       } catch { return '<pre>' + esc(String(datos)) + '</pre>'; }
     }
 
-    async function cargarAuditoria(page, tabla) {
-      currentPage = page || 1;
-      currentTabla = tabla || '';
-      let url = `/auditoria/?page=${currentPage}&limit=50`;
-      if (currentTabla) url += `&tabla=${encodeURIComponent(currentTabla)}`;
+    async function cargarResumen() {
+      const { resumen } = await apiGet('/auditoria/resumen');
+      const div = document.getElementById('resumen-cats');
+      if (!resumen || resumen.length === 0) {
+        div.innerHTML = '<p>No hay eventos de auditoria registrados.</p>';
+        return;
+      }
+      div.innerHTML = resumen.map(r => {
+        const ultimo = r.ultimo_evento ? new Date(r.ultimo_evento).toLocaleString('es-EC') : '—';
+        return `<div class="cat-card" onclick="entrarCategoria('${esc(r.categoria)}')">
+          <h3>${esc(nombreCat(r.categoria))}</h3>
+          <div class="total">${r.total_eventos}</div>
+          <div class="meta">Último evento: ${ultimo}</div>
+          <span class="hoy ${r.eventos_hoy > 0 ? 'activa' : ''}">${r.eventos_hoy > 0 ? r.eventos_hoy + ' hoy' : 'sin actividad hoy'}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function entrarCategoria(categoria) {
+      state = { page: 1, categoria, tabla: '', desde: '', hasta: '' };
+      document.getElementById('filter-tabla').value = '';
+      document.getElementById('filter-desde').value = '';
+      document.getElementById('filter-hasta').value = '';
+      document.getElementById('vista-resumen').style.display = 'none';
+      document.getElementById('vista-detalle').style.display = 'block';
+      document.getElementById('detalle-titulo').textContent = nombreCat(categoria);
+      cargarAuditoria(1).catch(showError);
+    }
+
+    function volverResumen() {
+      document.getElementById('vista-detalle').style.display = 'none';
+      document.getElementById('vista-resumen').style.display = 'block';
+      cargarResumen().catch(showError);
+    }
+
+    async function cargarAuditoria(page) {
+      state.page = page || 1;
+      let url = `/auditoria/?page=${state.page}&limit=50`;
+      if (state.categoria) url += `&categoria=${encodeURIComponent(state.categoria)}`;
+      if (state.tabla) url += `&tabla=${encodeURIComponent(state.tabla)}`;
+      if (state.desde) url += `&desde=${encodeURIComponent(state.desde)}`;
+      if (state.hasta) url += `&hasta=${encodeURIComponent(state.hasta)}`;
       const { registros, paginacion } = await apiGet(url);
 
       const total = paginacion.total;
@@ -172,15 +250,15 @@
       const div = document.getElementById('paginacion');
       if (pag.totalPages <= 1) { div.innerHTML = ''; return; }
       let html = '';
-      html += `<button ${pag.page <= 1 ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page - 1}, currentTabla)">Anterior</button>`;
+      html += `<button ${pag.page <= 1 ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page - 1})">Anterior</button>`;
       const start = Math.max(1, pag.page - 2);
       const end = Math.min(pag.totalPages, pag.page + 2);
-      if (start > 1) html += `<button onclick="cargarAuditoria(1, currentTabla)">1</button><span class="page-info">...</span>`;
+      if (start > 1) html += `<button onclick="cargarAuditoria(1)">1</button><span class="page-info">...</span>`;
       for (let p = start; p <= end; p++) {
-        html += `<button class="${p === pag.page ? 'active' : ''}" onclick="cargarAuditoria(${p}, currentTabla)">${p}</button>`;
+        html += `<button class="${p === pag.page ? 'active' : ''}" onclick="cargarAuditoria(${p})">${p}</button>`;
       }
-      if (end < pag.totalPages) html += `<span class="page-info">...</span><button onclick="cargarAuditoria(${pag.totalPages}, currentTabla)">${pag.totalPages}</button>`;
-      html += `<button ${pag.page >= pag.totalPages ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page + 1}, currentTabla)">Siguiente</button>`;
+      if (end < pag.totalPages) html += `<span class="page-info">...</span><button onclick="cargarAuditoria(${pag.totalPages})">${pag.totalPages}</button>`;
+      html += `<button ${pag.page >= pag.totalPages ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page + 1})">Siguiente</button>`;
       html += `<span class="page-info">Pagina ${pag.page} de ${pag.totalPages}</span>`;
       div.innerHTML = html;
     }
@@ -195,8 +273,21 @@
           opt.value = t; opt.textContent = t;
           sel.appendChild(opt);
         });
-        sel.onchange = () => cargarAuditoria(1, sel.value);
-        await cargarAuditoria(1);
+        document.getElementById('btn-volver').onclick = volverResumen;
+        document.getElementById('btn-filtrar').onclick = () => {
+          state.tabla = sel.value;
+          state.desde = document.getElementById('filter-desde').value;
+          state.hasta = document.getElementById('filter-hasta').value;
+          cargarAuditoria(1).catch(showError);
+        };
+        document.getElementById('btn-limpiar').onclick = () => {
+          sel.value = '';
+          document.getElementById('filter-desde').value = '';
+          document.getElementById('filter-hasta').value = '';
+          state.tabla = ''; state.desde = ''; state.hasta = '';
+          cargarAuditoria(1).catch(showError);
+        };
+        await cargarResumen();
       } catch (err) { showError(err.message); }
     })();
   </script>

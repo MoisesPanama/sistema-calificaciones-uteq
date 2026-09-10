@@ -274,7 +274,8 @@ sistema-calificaciones-uteq/
 | POST | `/api/calificaciones/` | Registro individual |
 | GET | `/api/consulta/` | Notas + promedios por estudiante |
 | GET | `/api/reportes/` | Reporte con cursor explícito |
-| GET | `/api/auditoria/` | Panel de auditoría (solo admin) |
+| GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
+| GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
 | GET | `/api/catalogos/cursos` | Cursos por periodo |
 | GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
