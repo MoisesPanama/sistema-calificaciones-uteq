@@ -348,8 +348,9 @@ h1 {
 .cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.2rem;
+    gap: 1.6rem;
     margin-top: 1.5rem;
+    margin-bottom: 0.6rem;
 }
 .card {
     background: white;
@@ -558,3 +559,32 @@ select {
 .pagination button.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
 .pagination button:disabled { opacity: 0.4; cursor: default; }
 .pagination .page-info { font-size: 0.82rem; color: #6b7280; margin: 0 0.5rem; }
+
+/* Tarjetas de bloques (auditoria, consulta): resumen clicable. */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.cat-card {
+  background: white; border-radius: 12px; padding: 1.1rem 1.2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+  border: 1px solid #e5e7eb; transition: transform 0.12s, box-shadow 0.12s;
+}
+.cat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30,58,138,0.12); }
+.cat-card h3 { font-size: 0.95rem; color: #1e3a8a; margin-bottom: 0.4rem; }
+.cat-card .total { font-size: 1.6rem; font-weight: 700; color: #111827; }
+.cat-card .meta { font-size: 0.78rem; color: #6b7280; margin-top: 0.3rem; }
+.cat-card .hoy { display: inline-block; margin-top: 0.5rem; font-size: 0.72rem; font-weight: 700;
+  padding: 0.15rem 0.55rem; border-radius: 6px; background: #f3f4f6; color: #6b7280; }
+.cat-card .hoy.activa { background: #dcfce7; color: #166534; }
+
+/* Barras de metricas (dashboard): spans con display block para que
+   el ancho/alto apliquen (inline los ignora y se ven grises). */
+.bar-row { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; font-size: 0.87rem; }
+.bar-label { min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { display: block; flex: 1; background: #eef2f7; border-radius: 6px; height: 14px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 6px; background: #2563eb; }
+
+/* Respiro general: tarjetas y bloques del dashboard */
+#metricas { margin-bottom: 0.6rem; }
+#bloques .card { margin-bottom: 1.6rem; }
+
+/* Login: separar el boton del ultimo campo */
+.login-box .btn-primary { margin-top: 1.4rem; width: 100%; }

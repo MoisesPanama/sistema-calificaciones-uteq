@@ -7,7 +7,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, getProfesorId, esAdmin } = require('../helpers/contexto');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 function evaluarEscala(nota) {
     if (nota == null) return 'S/N';
@@ -165,6 +166,139 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Error en consulta por materia:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el promedio de la materia.' });
+    }
+});
+
+// GET /api/consulta/grupos?id_periodo= — bloques Materia＋Paralelo
+// del periodo con conteo de estudiantes. El profesor solo ve sus
+// asignaciones; el resto ve todos (el detalle filtra por rol).
+router.get('/grupos', requireAuth, async (req, res) => {
+    try {
+        const periodoActivo = await getPeriodoActivo();
+        if (!periodoActivo) {
+            return res.status(500).json({ error: 'No hay periodos registrados.' });
+        }
+        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const params = [idPeriodo];
+        let filtroProf = '';
+        if (!esAdmin(req.session.usuario)) {
+            const idProfesor = await getProfesorId(pool, req.session.usuario.id_usuario);
+            if (req.session.usuario.nombre_rol === 'profesor') {
+                if (!idProfesor) return res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
+                params.push(idProfesor);
+                filtroProf = ` AND pmp.id_profesor = $${params.length}`;
+            }
+        }
+        const r = await pool.query(
+            `SELECT m.id_materia, m.nombre AS materia,
+                    c.id_curso, c.nombre AS curso, c.paralelo,
+                    COUNT(DISTINCT CASE
+                        WHEN pmp.id_curso IS NULL OR mat.id_curso IS NULL OR mat.id_curso = pmp.id_curso
+                        THEN mat.id_estudiante END)::int AS n_estudiantes
+             FROM profesor_materia_periodo pmp
+             JOIN materias m ON m.id_materia = pmp.id_materia
+             LEFT JOIN cursos c ON c.id_curso = pmp.id_curso
+             LEFT JOIN matriculas mat ON mat.id_periodo = pmp.id_periodo
+             WHERE pmp.id_periodo = $1${filtroProf}
+             GROUP BY m.id_materia, m.nombre, c.id_curso, c.nombre, c.paralelo
+             ORDER BY m.nombre, c.nombre NULLS FIRST, c.paralelo NULLS FIRST`,
+            params
+        );
+        const periodoSel = await pool.query(
+            'SELECT nombre FROM periodos_academicos WHERE id_periodo = $1', [idPeriodo]
+        );
+        res.json({
+            idPeriodo: String(idPeriodo),
+            periodoNombre: periodoSel.rows[0]?.nombre || periodoActivo.nombre,
+            grupos: r.rows
+        });
+    } catch (error) {
+        console.error('Error al listar grupos:', error.message);
+        res.status(500).json({ error: 'No se pudieron cargar los grupos.' });
+    }
+});
+
+// GET /api/consulta/grupo?id_materia=&id_periodo=&id_curso=&page=
+// Nomina paginada (10) del bloque. Profesor: solo sus grupos.
+// Representante: solo sus hijos.
+router.get('/grupo', requireAuth, async (req, res) => {
+    try {
+        const periodoActivo = await getPeriodoActivo();
+        if (!periodoActivo) {
+            return res.status(500).json({ error: 'No hay periodos registrados.' });
+        }
+        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idMateria = req.query.id_materia || '';
+        const idCurso = req.query.id_curso || '';
+        if (!idMateria) return res.status(400).json({ error: 'Falta id_materia.' });
+
+        // El bloque debe existir como asignacion del periodo.
+        const rAsg = await pool.query(
+            `SELECT id_profesor FROM profesor_materia_periodo
+             WHERE id_periodo = $1 AND id_materia = $2
+               AND (( $3 = '' AND id_curso IS NULL) OR (id_curso = NULLIF($3, '')::int))`,
+            [idPeriodo, idMateria, idCurso]
+        );
+        if (rAsg.rows.length === 0) {
+            return res.status(404).json({ error: 'Ese grupo (materia y paralelo) no existe en el periodo.' });
+        }
+        if (req.session.usuario.nombre_rol === 'profesor') {
+            const idProfesor = await getProfesorId(pool, req.session.usuario.id_usuario);
+            const propia = rAsg.rows.some((a) => String(a.id_profesor) === String(idProfesor));
+            if (!propia) {
+                return res.status(403).json({ error: 'Ese grupo no te esta asignado.' });
+            }
+        }
+
+        let where = 'WHERE mat.id_periodo = $1';
+        const params = [idPeriodo];
+        if (idCurso !== '') {
+            where += ` AND (mat.id_curso = $${params.length + 1} OR mat.id_curso IS NULL)`;
+            params.push(idCurso);
+        }
+        if (req.session.usuario.nombre_rol === 'representante') {
+            const rep = await pool.query(
+                'SELECT id_representante FROM representantes WHERE id_usuario = $1',
+                [req.session.usuario.id_usuario]
+            );
+            if (rep.rows.length > 0) {
+                where += ` AND e.id_representante = $${params.length + 1}`;
+                params.push(rep.rows[0].id_representante);
+            } else {
+                where += ' AND 1 = 0';
+            }
+        }
+        const countResult = await pool.query(
+            `SELECT COUNT(DISTINCT e.id_estudiante) AS total
+             FROM matriculas mat
+             JOIN estudiantes e ON e.id_estudiante = mat.id_estudiante
+             ${where}`,
+            params
+        );
+        const total = parseInt(countResult.rows[0].total);
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
+        const rEst = await pool.query(
+            `SELECT DISTINCT e.id_estudiante, e.nombres, e.apellidos,
+                    cu.nombre AS curso, cu.paralelo
+             FROM matriculas mat
+             JOIN estudiantes e ON e.id_estudiante = mat.id_estudiante
+             LEFT JOIN cursos cu ON cu.id_curso = mat.id_curso
+             ${where}
+             ORDER BY e.apellidos, e.nombres
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, limit, offset]
+        );
+        const rMat = await pool.query('SELECT nombre FROM materias WHERE id_materia = $1', [idMateria]);
+        res.json({
+            ...respuestaPaginada(rEst.rows, { page, limit, total }),
+            idPeriodo: String(idPeriodo),
+            idMateria: String(idMateria),
+            idCurso: String(idCurso || ''),
+            materia: rMat.rows[0]?.nombre || ''
+        });
+    } catch (error) {
+        console.error('Error al cargar nomina del grupo:', error.message);
+        res.status(500).json({ error: 'No se pudo cargar la nomina.' });
     }
 });
 

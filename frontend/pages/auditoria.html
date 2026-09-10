@@ -66,19 +66,7 @@
     .audit-filters label { font-size: 0.85rem; font-weight: 600; color: #374151; }
     /* .pagination vive en css/style.css (compartido, Fase 4) */
 
-    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .cat-card {
-      background: white; border-radius: 12px; padding: 1.1rem 1.2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
-      border: 1px solid #e5e7eb; transition: transform 0.12s, box-shadow 0.12s;
-    }
-    .cat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30,58,138,0.12); }
-    .cat-card h3 { font-size: 0.95rem; color: #1e3a8a; margin-bottom: 0.4rem; }
-    .cat-card .total { font-size: 1.6rem; font-weight: 700; color: #111827; }
-    .cat-card .meta { font-size: 0.78rem; color: #6b7280; margin-top: 0.3rem; }
-    .cat-card .hoy { display: inline-block; margin-top: 0.5rem; font-size: 0.72rem; font-weight: 700;
-      padding: 0.15rem 0.55rem; border-radius: 6px; background: #f3f4f6; color: #6b7280; }
-    .cat-card .hoy.activa { background: #dcfce7; color: #166534; }
+    /* .cat-grid/.cat-card viven en css/style.css (compartido) */
 
     @media (max-width: 768px) {
       .audit-json { grid-template-columns: 1fr; }

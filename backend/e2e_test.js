@@ -120,12 +120,10 @@ const loginAs = async (email) => {
 
   console.log('\n=== 4. AUDITORIA DETALLE + RESUMEN ===');
   await loginAs('admin@uteq.edu.ec');
-  const audit = await get('/auditoria/?page=1&limit=5&tabla=calificaciones');
+  const audit = await get('/auditoria/?page=1&limit=50&tabla=calificaciones');
   log('Audit query', audit.status === 200 && Array.isArray(audit.body.datos), `total=${audit.body.paginacion?.total}`);
-  const recentInsert = audit.body.datos?.find(r => r.operacion === 'INSERT' && r.tabla_afectada === 'calificaciones');
-  if (recentInsert) {
-    log('Audit has user', !!recentInsert.id_usuario_app, `id_usuario_app=${recentInsert.id_usuario_app}`);
-  }
+  const conUsuario = audit.body.datos?.find(r => (r.operacion === 'INSERT' || r.operacion === 'UPDATE') && r.tabla_afectada === 'calificaciones' && r.id_usuario_app);
+  log('Audit has user', !!conUsuario, conUsuario ? `${conUsuario.operacion} id_usuario_app=${conUsuario.id_usuario_app}` : 'ninguna fila reciente con usuario');
   const resumen = await get('/auditoria/resumen');
   log('Resumen por categorias', resumen.status === 200 && Array.isArray(resumen.body.resumen) && resumen.body.resumen.length > 0,
     `${resumen.body.resumen?.length || 0} bloques`);
@@ -275,6 +273,32 @@ const loginAs = async (email) => {
   await loginAs('maria.torres@uteq.edu.ec');
   const dashPsi = await get('/dashboard/');
   log('Dashboard psicologo', dashPsi.status === 200 && !!dashPsi.body.rendimiento, '');
+
+  console.log('\n=== 12. CONSULTA POR BLOQUES + ASIGNACIONES ===');
+  await loginAs('admin@uteq.edu.ec');
+  const grupos = await get(`/consulta/grupos?id_periodo=${idPeriodo}`);
+  log('Bloques materia+paralelo', grupos.status === 200 && grupos.body.grupos?.length >= 2,
+    `${grupos.body.grupos?.length} bloques`);
+  const g0 = grupos.body.grupos?.[0];
+  if (g0) {
+    const nom = await get(`/consulta/grupo?id_periodo=${idPeriodo}&id_materia=${g0.id_materia}&id_curso=${g0.id_curso || ''}&page=1&limit=10`);
+    log('Nomina paginada del bloque', nom.status === 200 && Array.isArray(nom.body.datos)
+      && nom.body.datos.length <= 10 && !!nom.body.paginacion,
+      `total=${nom.body.paginacion?.total}`);
+  }
+  const asg = await get(`/asignaciones/?id_periodo=${idPeriodo}`);
+  log('Listar asignaciones', asg.status === 200 && Array.isArray(asg.body.asignaciones), `${asg.body.asignaciones?.length}`);
+  const opt = await get(`/asignaciones/opciones?id_periodo=${idPeriodo}`);
+  log('Opciones para formulario', opt.status === 200 && opt.body.profesores?.length > 0 && opt.body.materias?.length > 0, '');
+  const asgBody = { id_profesor: 5, id_materia: 7, id_periodo: idPeriodo, id_curso: null };
+  const creaAsg1 = await post('/asignaciones/', asgBody);
+  log('Asignar materia general', creaAsg1.status === 201, creaAsg1.body.error || '');
+  const creaAsg2 = await post('/asignaciones/', asgBody);
+  log('Asignacion duplicada -> 409', creaAsg2.status === 409, '');
+  if (creaAsg1.body.id_asignacion) {
+    const borraAsg = await del(`/asignaciones/${creaAsg1.body.id_asignacion}`);
+    log('Quitar asignacion', borraAsg.status === 200, borraAsg.body.error || '');
+  }
 
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;

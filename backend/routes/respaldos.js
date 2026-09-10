@@ -11,7 +11,11 @@ const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const BACKUP_DIR = path.join(__dirname, '..', 'backups');
+const BACKUP_DIR = process.env.RESPALDOS_DIR
+    ? (path.isAbsolute(process.env.RESPALDOS_DIR)
+        ? process.env.RESPALDOS_DIR
+        : path.join(__dirname, '..', process.env.RESPALDOS_DIR))
+    : path.join(__dirname, '..', 'backups');
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 // Configuracion de la DB desde .env

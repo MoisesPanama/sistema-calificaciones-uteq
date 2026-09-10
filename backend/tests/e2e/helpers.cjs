@@ -3,14 +3,17 @@ async function login(page, email, password = 'UTEQ2026') {
   // Sin esto, el auto-redirect del login (si ya hay sesion)
   // saca a dashboard y los fill() esperan eternamente.
   await page.context().clearCookies();
-  // domcontentloaded (no load): evita la carrera ERR_ABORTED con
-  // el auto-redirect de la propia pagina en modo headed.
-  // Reintento: la carrera es intermitente (navegacion reemplazada).
-  try {
-    await page.goto('/pages/login.html', { waitUntil: 'domcontentloaded' });
-  } catch (e) {
-    if (!/ERR_ABORTED/.test(String(e && e.message))) throw e;
-    await page.goto('/pages/login.html', { waitUntil: 'domcontentloaded' });
+  // domcontentloaded (no load): evita la carrera con el auto-redirect
+  // de la propia pagina. Reintentos: la carrera es intermitente
+  // (ERR_ABORTED o "interrupted by another navigation").
+  let navegado = false;
+  for (let intento = 0; intento < 3 && !navegado; intento++) {
+    try {
+      await page.goto('/pages/login.html', { waitUntil: 'domcontentloaded' });
+      navegado = true;
+    } catch (e) {
+      if (!/ERR_ABORTED|interrupted by another navigation/.test(String(e && e.message))) throw e;
+    }
   }
   await page.locator('#email').waitFor({ timeout: 15000 });
   await page.locator('#email').fill(email);

@@ -27,6 +27,8 @@
   y top 10 `alertas` fuera de la paginación.
 - `backend/.env` actual apunta a la BD Docker de pruebas. Para desarrollo
   normal, ajusta `DB_PORT`/`DB_NAME` a tu Postgres local.
+- Los respaldos de prueba van a `backend/backups-test/` (`RESPALDOS_DIR`
+  en `.env`, ignorado por git) para no mezclar ni rotar los reales.
 - Limpieza: los E2E-* sin notas se borran solos; si una corrida muere a
   medias, borra restos con `DELETE FROM colegio.<tabla> WHERE nombre LIKE 'E2E-%'`.
 - `tests/mcp-prompts.md`: prompts listos para el Playwright MCP de VS Code.

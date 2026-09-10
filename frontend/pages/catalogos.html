@@ -42,6 +42,7 @@
       <button id="tab-btn-cursos" class="active">Cursos</button>
       <button id="tab-btn-ciclos">Ciclos y Parciales</button>
       <button id="tab-btn-tipos">Tipos de Evaluación</button>
+      <button id="tab-btn-asig">Asignaciones</button>
     </div>
 
     <!-- ============ CURSOS ============ -->
@@ -155,6 +156,34 @@
       </div>
     </section>
 
+    <!-- ============ ASIGNACIONES ============ -->
+    <section id="tab-asig" class="tab-panel">
+      <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1rem;max-width:720px;">
+        Decide qué materias y cursos dicta cada profesor en el periodo.
+        Un profesor puede llevar varias materias y paralelos; cada materia en un
+        curso/periodo la dicta un solo profesor.
+      </p>
+      <div class="form-box">
+        <label for="asg-periodo">Periodo</label>
+        <select id="asg-periodo"></select>
+      </div>
+      <div class="grid-2">
+        <div id="lista-asig"></div>
+        <div class="card">
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Nueva asignación</h2>
+          <label for="asg-prof" style="font-size:0.82rem;font-weight:600;">Profesor</label>
+          <select id="asg-prof" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
+          <label for="asg-mat" style="font-size:0.82rem;font-weight:600;">Materia</label>
+          <select id="asg-mat" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
+          <label for="asg-cur" style="font-size:0.82rem;font-weight:600;">Curso (vacío = todos los paralelos)</label>
+          <select id="asg-cur" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Todos --</option></select>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" id="asg-guardar">Asignar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     </main>
   </div>
 </div>
@@ -166,7 +195,7 @@
     let cicloSel = '';
 
     function tabs() {
-      const defs = [['cursos'], ['ciclos'], ['tipos']];
+      const defs = [['cursos'], ['ciclos'], ['tipos'], ['asig']];
       defs.forEach(([n]) => {
         document.getElementById('tab-btn-' + n).onclick = () => {
           defs.forEach(([m]) => {
@@ -358,6 +387,39 @@
       document.getElementById('tip-cancelar').style.display = 'none';
     }
 
+    // ---------- ASIGNACIONES ----------
+    async function cargarOpcionesAsg() {
+      const d = await apiGet('/asignaciones/opciones?id_periodo=' + encodeURIComponent(periodoId));
+      document.getElementById('asg-prof').innerHTML =
+        (d.profesores || []).map(p => `<option value="${p.id_profesor}">${esc(p.nombre)}</option>`).join('');
+      document.getElementById('asg-mat').innerHTML =
+        (d.materias || []).map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
+      document.getElementById('asg-cur').innerHTML = '<option value="">-- Todos --</option>' +
+        (d.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+    }
+
+    async function cargarAsignaciones() {
+      const d = await apiGet('/asignaciones/?id_periodo=' + encodeURIComponent(periodoId));
+      const div = document.getElementById('lista-asig');
+      if (!d.asignaciones || d.asignaciones.length === 0) {
+        div.innerHTML = '<p>No hay asignaciones en este periodo.</p>';
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Profesor</th><th>Materia</th><th>Curso</th><th></th></tr></thead><tbody>` +
+        d.asignaciones.map(a => `<tr><td>${esc(a.profesor)}</td><td>${esc(a.materia)}</td>
+          <td>${a.curso ? esc(a.curso) + ' ' + esc(a.paralelo || '') : 'Todos'}</td>
+          <td class="td-actions"><button class="btn-secondary btn-sm btn-danger-text" data-eliminar-asg="${a.id_asignacion}">Quitar</button></td>
+        </tr>`).join('') + '</tbody></table></div>';
+      div.querySelectorAll('[data-eliminar-asg]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Quitar esta asignación?')) return;
+        try {
+          const r = await apiDelete('/asignaciones/' + b.dataset.eliminarAsg);
+          showOk(r.mensaje); await cargarAsignaciones();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
     function mostrarAdvertencia(adv) {
       const div = document.getElementById('cic-advertencia');
       div.innerHTML = adv ? `<div class="advertencia">${esc(adv)}</div>` : '';
@@ -371,9 +433,11 @@
         const opts = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
         document.getElementById('cur-periodo').innerHTML = opts;
         document.getElementById('cic-periodo').innerHTML = opts;
+        document.getElementById('asg-periodo').innerHTML = opts;
         periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
         document.getElementById('cur-periodo').value = periodoId;
         document.getElementById('cic-periodo').value = periodoId;
+        document.getElementById('asg-periodo').value = periodoId;
 
         const tut = await apiGet('/cursos/tutores');
         document.getElementById('cur-tutor').innerHTML = '<option value="">-- Sin tutor --</option>' +
@@ -383,8 +447,14 @@
         await cargarCiclos();
         await cargarParciales();
         await cargarTipos();
+        await cargarOpcionesAsg();
+        await cargarAsignaciones();
 
         document.getElementById('cur-periodo').onchange = (e) => { periodoId = e.target.value; cargarCursos().catch(showError); };
+        document.getElementById('asg-periodo').onchange = (e) => {
+          periodoId = e.target.value;
+          cargarOpcionesAsg().then(cargarAsignaciones).catch(showError);
+        };
         document.getElementById('par-ciclo').onchange = (e) => {
           cicloSel = e.target.value;
           cargarParciales().catch(showError);
@@ -463,6 +533,19 @@
           } catch (err) { showError(err.message); }
         };
         document.getElementById('tip-cancelar').onclick = limpiarTipo;
+
+        document.getElementById('asg-guardar').onclick = async () => {
+          try {
+            const r = await apiPost('/asignaciones/', {
+              id_profesor: document.getElementById('asg-prof').value,
+              id_materia: document.getElementById('asg-mat').value,
+              id_curso: document.getElementById('asg-cur').value || null,
+              id_periodo: periodoId
+            });
+            showOk('Asignación guardada.');
+            await cargarAsignaciones();
+          } catch (err) { showError(err.message); }
+        };
       } catch (err) { showError(err.message); }
     })();
   </script>

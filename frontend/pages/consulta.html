@@ -33,57 +33,126 @@
     <div class="form-box">
       <label for="sel-periodo">Periodo</label>
       <select id="sel-periodo"></select>
-      <label for="sel-est">Estudiante</label>
-      <select id="sel-est"><option value="">-- Selecciona un estudiante --</option></select>
-      <label for="sel-mat" id="lbl-mat" style="display:none">Materia (ver promedio específico)</label>
-      <select id="sel-mat" style="display:none"><option value="">-- Todas las materias --</option></select>
     </div>
-    <div id="resultado"></div>
-    <div id="desglose"></div>
+
+    <!-- Nivel 1: bloques Materia + Paralelo -->
+    <div id="vista-bloques">
+      <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Elige materia y paralelo</h2>
+      <div class="cat-grid" id="grupos"></div>
+    </div>
+
+    <!-- Nivel 2: nomina paginada del bloque -->
+    <div id="vista-grupo" style="display:none">
+      <button class="btn-secondary" id="btn-grupos" style="margin-bottom:1rem;">&larr; Todos los grupos</button>
+      <h2 id="grupo-titulo" style="font-size:1.05rem;color:#1e3a8a;margin-bottom:1rem;"></h2>
+      <div id="nomina"></div>
+      <div class="pagination" id="paginacion-nom"></div>
+    </div>
+
+    <!-- Nivel 3: detalle del estudiante -->
+    <div id="vista-detalle" style="display:none">
+      <button class="btn-secondary" id="btn-nomina" style="margin-bottom:1rem;">&larr; Volver a la nómina</button>
+      <div id="resultado"></div>
+      <div id="desglose"></div>
+    </div>
     </main>
   </div>
 </div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
-    function q() {
-      const p = new URLSearchParams();
-      if (document.getElementById('sel-periodo').value) p.set('id_periodo', document.getElementById('sel-periodo').value);
-      if (document.getElementById('sel-est').value) p.set('id_estudiante', document.getElementById('sel-est').value);
-      if (document.getElementById('sel-mat').value) p.set('id_materia', document.getElementById('sel-mat').value);
-      return p.toString();
+    let periodoId = '';
+    let grupo = null;
+    let nomPage = 1;
+
+    function mostrar(nivel) {
+      document.getElementById('vista-bloques').style.display = nivel === 1 ? 'block' : 'none';
+      document.getElementById('vista-grupo').style.display = nivel === 2 ? 'block' : 'none';
+      document.getElementById('vista-detalle').style.display = nivel === 3 ? 'block' : 'none';
     }
-    async function cargar(rebuild = false) {
-      const d = await apiGet('/consulta/?' + q());
+
+    async function cargarPeriodos() {
+      const per = await apiGet('/periodos/');
+      const sel = document.getElementById('sel-periodo');
+      sel.innerHTML = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
+      periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      sel.value = periodoId;
+      const nombre = (per.periodos || []).find(p => String(p.id_periodo) === periodoId)?.nombre || per.periodoActivo?.nombre || '—';
+      document.getElementById('info-periodo').innerHTML = `Periodo seleccionado: <strong>${esc(nombre)}</strong>`;
+    }
+
+    async function cargarGrupos() {
+      const d = await apiGet('/consulta/grupos?id_periodo=' + encodeURIComponent(periodoId));
       document.getElementById('info-periodo').innerHTML =
-        `Periodo seleccionado: <strong>${esc(d.periodoNombre || d.periodoActivo?.nombre || '—')}</strong>`;
-      if (rebuild || !document.getElementById('sel-periodo').options.length) {
-        document.getElementById('sel-periodo').innerHTML =
-          d.periodos.map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === d.idPeriodo ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
+        `Periodo seleccionado: <strong>${esc(d.periodoNombre || '—')}</strong>`;
+      const div = document.getElementById('grupos');
+      if (!d.grupos || d.grupos.length === 0) {
+        div.innerHTML = '<p>No hay grupos (materia＋paralelo) asignados en este periodo.</p>';
+        return;
       }
-      const se = document.getElementById('sel-est');
-      const cur = se.value || d.idEstudiante;
-      se.innerHTML = '<option value="">-- Selecciona un estudiante --</option>' +
-        d.estudiantes.map(e => `<option value="${e.id_estudiante}" ${String(e.id_estudiante) === String(cur) ? 'selected' : ''}>${esc(e.apellidos)} ${esc(e.nombres)}</option>`).join('');
-      const sm = document.getElementById('sel-mat');
-      if (d.materiasFiltro.length > 0) {
-        document.getElementById('lbl-mat').style.display = 'block';
-        sm.style.display = 'block';
-        sm.innerHTML = '<option value="">-- Todas las materias --</option>' +
-          d.materiasFiltro.map(m => `<option value="${m.id_materia}" ${String(m.id_materia) === d.idMateria ? 'selected' : ''}>${esc(m.nombre)}</option>`).join('');
-      } else { document.getElementById('lbl-mat').style.display = 'none'; sm.style.display = 'none'; }
+      div.innerHTML = d.grupos.map((g, i) => `
+        <div class="cat-card" data-grupo="${i}">
+          <h3>${esc(g.materia)}</h3>
+          <div class="total">${esc(g.curso || 'General')}${g.paralelo ? ' ' + esc(g.paralelo) : ''}</div>
+          <div class="meta">${g.n_estudiantes} estudiante(s)</div>
+        </div>`).join('');
+      div.querySelectorAll('[data-grupo]').forEach(el => {
+        el.onclick = () => entrarGrupo(d.grupos[Number(el.dataset.grupo)]);
+      });
+      mostrar(1);
+    }
+
+    function entrarGrupo(g) {
+      grupo = g;
+      nomPage = 1;
+      document.getElementById('grupo-titulo').textContent =
+        `${g.materia} — ${g.curso || 'General'}${g.paralelo ? ' ' + g.paralelo : ''}`;
+      mostrar(2);
+      cargarNomina().catch(showError);
+    }
+
+    async function cargarNomina() {
+      const url = `/consulta/grupo?id_periodo=${encodeURIComponent(periodoId)}` +
+        `&id_materia=${grupo.id_materia}&id_curso=${grupo.id_curso || ''}&page=${nomPage}&limit=10`;
+      const d = await apiGet(url);
+      const div = document.getElementById('nomina');
+      if (!d.datos || d.datos.length === 0) {
+        div.innerHTML = '<p>No hay estudiantes en este grupo.</p>';
+        renderPaginacion('paginacion-nom', d.paginacion, () => {});
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Apellidos</th><th>Nombres</th><th>Curso</th><th></th></tr></thead><tbody>` +
+        d.datos.map(e => `<tr><td>${esc(e.apellidos)}</td><td>${esc(e.nombres)}</td>
+          <td>${e.curso ? esc(e.curso) + ' ' + esc(e.paralelo || '') : '—'}</td>
+          <td class="td-actions"><button class="btn-secondary btn-sm" data-ver-est="${e.id_estudiante}">Ver notas</button></td>
+        </tr>`).join('') + '</tbody></table></div>';
+      renderPaginacion('paginacion-nom', d.paginacion, (p) => { nomPage = p; cargarNomina().catch(showError); });
+      div.querySelectorAll('[data-ver-est]').forEach(b => b.onclick = () => verDetalle(b.dataset.verEst));
+    }
+
+    async function verDetalle(idEstudiante) {
+      const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}` +
+        `&id_estudiante=${idEstudiante}&id_materia=${grupo.id_materia}`);
+      renderDetalle(d);
+      mostrar(3);
+      window.scrollTo(0, 0);
+    }
+
+    function renderDetalle(d) {
       const div = document.getElementById('resultado');
-      if (!d.idEstudiante) { div.innerHTML = ''; return; }
       if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
       const contador = (d.materiasTotales != null)
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
-      const headerMat = d.idMateria
-        ? `<div class="form-box"><h2>Promedio en la materia seleccionada: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o más.</small></p></div>`
-        : '';
+      const headerMat =
+        `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o más.</small></p></div>`;
+      const soloEsta = (d.materias || []).filter(m => String(m.id_materia) === String(grupo.id_materia));
+      const lista = soloEsta.length > 0 ? soloEsta : d.materias;
       div.innerHTML = contador + headerMat +
-        d.materias.map((m, i) => {
+        lista.map((m, i) => {
           const filas = m.parciales.length > 0
             ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
             : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
@@ -106,8 +175,9 @@
           </div>`;
         }).join('') +
         `<div class="form-box"><h2>Promedio general del periodo: ${esc(d.promedioGeneral)}</h2></div>`;
-      await cargarDesglose(d);
+      cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
     }
+
     async function cargarDesglose(d) {
       const div = document.getElementById('desglose');
       div.innerHTML = '';
@@ -126,16 +196,20 @@
               <td colspan="2">${esc(c.escala)}</td></tr></tbody></table>`).join('');
       } catch (err) { showError(err.message); }
     }
+
     (async () => {
       if (!await initPage()) return;
-      await cargar(true).catch(showError);
+      document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
+      document.getElementById('btn-nomina').onclick = () => mostrar(2);
+      try {
+        await cargarPeriodos();
+        await cargarGrupos();
+      } catch (err) { showError(err.message); }
       document.getElementById('sel-periodo').onchange = async () => {
         const id = document.getElementById('sel-periodo').value;
         await apiPost('/auth/periodo-seleccionado', { id_periodo: Number(id) });
         location.reload();
       };
-      document.getElementById('sel-est').onchange = () => cargar().catch(showError);
-      document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
     })();
   </script>
 </body>

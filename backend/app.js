@@ -66,6 +66,7 @@ app.use('/api/consulta', require('./routes/consulta'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/auditoria', require('./routes/auditoria'));
 app.use('/api/catalogos', require('./routes/catalogos'));
+app.use('/api/asignaciones', require('./routes/asignaciones'));
 app.use('/api/cursos', require('./routes/cursos'));
 app.use('/api/ciclos', require('./routes/ciclos'));
 app.use('/api/parciales', require('./routes/parciales'));

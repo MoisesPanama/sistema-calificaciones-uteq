@@ -20,3 +20,7 @@ EXECUTE FUNCTION fn_auditoria_generica('id_representante');
 
 -- Borrado solo via ruta con verificacion previa de uso.
 GRANT DELETE ON representantes TO app_uteq;
+
+-- Borrado de asignaciones (ruta DELETE /api/asignaciones/:id,
+-- solo admin, con rastro en auditoria).
+GRANT DELETE ON profesor_materia_periodo TO app_uteq;

@@ -29,3 +29,4 @@ server_out.txt
 server_err.txt
 cookies.txt
 temp_*.json
+backend/backups-test/

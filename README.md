@@ -164,6 +164,9 @@ psql -U postgres -d calificaciones_uteq -f database/14_log_respaldos.sql
 psql -U postgres -d calificaciones_uteq -f database/15_triggers_catalogos.sql
 psql -U postgres -d calificaciones_uteq -f database/16_pesos_configurables.sql
 psql -U postgres -d calificaciones_uteq -f database/17_indices_rendimiento.sql
+psql -U postgres -d calificaciones_uteq -f database/18_representantes.sql
+psql -U postgres -d calificaciones_uteq -f database/19_datos_sinteticos.sql
+psql -U postgres -d calificaciones_uteq -f database/20_unique_asignaciones_por_curso.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -278,6 +281,8 @@ sistema-calificaciones-uteq/
 | POST | `/api/calificaciones/lote` | Guardado masivo transaccional (`id_parcial`/`id_ciclo` opcionales) |
 | POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
 | GET | `/api/consulta/` | Notas + promedios por estudiante |
+| GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
+| GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
 | GET | `/api/reportes/` | Reporte paginado (`?page=&limit=`, formato `{datos,paginacion}`) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
@@ -296,6 +301,9 @@ sistema-calificaciones-uteq/
 | PUT/DELETE | `/api/parciales/:id` | Editar / eliminar si no tiene notas (solo admin) |
 | GET/POST | `/api/tipos/` | Tipos de evaluación / crear (solo admin) |
 | PUT/DELETE | `/api/tipos/:id` | Editar / eliminar si no tiene notas (solo admin) |
+| GET/POST | `/api/asignaciones/` | Asignaciones del periodo / asignar materia＋curso a profesor (solo admin) |
+| GET | `/api/asignaciones/opciones` | Profesores, materias y cursos para el formulario |
+| DELETE | `/api/asignaciones/:id` | Quitar asignación (solo admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

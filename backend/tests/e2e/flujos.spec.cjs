@@ -27,12 +27,12 @@ test('estudiantes pagina y muestra controles compartidos', async ({ page }) => {
 test('representante ve desglose por materia', async ({ page }) => {
   await login(page, 'fernando.castillo@uteq.edu.ec');
   await page.goto('/pages/consulta.html');
-  const selEst = page.locator('#sel-est');
-  await expect(selEst.locator('option').nth(1)).toBeAttached({ timeout: 15000 });
-  await selEst.selectOption({ index: 1 });
-  await expect(page.locator('#sel-mat')).toBeVisible({ timeout: 15000 });
-  await page.locator('#sel-mat').selectOption({ index: 1 });
+  await expect(page.locator('.cat-card').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('.cat-card').first().click();
+  await expect(page.locator('#nomina tbody tr').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('[data-ver-est]').first().click();
+  await expect(page.locator('#vista-detalle')).toBeVisible();
+  await expect(page.locator('#resultado')).toContainText('Materias con notas');
   await expect(page.locator('#desglose table').first()).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#desglose')).toContainText('Mínimo esperado');
-  await expect(page.locator('#resultado')).toContainText('Materias con notas');
 });
