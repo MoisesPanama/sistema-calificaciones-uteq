@@ -256,7 +256,7 @@
           </div>`
         : '';
       div.innerHTML += promGeneralBox;
-      cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
+      await cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
     }
 
     function badgeEscala(escala) {
