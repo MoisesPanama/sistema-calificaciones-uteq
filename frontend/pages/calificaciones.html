@@ -21,6 +21,10 @@
       <select id="sel-materia"><option value="">-- Selecciona una materia --</option></select>
       <label for="sel-curso">Curso</label>
       <select id="sel-curso"><option value="">-- Todos mis cursos --</option></select>
+      <label for="sel-ciclo">Ciclo (quimestre/trimestre)</label>
+      <select id="sel-ciclo"><option value="">-- Sin ciclo específico --</option></select>
+      <label for="sel-parcial">Parcial</label>
+      <select id="sel-parcial"><option value="">-- Sin parcial específico --</option></select>
     </div>
     <div id="tabla"></div>
     <p><small>Las celdas vacias no se guardan (conservan la nota anterior). Aprueba con 7.</small></p>
@@ -73,9 +77,40 @@
         if (data.materias.length === 0) {
           showError('No tiene materias asignadas en este periodo. Pida al administrador que le asigne materias.');
         }
+        await cargarCiclos();
       }
       renderTabla(data);
       limpiarCambios();
+    }
+
+    async function cargarCiclos() {
+      const sc = document.getElementById('sel-ciclo');
+      try {
+        const d = await apiGet('/catalogos/ciclos?id_periodo=' + encodeURIComponent(ctx.idPeriodo));
+        sc.innerHTML = '<option value="">-- Sin ciclo específico --</option>' +
+          (d.ciclos || []).map(c => `<option value="${c.id_ciclo}">${esc(c.nombre)}</option>`).join('');
+      } catch (err) {
+        sc.innerHTML = '<option value="">-- Sin ciclo específico --</option>';
+      }
+      document.getElementById('sel-parcial').innerHTML = '<option value="">-- Sin parcial específico --</option>';
+    }
+
+    async function cargarParciales() {
+      const idCiclo = document.getElementById('sel-ciclo').value;
+      const sp = document.getElementById('sel-parcial');
+      sp.innerHTML = '<option value="">-- Sin parcial específico --</option>';
+      if (!idCiclo) return;
+      try {
+        const d = await apiGet('/catalogos/parciales?id_ciclo=' + encodeURIComponent(idCiclo));
+        sp.innerHTML = '<option value="">-- Sin parcial específico --</option>' +
+          (d.parciales || []).map(p => `<option value="${p.id_parcial}">${esc(p.nombre)}</option>`).join('');
+      } catch (err) { showError(err.message); }
+    }
+
+    function contextoEvaluativo() {
+      const idCiclo = document.getElementById('sel-ciclo').value || null;
+      const idParcial = document.getElementById('sel-parcial').value || null;
+      return { id_ciclo: idCiclo, id_parcial: idParcial };
     }
 
     function renderTabla(data) {
@@ -124,6 +159,7 @@
           id_periodo: ctx.idPeriodo,
           id_materia: document.getElementById('sel-materia').value,
           id_curso: document.getElementById('sel-curso').value || null,
+          ...contextoEvaluativo(),
           notas: { [idEstudiante]: notas }
         });
         showOk(r.mensaje);
@@ -144,6 +180,7 @@
           id_periodo: ctx.idPeriodo,
           id_materia: document.getElementById('sel-materia').value,
           id_curso: document.getElementById('sel-curso').value || null,
+          ...contextoEvaluativo(),
           notas
         });
         showOk(r.mensaje);
@@ -178,6 +215,13 @@
       document.getElementById('sel-curso').onchange = async () => {
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de curso?')) return;
         await cargar().catch(showError);
+      };
+      document.getElementById('sel-ciclo').onchange = async () => {
+        if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de ciclo?')) return;
+        await cargarParciales().catch(showError);
+      };
+      document.getElementById('sel-parcial').onchange = async () => {
+        if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Cambiar de parcial?')) return;
       };
     })();
   </script>

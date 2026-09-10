@@ -47,4 +47,38 @@ router.get('/tipos-evaluacion', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/catalogos/ciclos?id_periodo= -> ciclos del periodo (Fase 5)
+router.get('/ciclos', requireAuth, async (req, res) => {
+    try {
+        const periodoActivo = await getPeriodoActivo();
+        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        if (!idPeriodo) return res.json({ ciclos: [] });
+        const r = await pool.query(
+            `SELECT id_ciclo, nombre, tipo, orden, peso
+             FROM ciclos_evaluativos WHERE id_periodo = $1 ORDER BY orden`,
+            [idPeriodo]
+        );
+        res.json({ ciclos: r.rows });
+    } catch (error) {
+        console.error('Error al cargar ciclos:', error.message);
+        res.status(500).json({ error: 'No se pudieron cargar los ciclos evaluativos.' });
+    }
+});
+
+// GET /api/catalogos/parciales?id_ciclo= -> parciales del ciclo (Fase 5)
+router.get('/parciales', requireAuth, async (req, res) => {
+    try {
+        const idCiclo = req.query.id_ciclo || '';
+        if (!idCiclo) return res.status(400).json({ error: 'Falta id_ciclo.' });
+        const r = await pool.query(
+            'SELECT id_parcial, nombre, orden FROM parciales WHERE id_ciclo = $1 ORDER BY orden',
+            [idCiclo]
+        );
+        res.json({ parciales: r.rows });
+    } catch (error) {
+        console.error('Error al cargar parciales:', error.message);
+        res.status(500).json({ error: 'No se pudieron cargar los parciales.' });
+    }
+});
+
 module.exports = router;

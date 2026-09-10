@@ -270,8 +270,8 @@ sistema-calificaciones-uteq/
 | GET/POST | `/api/periodos/` | Listado + periodo activo / crear |
 | POST | `/api/periodos/:id/activar` | Fijar periodo activo (solo admin) |
 | GET | `/api/calificaciones/contexto` | Materias, cursos, tipos, estudiantes y notas |
-| POST | `/api/calificaciones/lote` | Guardado masivo transaccional |
-| POST | `/api/calificaciones/` | Registro individual |
+| POST | `/api/calificaciones/lote` | Guardado masivo transaccional (`id_parcial`/`id_ciclo` opcionales) |
+| POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
 | GET | `/api/consulta/` | Notas + promedios por estudiante |
 | GET | `/api/reportes/` | Reporte paginado (`?page=&limit=`, formato `{datos,paginacion}`) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
@@ -279,6 +279,8 @@ sistema-calificaciones-uteq/
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
 | GET | `/api/catalogos/cursos` | Cursos por periodo |
 | GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
+| GET | `/api/catalogos/ciclos` | Ciclos del periodo (`?id_periodo=`) |
+| GET | `/api/catalogos/parciales` | Parciales del ciclo (`?id_ciclo=`) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

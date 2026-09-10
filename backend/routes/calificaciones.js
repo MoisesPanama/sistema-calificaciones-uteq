@@ -127,9 +127,67 @@ function extraerEntradas(notas) {
     return entradas;
 }
 
+// Valida el contexto evaluativo (Fase 5): el parcial debe existir y
+// pertenecer (via su ciclo) al periodo; el ciclo debe ser del periodo.
+// Devuelve { idParcial, idCiclo } normalizados (numero o null).
+// Si solo viene parcial, el ciclo se deduce (igual que el SP).
+async function validarContextoEvaluativo(conn, idPeriodo, idParcial, idCiclo) {
+    const numParcial = idParcial === undefined || idParcial === null || idParcial === '' ? null : Number(idParcial);
+    const numCiclo = idCiclo === undefined || idCiclo === null || idCiclo === '' ? null : Number(idCiclo);
+    if ((idParcial != null && idParcial !== '' && !Number.isInteger(numParcial)) ||
+        (idCiclo != null && idCiclo !== '' && !Number.isInteger(numCiclo))) {
+        const error = new Error('El parcial o ciclo seleccionado no es valido.');
+        error.status = 400;
+        throw error;
+    }
+    let cicloDeducido = numCiclo;
+    if (numParcial !== null) {
+        const r = await conn.query(
+            `SELECT p.id_parcial, p.id_ciclo
+             FROM parciales p
+             JOIN ciclos_evaluativos c ON c.id_ciclo = p.id_ciclo
+             WHERE p.id_parcial = $1 AND c.id_periodo = $2`,
+            [numParcial, idPeriodo]
+        );
+        if (r.rows.length === 0) {
+            const error = new Error('El parcial seleccionado no pertenece al periodo activo.');
+            error.status = 400;
+            throw error;
+        }
+        cicloDeducido = r.rows[0].id_ciclo;
+        if (numCiclo !== null && numCiclo !== cicloDeducido) {
+            const error = new Error('El parcial no pertenece al ciclo seleccionado.');
+            error.status = 400;
+            throw error;
+        }
+    } else if (numCiclo !== null) {
+        const r = await conn.query(
+            'SELECT id_ciclo FROM ciclos_evaluativos WHERE id_ciclo = $1 AND id_periodo = $2',
+            [numCiclo, idPeriodo]
+        );
+        if (r.rows.length === 0) {
+            const error = new Error('El ciclo seleccionado no pertenece al periodo activo.');
+            error.status = 400;
+            throw error;
+        }
+    }
+    return { idParcial: numParcial, idCiclo: cicloDeducido };
+}
+
+function responderErrorNegocio(res, error, mensajeDefecto) {
+    if (error.status) {
+        return res.status(error.status).json({ error: error.message });
+    }
+    if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
+        return res.status(400).json({ error: error.message });
+    }
+    console.error(mensajeDefecto + ':', error.message);
+    res.status(500).json({ error: mensajeDefecto + '.' });
+}
+
 // POST /api/calificaciones/lote -> guarda la tabla masiva en transaccion
 router.post('/lote', requireAuth, async (req, res) => {
-    const { id_periodo, id_materia, notas } = req.body || {};
+    const { id_periodo, id_materia, notas, id_parcial, id_ciclo } = req.body || {};
 
     if (!id_periodo) return res.status(400).json({ error: 'Falta el periodo.' });
     if (!id_materia) return res.status(400).json({ error: 'Debe seleccionar una materia.' });
@@ -148,25 +206,22 @@ router.post('/lote', requireAuth, async (req, res) => {
     try {
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const { idParcial, idCiclo } = await validarContextoEvaluativo(client, id_periodo, id_parcial, id_ciclo);
         for (const e of entradas) {
             const valor = Number(String(e.crudo).replace(',', '.'));
             if (!Number.isFinite(valor)) {
                 throw new Error('Valor no numerico para el estudiante ' + e.idEst + ': "' + e.crudo + '"');
             }
             await client.query(
-                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
-                [e.idEst, id_materia, id_periodo, e.idTipo, valor, req.session.usuario.id_usuario]
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8)',
+                [e.idEst, id_materia, id_periodo, e.idTipo, valor, req.session.usuario.id_usuario, idParcial, idCiclo]
             );
         }
         await client.query('COMMIT');
         res.json({ ok: true, mensaje: `Se guardaron ${entradas.length} calificaciones.`, total: entradas.length });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        console.error('Error al guardar lote de calificaciones:', error.message);
-        if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
-            return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: 'No se pudieron guardar las calificaciones.' });
+        return responderErrorNegocio(res, error, 'No se pudieron guardar las calificaciones');
     } finally {
         client.release();
     }
@@ -174,7 +229,7 @@ router.post('/lote', requireAuth, async (req, res) => {
 
 // POST /api/calificaciones -> registro individual
 router.post('/', requireAuth, async (req, res) => {
-    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor } = req.body || {};
+    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, id_parcial, id_ciclo } = req.body || {};
     const errores = [];
     if (!id_estudiante) errores.push('Debe seleccionar un estudiante.');
     if (!id_materia) errores.push('Debe seleccionar una materia.');
@@ -196,9 +251,10 @@ router.post('/', requireAuth, async (req, res) => {
         try {
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const { idParcial, idCiclo } = await validarContextoEvaluativo(client, id_periodo, id_parcial, id_ciclo);
             await client.query(
-                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
-                [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario]
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8)',
+                [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario, idParcial, idCiclo]
             );
             await client.query('COMMIT');
             res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
@@ -209,11 +265,7 @@ router.post('/', requireAuth, async (req, res) => {
             client.release();
         }
     } catch (error) {
-        console.error('Error al registrar calificacion:', error.message);
-        if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
-            return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: 'No se pudo registrar la calificacion.' });
+        return responderErrorNegocio(res, error, 'No se pudo registrar la calificacion');
     }
 });
 
