@@ -216,17 +216,34 @@ router.get('/', requireAuth, async (req, res) => {
         let promedioMateriaSel = null;
         let escalaMateriaSel = null;
         let mensajeSinNotas = null;
+        let materiasTotales = 0;
+        let materiasConNotas = 0;
 
         if (idEstudiante) {
-            const rMat = await pool.query(
-                `SELECT DISTINCT mat.id_materia, mat.nombre
-                 FROM calificaciones c
-                 JOIN materias mat ON mat.id_materia = c.id_materia
-                 WHERE c.id_estudiante = $1 AND c.id_periodo = $2
-                 ORDER BY mat.nombre`,
+            // Curso del estudiante en el periodo (puede ser NULL).
+            const rCur = await pool.query(
+                'SELECT id_curso FROM matriculas WHERE id_estudiante = $1 AND id_periodo = $2',
                 [idEstudiante, idPeriodo]
             );
+            const idCursoEst = rCur.rows.length > 0 ? rCur.rows[0].id_curso : null;
+
+            // Materias DEL ESTUDIANTE: asignadas en el periodo y de su
+            // curso (o generales sin curso). No todas las materias son
+            // de todos los estudiantes: la matricula sola no basta.
+            const rMat = await pool.query(
+                `SELECT DISTINCT mat.id_materia, mat.nombre
+                 FROM profesor_materia_periodo pmp
+                 JOIN materias mat ON mat.id_materia = pmp.id_materia
+                 WHERE pmp.id_periodo = $1
+                   AND (pmp.id_curso IS NULL OR pmp.id_curso = $2 OR $2 IS NULL)
+                 ORDER BY mat.nombre`,
+                [idPeriodo, idCursoEst]
+            );
             materiasFiltro = rMat.rows;
+            materiasTotales = rMat.rows.length;
+            const idMateriaValida = idMateria !== '' &&
+                rMat.rows.some((m) => String(m.id_materia) === String(idMateria))
+                ? idMateria : '';
 
             let sqlNotas = `SELECT c.id_materia, mat.nombre AS materia,
                                    te.nombre AS tipo_evaluacion, c.valor
@@ -235,23 +252,32 @@ router.get('/', requireAuth, async (req, res) => {
                             JOIN tipos_evaluacion te ON te.id_tipo_evaluacion = c.id_tipo_evaluacion
                             WHERE c.id_estudiante = $1 AND c.id_periodo = $2`;
             const params = [idEstudiante, idPeriodo];
-            if (idMateria) {
+            if (idMateriaValida !== '') {
                 sqlNotas += ' AND c.id_materia = $3';
-                params.push(idMateria);
+                params.push(idMateriaValida);
             }
             sqlNotas += ' ORDER BY mat.nombre, te.nombre';
             const resultadoNotas = await pool.query(sqlNotas, params);
 
+            // Se parte de TODAS sus materias (aunque no tengan notas)
+            // para mostrar "Sin calificar" en vez de ocultarlas.
             const materiasMap = new Map();
+            const baseMaterias = idMateriaValida !== ''
+                ? rMat.rows.filter((m) => String(m.id_materia) === String(idMateriaValida))
+                : rMat.rows;
+            baseMaterias.forEach(function(m) {
+                materiasMap.set(m.id_materia, {
+                    id_materia: m.id_materia,
+                    nombre: m.nombre,
+                    parciales: [],
+                    promedio: null,
+                    escala: 'Sin calificar',
+                    sin_notas: true
+                });
+            });
             resultadoNotas.rows.forEach(function(fila) {
                 if (!materiasMap.has(fila.id_materia)) {
-                    materiasMap.set(fila.id_materia, {
-                        id_materia: fila.id_materia,
-                        nombre: fila.materia,
-                        parciales: [],
-                        promedio: null,
-                        escala: null
-                    });
+                    return;
                 }
                 materiasMap.get(fila.id_materia).parciales.push({
                     tipo: fila.tipo_evaluacion,
@@ -261,13 +287,22 @@ router.get('/', requireAuth, async (req, res) => {
             materias = Array.from(materiasMap.values());
 
             for (const materia of materias) {
-                const resultadoProm = await pool.query(
-                    'SELECT fn_promedio_materia($1, $2, $3) AS promedio',
-                    [idEstudiante, materia.id_materia, idPeriodo]
-                );
-                materia.promedio = resultadoProm.rows[0].promedio;
-                materia.escala = await escalaOficial(pool, materia.promedio);
-                if (String(materia.id_materia) === String(idMateria)) {
+                try {
+                    const resultadoProm = await pool.query(
+                        'SELECT fn_promedio_materia($1, $2, $3) AS promedio',
+                        [idEstudiante, materia.id_materia, idPeriodo]
+                    );
+                    materia.promedio = resultadoProm.rows[0].promedio;
+                    materia.escala = await escalaOficial(pool, materia.promedio);
+                    materia.sin_notas = false;
+                    materiasConNotas += 1;
+                } catch (error) {
+                    // P0001 = sin calificaciones: se queda "Sin calificar".
+                    if (error.code !== 'P0001') {
+                        throw error;
+                    }
+                }
+                if (String(materia.id_materia) === String(idMateriaValida)) {
                     promedioMateriaSel = materia.promedio;
                     escalaMateriaSel = materia.escala;
                 }
@@ -295,6 +330,8 @@ router.get('/', requireAuth, async (req, res) => {
             estudiantes: resultadoEst.rows,
             materiasFiltro,
             materias,
+            materiasTotales,
+            materiasConNotas,
             promedioGeneral,
             promedioMateriaSel,
             escalaMateriaSel,

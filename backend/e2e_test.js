@@ -228,6 +228,24 @@ const loginAs = async (email) => {
   const fernandoCatalogos = await post('/cursos/', { nombre: 'X', id_periodo: idPeriodo });
   log('Representante blocked from cursos POST', fernandoCatalogos.status === 403);
 
+  console.log('\n=== 10. CONSULTA POR MATRICULA (refactor) ===');
+  await loginAs('admin@uteq.edu.ec');
+  const rep2 = await get(`/reportes/?id_periodo=${idPeriodo}&page=1&limit=1`);
+  void rep2;
+  const est1 = await get('/estudiantes/?page=1&limit=1');
+  const idEst = est1.body.datos?.[0]?.id_estudiante;
+  const cons = await get(`/consulta/?id_periodo=${idPeriodo}&id_estudiante=${idEst}`);
+  const mats = cons.body.materias || [];
+  log('Materias desde asignacion (no solo con notas)',
+    cons.status === 200 && cons.body.materiasTotales > 0, `totales=${cons.body.materiasTotales}`);
+  log('Contadores coherentes',
+    cons.body.materiasConNotas <= cons.body.materiasTotales &&
+    cons.body.materiasConNotas === mats.filter(m => !m.sin_notas).length,
+    `con notas=${cons.body.materiasConNotas}`);
+  log('Sin calificar tiene promedio null',
+    mats.filter(m => m.sin_notas).every(m => m.promedio === null && m.escala === 'Sin calificar'),
+    `${mats.filter(m => m.sin_notas).length} sin calificar`);
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

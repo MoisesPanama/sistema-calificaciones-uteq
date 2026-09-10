@@ -34,4 +34,5 @@ test('representante ve desglose por materia', async ({ page }) => {
   await page.locator('#sel-mat').selectOption({ index: 1 });
   await expect(page.locator('#desglose table').first()).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#desglose')).toContainText('Mínimo esperado');
+  await expect(page.locator('#resultado')).toContainText('Materias con notas');
 });
