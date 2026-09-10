@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 // ---------------------------------------------------------
 // Categorias de negocio (Fase 3): agrupan tablas tecnicas en
@@ -64,9 +65,7 @@ router.get('/resumen', requireAuth, requireRole('administrador'), async (req, re
 
 router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(100, Math.max(10, parseInt(req.query.limit) || 50));
-        const offset = (page - 1) * limit;
+        const { page, limit, offset } = leerPaginacion(req.query);
         const tabla = req.query.tabla || '';
         const categoria = req.query.categoria || '';
         const desde = req.query.desde || '';
@@ -101,7 +100,6 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
             params
         );
         const total = parseInt(countResult.rows[0].total);
-        const totalPages = Math.ceil(total / limit);
 
         params.push(limit, offset);
         const resultado = await pool.query(
@@ -118,8 +116,7 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
         );
 
         res.json({
-            registros: resultado.rows,
-            paginacion: { page, limit, total, totalPages },
+            ...respuestaPaginada(resultado.rows, { page, limit, total }),
             filtros: { tabla, categoria, desde, hasta }
         });
     } catch (error) {

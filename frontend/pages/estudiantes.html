@@ -20,36 +20,45 @@
       <a href="estudiante-form.html" class="btn-secondary">+ Nuevo estudiante</a>
     </div>
     <div id="resultado"></div>
+    <div class="pagination" id="paginacion-est"></div>
     </main>
   </div>
 </div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
-    async function cargar(q = '') {
+    let estState = { q: '', page: 1 };
+    async function cargar(q = '', page = 1) {
+      estState = { q, page };
       try {
-        const { estudiantes } = await apiGet('/estudiantes/?q=' + encodeURIComponent(q));
+        const d = await apiGet('/estudiantes/?q=' + encodeURIComponent(q) + `&page=${page}&limit=20`);
         const div = document.getElementById('resultado');
-        if (estudiantes.length === 0) { div.innerHTML = '<p>No se encontraron estudiantes.</p>'; return; }
+        if (!d.datos || d.datos.length === 0) {
+          div.innerHTML = '<p>No se encontraron estudiantes.</p>';
+          renderPaginacion('paginacion-est', d.paginacion, (p) => cargar(estState.q, p));
+          return;
+        }
         div.innerHTML = `<table><thead><tr>
           <th>Cedula</th><th>Nombres</th><th>Apellidos</th><th>Fecha nacimiento</th>
           <th>Representante</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>` +
-          estudiantes.map(e => `<tr><td>${esc(e.cedula)}</td><td>${esc(e.nombres)}</td>
+          d.datos.map(e => `<tr><td>${esc(e.cedula)}</td><td>${esc(e.nombres)}</td>
             <td>${esc(e.apellidos)}</td><td>${new Date(e.fecha_nacimiento).toLocaleDateString('es-EC')}</td>
             <td>${esc(e.rep_nombres)} ${esc(e.rep_apellidos)}</td>
             <td>${e.activo ? 'Activo' : 'Inactivo'}</td>
             <td><a href="estudiante-form.html?id=${e.id_estudiante}">Editar</a></td></tr>`).join('') +
           '</tbody></table>';
+        renderPaginacion('paginacion-est', d.paginacion, (p) => cargar(estState.q, p));
       } catch (err) { showError(err.message); }
     }
     (async () => {
       if (!await initPage()) return;
       document.getElementById('q').value = qs('q') || '';
-      await cargar(qs('q') || '');
-      document.getElementById('btn-buscar').onclick = () => cargar(document.getElementById('q').value);
+      await cargar(qs('q') || '', 1);
+      document.getElementById('btn-buscar').onclick = () => cargar(document.getElementById('q').value, 1);
       document.getElementById('q').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') cargar(e.target.value);
+        if (e.key === 'Enter') cargar(e.target.value, 1);
       });
     })();
   </script>

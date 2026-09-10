@@ -11,6 +11,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 // Trae el listado de representantes, usado en el formulario (select)
 async function obtenerRepresentantes() {
@@ -30,10 +31,21 @@ router.get('/representantes', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/estudiantes?q= -> listado con buscador
+// GET /api/estudiantes?q=&page=&limit= -> listado con buscador (paginado)
 router.get('/', requireAuth, async (req, res) => {
     try {
         const busqueda = req.query.q || '';
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 20, minimo: 5 });
+        const filtro = [`%${busqueda}%`];
+
+        const countResult = await pool.query(
+            `SELECT COUNT(*) AS total
+             FROM estudiantes e
+             JOIN representantes r ON r.id_representante = e.id_representante
+             WHERE (e.nombres ILIKE $1 OR e.apellidos ILIKE $1 OR e.cedula ILIKE $1
+                    OR (e.nombres || ' ' || e.apellidos) ILIKE $1)`,
+            filtro
+        );
 
         const resultado = await pool.query(
             `SELECT e.id_estudiante, e.cedula, e.nombres, e.apellidos,
@@ -43,11 +55,12 @@ router.get('/', requireAuth, async (req, res) => {
              JOIN representantes r ON r.id_representante = e.id_representante
              WHERE (e.nombres ILIKE $1 OR e.apellidos ILIKE $1 OR e.cedula ILIKE $1
                     OR (e.nombres || ' ' || e.apellidos) ILIKE $1)
-             ORDER BY e.apellidos, e.nombres`,
-            [`%${busqueda}%`]
+             ORDER BY e.apellidos, e.nombres
+             LIMIT $2 OFFSET $3`,
+            [`%${busqueda}%`, limit, offset]
         );
 
-        res.json({ estudiantes: resultado.rows, busqueda });
+        res.json({ ...respuestaPaginada(resultado.rows, { page, limit, total: countResult.rows[0].total }), busqueda });
 
     } catch (error) {
         console.error('Error al listar estudiantes:', error.message);

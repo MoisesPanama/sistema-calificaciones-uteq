@@ -133,6 +133,7 @@
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
     let state = { page: 1, categoria: '', tabla: '', desde: '', hasta: '' };
 
@@ -201,7 +202,7 @@
       if (state.tabla) url += `&tabla=${encodeURIComponent(state.tabla)}`;
       if (state.desde) url += `&desde=${encodeURIComponent(state.desde)}`;
       if (state.hasta) url += `&hasta=${encodeURIComponent(state.hasta)}`;
-      const { registros, paginacion } = await apiGet(url);
+      const { datos: registros, paginacion } = await apiGet(url);
 
       const total = paginacion.total;
       const inserts = registros.filter(r => r.operacion === 'INSERT').length;
@@ -243,24 +244,7 @@
         </div>`;
       }).join('');
 
-      renderPaginacion(paginacion);
-    }
-
-    function renderPaginacion(pag) {
-      const div = document.getElementById('paginacion');
-      if (pag.totalPages <= 1) { div.innerHTML = ''; return; }
-      let html = '';
-      html += `<button ${pag.page <= 1 ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page - 1})">Anterior</button>`;
-      const start = Math.max(1, pag.page - 2);
-      const end = Math.min(pag.totalPages, pag.page + 2);
-      if (start > 1) html += `<button onclick="cargarAuditoria(1)">1</button><span class="page-info">...</span>`;
-      for (let p = start; p <= end; p++) {
-        html += `<button class="${p === pag.page ? 'active' : ''}" onclick="cargarAuditoria(${p})">${p}</button>`;
-      }
-      if (end < pag.totalPages) html += `<span class="page-info">...</span><button onclick="cargarAuditoria(${pag.totalPages})">${pag.totalPages}</button>`;
-      html += `<button ${pag.page >= pag.totalPages ? 'disabled' : ''} onclick="cargarAuditoria(${pag.page + 1})">Siguiente</button>`;
-      html += `<span class="page-info">Pagina ${pag.page} de ${pag.totalPages}</span>`;
-      div.innerHTML = html;
+      renderPaginacion('paginacion', paginacion, (p) => cargarAuditoria(p).catch(showError));
     }
 
     (async () => {

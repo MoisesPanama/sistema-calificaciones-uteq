@@ -263,7 +263,7 @@ sistema-calificaciones-uteq/
 | GET | `/api/auth/me` | Sesión actual (guard del frontend) |
 | POST | `/api/auth/logout` | Cierra sesión |
 | GET | `/api/dashboard/` | Contadores generales |
-| GET/POST | `/api/estudiantes/` | Listado (`?q=`) / crear |
+| GET/POST | `/api/estudiantes/` | Listado (`?q=&page=&limit=`, formato `{datos,paginacion}`) / crear |
 | GET | `/api/estudiantes/representantes` | Select del formulario |
 | GET/PUT | `/api/estudiantes/:id` | Obtener / actualizar |
 | GET/POST | `/api/materias/` | Listado / crear |
@@ -273,7 +273,7 @@ sistema-calificaciones-uteq/
 | POST | `/api/calificaciones/lote` | Guardado masivo transaccional |
 | POST | `/api/calificaciones/` | Registro individual |
 | GET | `/api/consulta/` | Notas + promedios por estudiante |
-| GET | `/api/reportes/` | Reporte con cursor explícito |
+| GET | `/api/reportes/` | Reporte paginado (`?page=&limit=`, formato `{datos,paginacion}`) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
@@ -282,7 +282,7 @@ sistema-calificaciones-uteq/
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |
-| GET | `/api/respaldos/historial` | Log de ejecuciones manuales/programadas (solo admin) |
+| GET | `/api/respaldos/historial` | Log de ejecuciones (`?page=&limit=`, formato `{datos,paginacion}`) (solo admin) |
 | POST | `/api/respaldos/descargar` | Descarga un `.sql` `{nombre}` (solo admin) |
 | POST | `/api/respaldos/eliminar` | Borra un `.sql` `{nombre}` (solo admin) |
 

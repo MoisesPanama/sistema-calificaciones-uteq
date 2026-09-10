@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth, requireRole } = require('../middleware/auth');
 const pool = require('../config/db');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -208,7 +209,8 @@ router.post('/programar', requireAuth, requireRole('administrador'), async (req,
 // NULL en usuario = disparo programado (cron).
 router.get('/historial', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
-        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 20, minimo: 5 });
+        const countResult = await pool.query('SELECT COUNT(*) AS total FROM respaldo_logs');
         const resultado = await pool.query(
             `SELECT l.id_log, l.fecha, l.tipo, l.nombre_archivo, l.tamano_bytes,
                     l.exito, l.detalle,
@@ -216,10 +218,10 @@ router.get('/historial', requireAuth, requireRole('administrador'), async (req, 
              FROM respaldo_logs l
              LEFT JOIN usuarios u ON u.id_usuario = l.id_usuario_app
              ORDER BY l.fecha DESC
-             LIMIT $1`,
-            [limit]
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
         );
-        res.json({ historial: resultado.rows });
+        res.json(respuestaPaginada(resultado.rows, { page, limit, total: countResult.rows[0].total }));
     } catch (error) {
         console.error('Error al cargar historial de respaldos:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el historial de respaldos.' });

@@ -54,6 +54,7 @@
     <h2 style="font-size:1rem;margin:1.5rem 0 0.8rem;color:#1e3a8a;">Historial de Ejecuciones</h2>
     <p style="font-size:0.82rem;color:#6b7280;margin-bottom:0.8rem;">Cada respaldo manual o programado (exitoso o fallido) queda registrado aquí.</p>
     <div id="historial-respaldos"></div>
+    <div class="pagination" id="paginacion-hist"></div>
 
     </main>
   </div>
@@ -61,6 +62,7 @@
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
     function formatoTamano(bytes) {
       if (bytes < 1024) return bytes + ' B';
@@ -68,23 +70,24 @@
       return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
-    async function cargarHistorial() {
+    async function cargarHistorial(page = 1) {
       const div = document.getElementById('historial-respaldos');
       let h;
       try {
-        h = await apiGet('/respaldos/historial?limit=20');
+        h = await apiGet(`/respaldos/historial?page=${page}&limit=20`);
       } catch (err) {
         div.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;">Historial no disponible (falta aplicar la migración 14_log_respaldos.sql).</p>';
         return;
       }
-      if (!h.historial || h.historial.length === 0) {
+      if (!h.datos || h.datos.length === 0) {
         div.innerHTML = '<p style="color:#6b7280;font-size:0.9rem;">Aún no hay ejecuciones registradas.</p>';
+        renderPaginacion('paginacion-hist', h.paginacion, () => {});
         return;
       }
       div.innerHTML = `<div class="table-responsive"><table>
         <thead><tr><th>Fecha</th><th>Tipo</th><th>Archivo</th><th>Resultado</th><th>Disparado por</th></tr></thead>
         <tbody>
-        ${h.historial.map(r => `<tr>
+        ${h.datos.map(r => `<tr>
           <td>${new Date(r.fecha).toLocaleString('es-EC')}</td>
           <td>${r.tipo === 'programado' ? '<span class="badge">programado</span>' : '<span class="badge badge-success">manual</span>'}</td>
           <td style="font-family:monospace;font-size:0.82rem;">${r.nombre_archivo ? esc(r.nombre_archivo) : '—'}</td>
@@ -92,6 +95,7 @@
           <td>${r.usuario_nombres ? esc(r.usuario_nombres + ' ' + (r.usuario_apellidos || '')) : 'sistema (cron)'}</td>
         </tr>`).join('')}
         </tbody></table></div>`;
+      renderPaginacion('paginacion-hist', h.paginacion, (p) => cargarHistorial(p).catch(showError));
     }
 
     async function cargar() {

@@ -24,18 +24,22 @@
       <select id="sel-mat"><option value="">-- Promedio general --</option></select>
     </div>
     <div id="resultado"></div>
+    <div class="pagination" id="paginacion-rep"></div>
     </main>
   </div>
 </div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
+  <script src="../js/pagination.js"></script>
   <script>
+    let repPage = 1;
     function q() {
       const p = new URLSearchParams();
       if (document.getElementById('sel-periodo').value) p.set('id_periodo', document.getElementById('sel-periodo').value);
       if (document.getElementById('sel-curso').value) p.set('id_curso', document.getElementById('sel-curso').value);
       if (document.getElementById('sel-mat').value) p.set('id_materia', document.getElementById('sel-mat').value);
+      p.set('page', repPage);
       return p.toString();
     }
     function escalaInfo(escala) {
@@ -61,10 +65,10 @@
       document.getElementById('sel-curso').innerHTML = '<option value="">-- Todos los cursos --</option>' +
         d.cursos.map(c => `<option value="${c.id_curso}" ${String(c.id_curso) === d.idCurso ? 'selected' : ''}>${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
       const div = document.getElementById('resultado');
-      if (d.mensajeSinDatos) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinDatos)}</div>`; return; }
+      if (d.mensajeSinDatos) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinDatos)}</div>`; renderPaginacion('paginacion-rep', d.paginacion, () => {}); return; }
       const conMat = !!d.idMateria;
       const conCurso = !!d.idCurso;
-      const ordenado = [...d.reporte].sort((a, b) => (b.promedio || 0) - (a.promedio || 0));
+      const ordenado = [...(d.datos || [])].sort((a, b) => (b.promedio || 0) - (a.promedio || 0));
       div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th>` +
         (conCurso ? '<th>Curso</th>' : '') +
         '<th>Promedio</th><th>Escala</th></tr></thead><tbody>' +
@@ -72,6 +76,7 @@
           (conCurso ? `<td>${esc(f.curso || '—')}</td>` : '') +
           `<td>${f.promedio != null ? esc(f.promedio) : 'Sin calificaciones'}</td><td>${escalaInfo(f.escala)}</td></tr>`).join('') +
         '</tbody></table>';
+      renderPaginacion('paginacion-rep', d.paginacion, (p) => { repPage = p; cargar().catch(showError); });
     }
     (async () => {
       if (!await initPage()) return;
@@ -81,8 +86,8 @@
         await apiPost('/auth/periodo-seleccionado', { id_periodo: Number(id) });
         location.reload();
       };
-      document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
-      document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-curso').onchange = () => { repPage = 1; cargar().catch(showError); };
+      document.getElementById('sel-mat').onchange = () => { repPage = 1; cargar().catch(showError); };
     })();
   </script>
 </body>

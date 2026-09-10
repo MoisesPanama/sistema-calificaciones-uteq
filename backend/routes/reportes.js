@@ -9,6 +9,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 function evaluarEscala(nota) {
     if (nota == null) return 'S/N';
@@ -53,12 +54,10 @@ router.get('/', requireAuth, async (req, res) => {
 
         let reporte = [];
         let mensajeSinDatos = null;
+        let paginacion = null;
 
         try {
-            let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos
-                          FROM matriculas m
-                          JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-                          WHERE m.id_periodo = $1`;
+            let whereEst = 'WHERE m.id_periodo = $1';
             const paramsEst = [idPeriodo];
 
             // Representante: solo ver sus hijos
@@ -68,23 +67,44 @@ router.get('/', requireAuth, async (req, res) => {
                     [req.session.usuario.id_usuario]
                 );
                 if (repResult.rows.length > 0) {
-                    sqlEst += ' AND e.id_representante = $' + (paramsEst.length + 1);
+                    whereEst += ' AND e.id_representante = $' + (paramsEst.length + 1);
                     paramsEst.push(repResult.rows[0].id_representante);
                 } else {
-                    sqlEst += ' AND 1 = 0';
+                    whereEst += ' AND 1 = 0';
                 }
             }
 
             if (idCurso) {
-                sqlEst += ' AND m.id_curso = $' + (paramsEst.length + 1);
+                whereEst += ' AND m.id_curso = $' + (paramsEst.length + 1);
                 paramsEst.push(idCurso);
             }
-            sqlEst += ' ORDER BY e.apellidos, e.nombres';
-            const rEst = await pool.query(sqlEst, paramsEst);
 
-            if (rEst.rows.length === 0) {
+            const countResult = await pool.query(
+                `SELECT COUNT(*) AS total
+                 FROM matriculas m
+                 JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                 ${whereEst}`,
+                paramsEst
+            );
+            const total = parseInt(countResult.rows[0].total);
+
+            if (total === 0) {
                 mensajeSinDatos = 'No hay estudiantes matriculados en este periodo con esos filtros.';
             } else {
+                // Se pagina la lista de estudiantes y solo se calculan
+                // los promedios de la pagina pedida (evita traer cientos
+                // de filas + N queries de promedio de una sola vez).
+                const { page, limit, offset } = leerPaginacion(req.query);
+                const rEst = await pool.query(
+                    `SELECT e.id_estudiante, e.nombres, e.apellidos
+                     FROM matriculas m
+                     JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                     ${whereEst}
+                     ORDER BY e.apellidos, e.nombres
+                     LIMIT $${paramsEst.length + 1} OFFSET $${paramsEst.length + 2}`,
+                    [...paramsEst, limit, offset]
+                );
+                paginacion = { page, limit, total, totalPages: Math.ceil(total / limit) };
                 for (const est of rEst.rows) {
                     let sqlProm = '';
                     let paramsProm = [];
@@ -133,7 +153,9 @@ router.get('/', requireAuth, async (req, res) => {
             periodos: periodos.rows,
             cursos,
             materias: materias.rows,
-            reporte,
+            ...(paginacion
+                ? respuestaPaginada(reporte, paginacion)
+                : { datos: [], paginacion: null }),
             mensajeSinDatos,
             idPeriodo: String(idPeriodo),
             idCurso: String(idCurso || ''),

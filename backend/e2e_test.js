@@ -84,7 +84,7 @@ const post = (path, body) => makeRequest('POST', path, body);
   const audit = await get('/auditoria/?page=1&limit=5&tabla=calificaciones');
   log('Audit query', audit.status === 200, `total=${audit.body.paginacion?.total}`);
 
-  const recentInsert = audit.body.registros?.find(r => r.operacion === 'INSERT' && r.tabla_afectada === 'calificaciones');
+  const recentInsert = audit.body.datos?.find(r => r.operacion === 'INSERT' && r.tabla_afectada === 'calificaciones');
   if (recentInsert) {
     log('Audit has user', recentInsert.id_usuario_app === 4, `id_usuario_app=${recentInsert.id_usuario_app} user=${recentInsert.usuario_nombres} ${recentInsert.usuario_apellidos}`);
     log('Audit has data', !!recentInsert.datos_nuevos, `valor=${recentInsert.datos_nuevos?.valor}`);
