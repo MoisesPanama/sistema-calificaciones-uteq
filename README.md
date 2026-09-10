@@ -280,11 +280,11 @@ sistema-calificaciones-uteq/
 | GET | `/api/calificaciones/contexto` | Materias, cursos, tipos, estudiantes y notas |
 | POST | `/api/calificaciones/lote` | Guardado masivo transaccional (`id_parcial`/`id_ciclo` opcionales) |
 | POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
-| GET | `/api/consulta/` | Notas + promedios por estudiante |
+| GET | `/api/consulta/` | Notas + promedios (estudiante: solo lo suyo, ignora `id_estudiante`) |
 | GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
 | GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
-| GET | `/api/reportes/` | Reporte paginado (`?page=&limit=`, formato `{datos,paginacion}`) |
+| GET | `/api/reportes/` | Reporte paginado (admin/profesor/representante; estudiante 403, usa su consulta) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |

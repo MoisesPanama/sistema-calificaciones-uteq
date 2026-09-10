@@ -73,7 +73,8 @@ async function renderLayout(usuario, periodoSeleccionado) {
   } else if (esRepresentante) {
     navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html');
   } else if (esEstudiante) {
-    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html');
+    // Estudiante: SOLO sus notas (sin reportes ni nominas ajenas).
+    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html');
   } else if (esPsicologo) {
     navItems2 = [];
   }

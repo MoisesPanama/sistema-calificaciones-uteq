@@ -301,6 +301,35 @@ const loginAs = async (email) => {
     log('Quitar asignacion', borraAsg.status === 200, borraAsg.body.error || '');
   }
 
+  console.log('\n=== 13. ROL ESTUDIANTE: SOLO LO SUYO, SIN REPORTES ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag13 = Date.now().toString(36);
+  const creaEst = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Uno', apellidos: 'Prueba Dos',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  log('Crear estudiante con usuario', creaEst.status === 201 && !!creaEst.body.email, creaEst.body.email || creaEst.body.error);
+  const emailEst = creaEst.body.email;
+  // Matricularlo en periodo activo para que tenga algo que ver.
+  const per13 = await get('/periodos/');
+  const idPer13 = per13.body.periodoActivo?.id_periodo || per13.body.periodos?.[0]?.id_periodo;
+  const idEst13 = creaEst.body.id_estudiante;
+  await post('/matriculas/', { id_estudiante: idEst13, id_periodo: idPer13, id_curso: null });
+  await loginAs(emailEst);
+  // Intenta ver a OTRO estudiante (id 1): debe devolver lo PROPIO.
+  const espia = await get('/consulta/?id_periodo=' + idPer13 + '&id_estudiante=1');
+  log('No puede ver a otro (fuerza propio)',
+    espia.status === 200 && String(espia.body.idEstudiante) === String(idEst13),
+    `devuelve idEstudiante=${espia.body.idEstudiante}`);
+  const repEst = await get('/reportes/?id_periodo=' + idPer13);
+  log('Estudiante bloqueado de reportes (403)', repEst.status === 403, '');
+  const gruposEst = await get('/consulta/grupos?id_periodo=' + idPer13);
+  log('Bloques propios', gruposEst.status === 200 && Array.isArray(gruposEst.body.grupos), `${gruposEst.body.grupos?.length} bloques`);
+  const mat0 = await get('/consulta/materia/1?id_periodo=' + idPer13 + '&id_estudiante=1');
+  log('Desglose ajeno fuerza propio',
+    mat0.status === 200 && String(mat0.body.estudiante?.id_estudiante) === String(idEst13), '');
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;
