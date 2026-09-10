@@ -146,7 +146,7 @@ router.post('/lote', requireAuth, async (req, res) => {
 
     const client = await pool.connect();
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
+        await client.query("SELECT set_config('app.current_user_id', $1, false)", [String(req.session.usuario.id_usuario)]);
         await client.query('BEGIN');
         for (const e of entradas) {
             const valor = Number(String(e.crudo).replace(',', '.'));
@@ -192,12 +192,17 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        await pool.query(
-            'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
-            [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario]
-        );
-        res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
+        const client = await pool.connect();
+        try {
+            await client.query("SELECT set_config('app.current_user_id', $1, false)", [String(req.session.usuario.id_usuario)]);
+            await client.query(
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6)',
+                [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario]
+            );
+            res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
+        } finally {
+            client.release();
+        }
     } catch (error) {
         console.error('Error al registrar calificacion:', error.message);
         if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {

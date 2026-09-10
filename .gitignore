@@ -16,3 +16,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Temp server output
+server_out.txt
+server_err.txt
+cookies.txt
+temp_*.json

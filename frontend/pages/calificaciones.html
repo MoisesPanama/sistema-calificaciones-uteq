@@ -85,20 +85,25 @@
         return;
       }
       if (data.estudiantes.length === 0) { div.innerHTML = '<p>No hay estudiantes matriculados en este periodo para ese curso.</p>'; return; }
-      div.innerHTML = `<p>Se cargaron <strong>${data.estudiantes.length}</strong> estudiantes. Escriba las notas y guarde todo de una vez:</p>
+      div.innerHTML = `<p>Se cargaron <strong>${data.estudiantes.length}</strong> estudiantes. Escriba las notas y guarde por estudiante o todas de una vez:</p>
         <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th>` +
         data.tiposEvaluacion.map(t => `<th>${esc(t.nombre)}<br><small>${esc(t.peso ? (Number(t.peso)*100)+'%' : '')}</small></th>`).join('') +
-        `</tr></thead><tbody>` +
+        `<th></th></tr></thead><tbody>` +
         data.estudiantes.map(e => `<tr><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>` +
           data.tiposEvaluacion.map(t => {
             const v = data.notasExistentes[e.id_estudiante]?.[t.id_tipo_evaluacion] ?? '';
             return `<td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
               data-est="${e.id_estudiante}" data-tipo="${t.id_tipo_evaluacion}" data-original="${esc(v)}" value="${esc(v)}"></td>`;
-          }).join('') + '</tr>').join('') +
+          }).join('') +
+          `<td><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button></td>` +
+          '</tr>').join('') +
         `</tbody></table></div>
-        <div class="form-actions"><button class="btn-primary" id="btn-guardar">Guardar todas</button></div>`;
+        <div class="form-actions"><button class="btn-secondary" id="btn-guardar">Guardar todas</button></div>`;
 
       document.getElementById('btn-guardar').onclick = guardar;
+      document.querySelectorAll('[data-guardar-est]').forEach(btn => {
+        btn.onclick = () => guardarEstudiante(btn.dataset.guardarEst);
+      });
 
       document.querySelectorAll('input[data-est]').forEach(inp => {
         inp.addEventListener('input', () => {
@@ -107,12 +112,33 @@
       });
     }
 
+    async function guardarEstudiante(idEstudiante) {
+      const notas = {};
+      document.querySelectorAll(`input[data-est="${idEstudiante}"]`).forEach(inp => {
+        if (String(inp.value).trim() === '') return;
+        notas[inp.dataset.tipo] = inp.value;
+      });
+      if (Object.keys(notas).length === 0) { showError('Ingrese al menos una nota para este estudiante.'); return; }
+      try {
+        const r = await apiPost('/calificaciones/lote', {
+          id_periodo: ctx.idPeriodo,
+          id_materia: document.getElementById('sel-materia').value,
+          id_curso: document.getElementById('sel-curso').value || null,
+          notas: { [idEstudiante]: notas }
+        });
+        showOk(r.mensaje);
+        limpiarCambios();
+        await cargar();
+      } catch (err) { showError(err.message); }
+    }
+
     async function guardar() {
       const notas = {};
       document.querySelectorAll('input[data-est]').forEach(inp => {
         if (String(inp.value).trim() === '') return;
         (notas[inp.dataset.est] ||= {})[inp.dataset.tipo] = inp.value;
       });
+      if (Object.keys(notas).length === 0) { showError('Ingrese al menos una nota.'); return; }
       try {
         const r = await apiPost('/calificaciones/lote', {
           id_periodo: ctx.idPeriodo,

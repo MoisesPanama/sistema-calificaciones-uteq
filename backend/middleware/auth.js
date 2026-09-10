@@ -31,8 +31,10 @@ function requireRole(...rolesPermitidos) {
 
 // Antes de cada escritura en BD, setea app.current_user_id
 // para que el trigger de auditoria sepa que usuario hizo el cambio.
-async function setUsuarioAuditoria(idUsuario) {
-    await pool.query("SELECT set_config('app.current_user_id', $1, false)", [
+// Si se pasa un client (pool.connect()), se usa esa conexion.
+async function setUsuarioAuditoria(idUsuario, client) {
+    const conn = client || pool;
+    await conn.query("SELECT set_config('app.current_user_id', $1, false)", [
         idUsuario ? String(idUsuario) : ''
     ]);
 }

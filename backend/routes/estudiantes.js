@@ -91,9 +91,10 @@ router.post('/', requireAuth, async (req, res) => {
         return res.status(400).json({ error: errores.join(' '), errores });
     }
 
+    const client = await pool.connect();
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
+        await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const r = await client.query(
             `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante)
              VALUES ($1, $2, $3, $4, $5) RETURNING id_estudiante`,
             [cedula, nombres, apellidos, fecha_nacimiento, id_representante]
@@ -105,6 +106,8 @@ router.post('/', requireAuth, async (req, res) => {
             return res.status(409).json({ error: 'Ya existe un estudiante registrado con esa cedula.' });
         }
         res.status(500).json({ error: 'No se pudo guardar el estudiante.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -116,9 +119,10 @@ router.put('/:id', requireAuth, async (req, res) => {
         return res.status(400).json({ error: errores.join(' '), errores });
     }
 
+    const client = await pool.connect();
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const resultado = await pool.query(
+        await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const resultado = await client.query(
             `UPDATE estudiantes
              SET cedula = $1, nombres = $2, apellidos = $3,
                  fecha_nacimiento = $4, id_representante = $5, activo = $6
@@ -135,6 +139,8 @@ router.put('/:id', requireAuth, async (req, res) => {
             return res.status(409).json({ error: 'Ya existe un estudiante registrado con esa cedula.' });
         }
         res.status(500).json({ error: 'No se pudo actualizar el estudiante.' });
+    } finally {
+        client.release();
     }
 });
 
