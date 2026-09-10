@@ -94,7 +94,7 @@ router.get('/', requireAuth, async (req, res) => {
                 // Se pagina la lista de estudiantes y solo se calculan
                 // los promedios de la pagina pedida (evita traer cientos
                 // de filas + N queries de promedio de una sola vez).
-                const { page, limit, offset } = leerPaginacion(req.query);
+                const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
                 const rEst = await pool.query(
                     `SELECT e.id_estudiante, e.nombres, e.apellidos
                      FROM matriculas m

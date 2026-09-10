@@ -33,7 +33,7 @@
     async function cargar(q = '', page = 1) {
       estState = { q, page };
       try {
-        const d = await apiGet('/estudiantes/?q=' + encodeURIComponent(q) + `&page=${page}&limit=20`);
+        const d = await apiGet('/estudiantes/?q=' + encodeURIComponent(q) + `&page=${page}&limit=10`);
         const div = document.getElementById('resultado');
         if (!d.datos || d.datos.length === 0) {
           div.innerHTML = '<p>No se encontraron estudiantes.</p>';

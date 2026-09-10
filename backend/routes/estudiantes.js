@@ -35,7 +35,7 @@ router.get('/representantes', requireAuth, async (req, res) => {
 router.get('/', requireAuth, async (req, res) => {
     try {
         const busqueda = req.query.q || '';
-        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 20, minimo: 5 });
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
         const filtro = [`%${busqueda}%`];
 
         const countResult = await pool.query(

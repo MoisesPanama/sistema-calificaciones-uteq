@@ -65,7 +65,7 @@ router.get('/resumen', requireAuth, requireRole('administrador'), async (req, re
 
 router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
-        const { page, limit, offset } = leerPaginacion(req.query);
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
         const tabla = req.query.tabla || '';
         const categoria = req.query.categoria || '';
         const desde = req.query.desde || '';

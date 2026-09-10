@@ -209,7 +209,7 @@ router.post('/programar', requireAuth, requireRole('administrador'), async (req,
 // NULL en usuario = disparo programado (cron).
 router.get('/historial', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
-        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 20, minimo: 5 });
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
         const countResult = await pool.query('SELECT COUNT(*) AS total FROM respaldo_logs');
         const resultado = await pool.query(
             `SELECT l.id_log, l.fecha, l.tipo, l.nombre_archivo, l.tamano_bytes,

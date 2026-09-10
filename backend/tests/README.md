@@ -21,6 +21,10 @@
 ## Notas
 - La suite comparte UNA BD: `workers: 1` en `tests/playwright.config.cjs`
   (sin paralelismo entre archivos). Nombres E2E-* únicos por timestamp.
+- Página por defecto: **10 registros** (`?page=&limit=`, formato único
+  `{datos,paginacion}`) en estudiantes, reportes, auditoría, historial
+  de respaldos y psicólogo. Psicólogo además devuelve `resumen` global
+  y top 10 `alertas` fuera de la paginación.
 - `backend/.env` actual apunta a la BD Docker de pruebas. Para desarrollo
   normal, ajusta `DB_PORT`/`DB_NAME` a tu Postgres local.
 - Limpieza: los E2E-* sin notas se borran solos; si una corrida muere a

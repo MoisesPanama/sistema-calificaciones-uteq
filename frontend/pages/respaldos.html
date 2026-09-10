@@ -74,7 +74,7 @@
       const div = document.getElementById('historial-respaldos');
       let h;
       try {
-        h = await apiGet(`/respaldos/historial?page=${page}&limit=20`);
+        h = await apiGet(`/respaldos/historial?page=${page}&limit=10`);
       } catch (err) {
         div.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;">Historial no disponible (falta aplicar la migración 14_log_respaldos.sql).</p>';
         return;

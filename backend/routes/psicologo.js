@@ -7,8 +7,11 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
-// GET /api/psicologo/rendimiento — estudiantes con promedio por quimestre
+// GET /api/psicologo/rendimiento?page=&limit= — estudiantes con
+// promedio por quimestre, paginado de 10 en 10. El resumen y las
+// alertas son GLOBALES (toda la data); la tabla viene paginada.
 router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, res) => {
     try {
         // Obtener todos los periodos
@@ -69,7 +72,6 @@ router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, re
         // Calcular promedio general por quimestre
         const estudiantes = [];
         for (const est of mapaEstudiantes.values()) {
-            const逐 = [];
             for (const [idPeriodo, datos] of Object.entries(est.quimestres)) {
                 const suma = datos.materias.reduce((s, m) => s + Number(m.promedio), 0);
                 datos.promedio = Math.round((suma / datos.materias.length) * 100) / 100;
@@ -90,10 +92,48 @@ router.get('/rendimiento', requireAuth, requireRole('psicologo'), async (req, re
             });
         }
 
-        // Ordenar por promedio general ascendente
+        // Ordenar por promedio general ascendente (criticos primero)
         estudiantes.sort((a, b) => (a.promedio_general || 0) - (b.promedio_general || 0));
 
-        res.json({ periodos, estudiantes });
+        // Resumen GLOBAL (no paginado) + top 10 alertas.
+        const criticos = estudiantes.filter(e => e.estado_rendimiento === 'Critico').length;
+        const bajos = estudiantes.filter(e => e.estado_rendimiento === 'Bajo').length;
+        const destacados = estudiantes.filter(e => e.estado_rendimiento === 'Destacado').length;
+        const promedioGeneral = estudiantes.length > 0
+            ? Math.round((estudiantes.reduce((s, e) => s + (e.promedio_general || 0), 0) / estudiantes.length) * 100) / 100
+            : null;
+        const alertas = [];
+        for (const e of estudiantes) {
+            for (const [idP, q] of Object.entries(e.quimestres)) {
+                if (q.alerta) {
+                    alertas.push({
+                        id_estudiante: e.id_estudiante,
+                        nombres: e.nombres,
+                        apellidos: e.apellidos,
+                        quimestre: q.nombre,
+                        mensaje: q.alerta,
+                        promedio: q.promedio
+                    });
+                }
+            }
+        }
+        alertas.sort((a, b) => (a.promedio || 0) - (b.promedio || 0));
+
+        // Tabla paginada de 10 en 10.
+        const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 10, minimo: 5 });
+        const pagina = estudiantes.slice(offset, offset + limit);
+
+        res.json({
+            periodos,
+            resumen: {
+                total: estudiantes.length,
+                bajo_rendimiento: criticos + bajos,
+                destacados,
+                promedio_general: promedioGeneral
+            },
+            alertas: alertas.slice(0, 10),
+            ...respuestaPaginada(pagina, { page, limit, total: estudiantes.length })
+        });
     } catch (error) {
         console.error('Error al obtener rendimiento:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el rendimiento: ' + error.message });

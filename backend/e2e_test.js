@@ -141,16 +141,25 @@ const loginAs = async (email) => {
   const elenaAudit = await get('/auditoria/');
   log('Elena blocked from audit', elenaAudit.status === 403);
 
-  console.log('\n=== 5. PAGINACION UNICA ===');
+  console.log('\n=== 5. PAGINACION UNICA (10 por pagina) ===');
   await loginAs('admin@uteq.edu.ec');
   const est = await get('/estudiantes/?page=1&limit=5');
   log('Estudiantes {datos,paginacion}', est.status === 200 && Array.isArray(est.body.datos) && !!est.body.paginacion,
     `total=${est.body.paginacion?.total}`);
+  const estDefault = await get('/estudiantes/');
+  log('Estudiantes default limit=10', estDefault.status === 200 && estDefault.body.paginacion?.limit === 10,
+    `limit=${estDefault.body.paginacion?.limit}`);
   const rep = await get(`/reportes/?id_periodo=${idPeriodo}&page=1&limit=10`);
   log('Reportes {datos,paginacion}', rep.status === 200 && Array.isArray(rep.body.datos),
     rep.body.mensajeSinDatos || `total=${rep.body.paginacion?.total}`);
+  await loginAs('maria.torres@uteq.edu.ec');
+  const psi = await get('/psicologo/rendimiento?page=1&limit=5');
+  log('Psicologo paginado + resumen', psi.status === 200 && Array.isArray(psi.body.datos)
+    && psi.body.datos.length <= 5 && !!psi.body.resumen && Array.isArray(psi.body.alertas),
+    `total=${psi.body.paginacion?.total} alertas=${psi.body.alertas?.length}`);
 
   console.log('\n=== 6. CRUD CATALOGOS + REGLAS ===');
+  await loginAs('admin@uteq.edu.ec');
   const listaCiclos = await get(`/ciclos/?id_periodo=${idPeriodo}`);
   const ordenCicloLibre = 1 + Math.max(0, ...((listaCiclos.body.ciclos || []).map(c => c.orden)));
   const nombreCurso = `E2E-Curso-${stamp}`;
@@ -202,6 +211,7 @@ const loginAs = async (email) => {
   }
 
   console.log('\n=== 8. RESPALDOS + LOG ===');
+  await loginAs('admin@uteq.edu.ec');
   const manual = await post('/respaldos/manual', {});
   log('Respaldo manual', manual.status === 200 && manual.body.ok, manual.body.respaldo?.nombre || manual.body.error);
   const hist = await get('/respaldos/historial?page=1&limit=5');

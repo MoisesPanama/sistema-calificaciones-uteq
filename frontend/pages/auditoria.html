@@ -189,7 +189,7 @@
 
     async function cargarAuditoria(page) {
       state.page = page || 1;
-      let url = `/auditoria/?page=${state.page}&limit=50`;
+      let url = `/auditoria/?page=${state.page}&limit=10`;
       if (state.categoria) url += `&categoria=${encodeURIComponent(state.categoria)}`;
       if (state.tabla) url += `&tabla=${encodeURIComponent(state.tabla)}`;
       if (state.desde) url += `&desde=${encodeURIComponent(state.desde)}`;

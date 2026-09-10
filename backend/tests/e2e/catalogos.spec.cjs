@@ -59,5 +59,7 @@ test('tipo con notas no se puede borrar (409)', async ({ page }) => {
 test('profesor no ve Catalogos en el sidebar', async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
   await page.goto('/pages/dashboard.html');
+  // Esperar render real del menu (si no, la asercion negativa es al vacio).
+  await expect(page.locator('.sidebar-nav')).toContainText('Registrar Nota', { timeout: 15000 });
   await expect(page.locator('.sidebar-nav')).not.toContainText('Catalogos');
 });
