@@ -38,10 +38,25 @@ function validarCiclo(body) {
     if (body.peso === undefined || body.peso === null || isNaN(Number(body.peso)) || Number(body.peso) <= 0 || Number(body.peso) > 1) {
         errores.push('El peso debe estar entre 0.01 y 1.00.');
     }
+    const pf = body.peso_formativa === undefined || body.peso_formativa === null || body.peso_formativa === ''
+        ? 0.80 : Number(body.peso_formativa);
+    const ps = body.peso_sumativa === undefined || body.peso_sumativa === null || body.peso_sumativa === ''
+        ? 0.20 : Number(body.peso_sumativa);
+    if (isNaN(pf) || pf <= 0 || pf > 1 || isNaN(ps) || ps < 0 || ps > 1 || Math.abs(pf + ps - 1) > 0.005) {
+        errores.push('Los pesos formativa/sumativa deben sumar 1.00 (ej. 0.80 y 0.20).');
+    }
     if (body.tipo && !TIPOS_CICLO.includes(body.tipo)) {
         errores.push('Tipo de ciclo no valido: ' + TIPOS_CICLO.join(', ') + '.');
     }
     return errores;
+}
+
+function pesosCiclo(body) {
+    const pf = body.peso_formativa === undefined || body.peso_formativa === null || body.peso_formativa === ''
+        ? 0.80 : Number(body.peso_formativa);
+    const ps = body.peso_sumativa === undefined || body.peso_sumativa === null || body.peso_sumativa === ''
+        ? 0.20 : Number(body.peso_sumativa);
+    return { pf, ps };
 }
 
 // GET /api/ciclos?id_periodo= -> listado del periodo (activo por defecto)
@@ -52,6 +67,7 @@ router.get('/', requireAuth, async (req, res) => {
         if (!idPeriodo) return res.json({ ciclos: [] });
         const r = await pool.query(
             `SELECT c.id_ciclo, c.nombre, c.tipo, c.orden, c.peso, c.id_periodo,
+                    c.peso_formativa, c.peso_sumativa,
                     (SELECT COUNT(*) FROM parciales p WHERE p.id_ciclo = c.id_ciclo)::int AS n_parciales
              FROM ciclos_evaluativos c
              WHERE c.id_periodo = $1
@@ -75,9 +91,11 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
     try {
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const { pf, ps } = pesosCiclo(req.body || {});
         const r = await client.query(
-            'INSERT INTO ciclos_evaluativos (id_periodo, nombre, tipo, orden, peso) VALUES ($1, $2, $3, $4, $5) RETURNING id_ciclo',
-            [id_periodo, String(nombre).trim(), tipo || 'quimestre', Number(orden), Number(peso)]
+            `INSERT INTO ciclos_evaluativos (id_periodo, nombre, tipo, orden, peso, peso_formativa, peso_sumativa)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_ciclo`,
+            [id_periodo, String(nombre).trim(), tipo || 'quimestre', Number(orden), Number(peso), pf, ps]
         );
         const advertencia = await advertenciaSumaPesos(client, id_periodo);
         await client.query('COMMIT');
@@ -105,9 +123,12 @@ router.put('/:id', requireAuth, requireRole('administrador'), async (req, res) =
     try {
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const { pf, ps } = pesosCiclo(req.body || {});
         const r = await client.query(
-            'UPDATE ciclos_evaluativos SET nombre = $1, tipo = $2, orden = $3, peso = $4 WHERE id_ciclo = $5 RETURNING id_ciclo, id_periodo',
-            [String(nombre).trim(), tipo || 'quimestre', Number(orden), Number(peso), req.params.id]
+            `UPDATE ciclos_evaluativos
+             SET nombre = $1, tipo = $2, orden = $3, peso = $4, peso_formativa = $5, peso_sumativa = $6
+             WHERE id_ciclo = $7 RETURNING id_ciclo, id_periodo`,
+            [String(nombre).trim(), tipo || 'quimestre', Number(orden), Number(peso), pf, ps, req.params.id]
         );
         if (r.rows.length === 0) {
             await client.query('ROLLBACK');

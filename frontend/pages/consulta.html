@@ -24,6 +24,7 @@
       <select id="sel-mat" style="display:none"><option value="">-- Todas las materias --</option></select>
     </div>
     <div id="resultado"></div>
+    <div id="desglose"></div>
     </main>
   </div>
 </div>
@@ -67,6 +68,25 @@
           m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('') +
           `<tr><td><strong>Promedio de la materia</strong></td><td><strong>${esc(m.promedio)}</strong> (${esc(m.escala)})</td></tr></tbody></table>`).join('') +
         `<div class="form-box"><h2>Promedio general del periodo: ${esc(d.promedioGeneral)}</h2></div>`;
+      await cargarDesglose(d);
+    }
+    async function cargarDesglose(d) {
+      const div = document.getElementById('desglose');
+      div.innerHTML = '';
+      if (!d.idMateria || !d.idEstudiante) return;
+      try {
+        const g = await apiGet(`/consulta/materia/${d.idMateria}?id_estudiante=${d.idEstudiante}&id_periodo=${d.idPeriodo}`);
+        if (!g.ciclos || g.ciclos.length === 0) return;
+        div.innerHTML = `<div class="form-box"><h2>Desglose por ciclo y parcial</h2>
+          <p><small>Mínimo esperado de insumos por parcial en esta materia: <strong>${g.minimo_insumos}</strong>.</small></p></div>` +
+          g.ciclos.map(c => `<table><thead><tr><th colspan="4">${esc(c.nombre)} (peso anual ${esc(c.peso)} · formativa ${esc(c.peso_formativa)} / examen ${esc(c.peso_sumativa)})</th></tr>
+            <tr><th>Parcial</th><th>Promedio</th><th>Escala</th><th>Insumos</th></tr></thead><tbody>` +
+            c.parciales.map(p => `<tr><td>${esc(p.nombre)}</td>
+              <td>${p.promedio != null ? esc(p.promedio) : '—'}</td><td>${esc(p.escala)}</td>
+              <td>${p.n_insumos != null ? `${p.n_insumos}/${p.minimo}` + (p.faltan > 0 ? ` (faltan ${p.faltan})` : ' ✓') : '—'}</td></tr>`).join('') +
+            `<tr><td><strong>Promedio del ciclo</strong></td><td><strong>${c.promedio != null ? esc(c.promedio) : '—'}</strong></td>
+              <td colspan="2">${esc(c.escala)}</td></tr></tbody></table>`).join('');
+      } catch (err) { showError(err.message); }
     }
     (async () => {
       if (!await initPage()) return;

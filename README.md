@@ -162,6 +162,7 @@ psql -U postgres -d calificaciones_uteq -f database/12_fix_permisos_hashes.sql
 psql -U postgres -d calificaciones_uteq -f database/13_permisos_minimos.sql
 psql -U postgres -d calificaciones_uteq -f database/14_log_respaldos.sql
 psql -U postgres -d calificaciones_uteq -f database/15_triggers_catalogos.sql
+psql -U postgres -d calificaciones_uteq -f database/16_pesos_configurables.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -274,6 +275,7 @@ sistema-calificaciones-uteq/
 | POST | `/api/calificaciones/lote` | Guardado masivo transaccional (`id_parcial`/`id_ciclo` opcionales) |
 | POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
 | GET | `/api/consulta/` | Notas + promedios por estudiante |
+| GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
 | GET | `/api/reportes/` | Reporte paginado (`?page=&limit=`, formato `{datos,paginacion}`) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |

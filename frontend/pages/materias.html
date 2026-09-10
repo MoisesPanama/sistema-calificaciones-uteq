@@ -26,6 +26,8 @@
           <input type="text" id="nombre" required>
           <label for="descripcion">Descripción</label>
           <input type="text" id="descripcion">
+          <label for="periodos">Periodos semanales (PEI, define insumos mínimos esperados)</label>
+          <input type="number" id="periodos" min="1" step="1" placeholder="Vacío = piso normativo (2)">
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
             <button type="button" class="btn-secondary" id="btn-cerrar">Cancelar</button>
@@ -43,6 +45,8 @@
           <input type="text" id="ed-nombre" required>
           <label for="ed-descripcion">Descripción</label>
           <input type="text" id="ed-descripcion">
+          <label for="ed-periodos">Periodos semanales (PEI, define insumos mínimos esperados)</label>
+          <input type="number" id="ed-periodos" min="1" step="1" placeholder="Vacío = piso normativo (2)">
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
             <button type="button" class="btn-secondary" id="btn-cerrar-editar">Cancelar</button>
@@ -61,10 +65,11 @@
     async function cargar() {
       const { materias } = await apiGet('/materias/');
       document.getElementById('tabla').innerHTML =
-        `<div class="table-responsive"><table><thead><tr><th>Nombre</th><th>Descripción</th><th></th></tr></thead><tbody>` +
+        `<div class="table-responsive"><table><thead><tr><th>Nombre</th><th>Descripción</th><th>Per./sem.</th><th></th></tr></thead><tbody>` +
         materias.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.descripcion || '—')}</td>
+          <td>${m.periodos_semanales != null ? esc(m.periodos_semanales) : '—'}</td>
           <td class="td-actions">${rol === 'administrador'
-            ? `<button class="btn-secondary btn-sm" data-editar='${JSON.stringify({id:m.id_materia,nombre:m.nombre,descripcion:m.descripcion||''})}'>Editar</button>`
+            ? `<button class="btn-secondary btn-sm" data-editar='${JSON.stringify({id:m.id_materia,nombre:m.nombre,descripcion:m.descripcion||'',periodos:m.periodos_semanales ?? ''})}'>Editar</button>`
             : ''}</td></tr>`).join('') +
         '</tbody></table></div>';
       document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => {
@@ -72,6 +77,7 @@
         document.getElementById('ed-id').value = m.id;
         document.getElementById('ed-nombre').value = m.nombre;
         document.getElementById('ed-descripcion').value = m.descripcion;
+        document.getElementById('ed-periodos').value = m.periodos;
         document.getElementById('modalEditar').classList.add('activo');
       });
     }
@@ -95,7 +101,8 @@
         try {
           await apiPost('/materias/', {
             nombre: document.getElementById('nombre').value,
-            descripcion: document.getElementById('descripcion').value || null
+            descripcion: document.getElementById('descripcion').value || null,
+            periodos_semanales: document.getElementById('periodos').value || null
           });
           modal.classList.remove('activo');
           showOk('Materia guardada.');
@@ -108,7 +115,8 @@
           const id = document.getElementById('ed-id').value;
           await apiPost(`/materias/${id}/editar`, {
             nombre: document.getElementById('ed-nombre').value,
-            descripcion: document.getElementById('ed-descripcion').value || null
+            descripcion: document.getElementById('ed-descripcion').value || null,
+            periodos_semanales: document.getElementById('ed-periodos').value || null
           });
           modalEditar.classList.remove('activo');
           showOk('Materia actualizada correctamente.');

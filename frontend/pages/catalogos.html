@@ -93,8 +93,12 @@
             </select>
             <label for="cic-orden" style="font-size:0.82rem;font-weight:600;">Orden</label>
             <input type="number" id="cic-orden" min="1" step="1" value="1" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
-            <label for="cic-peso" style="font-size:0.82rem;font-weight:600;">Peso (0.01 – 1.00)</label>
-            <input type="number" id="cic-peso" min="0.01" max="1" step="0.01" value="0.50" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;">
+            <label for="cic-peso" style="font-size:0.82rem;font-weight:600;">Peso en el anual (0.01 – 1.00)</label>
+            <input type="number" id="cic-peso" min="0.01" max="1" step="0.01" value="0.50" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <label for="cic-peso-for" style="font-size:0.82rem;font-weight:600;">Peso formativa en el ciclo</label>
+            <input type="number" id="cic-peso-for" min="0.01" max="1" step="0.01" value="0.80" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+            <label for="cic-peso-sum" style="font-size:0.82rem;font-weight:600;">Peso examen en el ciclo (for.+exa.=1)</label>
+            <input type="number" id="cic-peso-sum" min="0" max="1" step="0.01" value="0.20" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;">
             <div style="display:flex;gap:0.5rem;">
               <button class="btn-primary" id="cic-guardar">Guardar</button>
               <button class="btn-secondary" id="cic-cancelar" style="display:none;">Cancelar</button>
@@ -243,6 +247,8 @@
         document.getElementById('cic-tipo').value = c.tipo;
         document.getElementById('cic-orden').value = c.orden;
         document.getElementById('cic-peso').value = c.peso;
+        document.getElementById('cic-peso-for').value = c.peso_formativa ?? '0.80';
+        document.getElementById('cic-peso-sum').value = c.peso_sumativa ?? '0.20';
         document.getElementById('cic-form-titulo').textContent = 'Editar ciclo';
         document.getElementById('cic-cancelar').style.display = 'inline-block';
       });
@@ -261,6 +267,8 @@
       document.getElementById('cic-nombre').value = '';
       document.getElementById('cic-orden').value = '1';
       document.getElementById('cic-peso').value = '0.50';
+      document.getElementById('cic-peso-for').value = '0.80';
+      document.getElementById('cic-peso-sum').value = '0.20';
       document.getElementById('cic-form-titulo').textContent = 'Nuevo ciclo';
       document.getElementById('cic-cancelar').style.display = 'none';
     }
@@ -399,6 +407,8 @@
             tipo: document.getElementById('cic-tipo').value,
             orden: Number(document.getElementById('cic-orden').value),
             peso: Number(document.getElementById('cic-peso').value),
+            peso_formativa: Number(document.getElementById('cic-peso-for').value),
+            peso_sumativa: Number(document.getElementById('cic-peso-sum').value),
             id_periodo: periodoId
           };
           try {

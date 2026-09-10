@@ -11,7 +11,7 @@ const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
 router.get('/', requireAuth, async (req, res) => {
     try {
         const resultado = await pool.query(
-            'SELECT id_materia, nombre, descripcion FROM materias ORDER BY nombre'
+            'SELECT id_materia, nombre, descripcion, periodos_semanales FROM materias ORDER BY nombre'
         );
         res.json({ materias: resultado.rows });
     } catch (error) {
@@ -20,11 +20,23 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
+// Periodos pedagogicos semanales (PEI): entero positivo opcional.
+function validarPeriodosSemanales(v) {
+    if (v === undefined || v === null || v === '') return { ok: true, valor: null };
+    const n = Number(v);
+    if (!Number.isInteger(n) || n <= 0) return { ok: false };
+    return { ok: true, valor: n };
+}
+
 // POST /api/materias { nombre, descripcion } -> crea una nueva materia
 router.post('/', requireAuth, async (req, res) => {
-    const { nombre, descripcion } = req.body || {};
+    const { nombre, descripcion, periodos_semanales } = req.body || {};
     if (!nombre || String(nombre).trim() === '') {
         return res.status(400).json({ error: 'El nombre de la materia es obligatorio.' });
+    }
+    const ps = validarPeriodosSemanales(periodos_semanales);
+    if (!ps.ok) {
+        return res.status(400).json({ error: 'Los periodos semanales deben ser un entero mayor que cero.' });
     }
 
     try {
@@ -33,8 +45,8 @@ router.post('/', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
-                'INSERT INTO materias (nombre, descripcion) VALUES ($1, $2) RETURNING id_materia',
-                [nombre, descripcion || null]
+                'INSERT INTO materias (nombre, descripcion, periodos_semanales) VALUES ($1, $2, $3) RETURNING id_materia',
+                [nombre, descripcion || null, ps.valor]
             );
             await client.query('COMMIT');
             res.status(201).json({ ok: true, id_materia: r.rows[0].id_materia });
@@ -55,9 +67,13 @@ router.post('/', requireAuth, async (req, res) => {
 
 // POST /api/materias/:id/editar
 router.post('/:id/editar', requireAuth, async (req, res) => {
-    const { nombre, descripcion } = req.body || {};
+    const { nombre, descripcion, periodos_semanales } = req.body || {};
     if (!nombre || String(nombre).trim() === '') {
         return res.status(400).json({ error: 'El nombre de la materia es obligatorio.' });
+    }
+    const ps = validarPeriodosSemanales(periodos_semanales);
+    if (!ps.ok) {
+        return res.status(400).json({ error: 'Los periodos semanales deben ser un entero mayor que cero.' });
     }
 
     try {
@@ -66,8 +82,8 @@ router.post('/:id/editar', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
-                'UPDATE materias SET nombre = $1, descripcion = $2 WHERE id_materia = $3 RETURNING id_materia',
-                [nombre, descripcion || null, req.params.id]
+                'UPDATE materias SET nombre = $1, descripcion = $2, periodos_semanales = $3 WHERE id_materia = $4 RETURNING id_materia',
+                [nombre, descripcion || null, ps.valor, req.params.id]
             );
             await client.query('COMMIT');
             if (r.rows.length === 0) {

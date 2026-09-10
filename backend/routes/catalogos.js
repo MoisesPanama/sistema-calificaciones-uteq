@@ -54,7 +54,7 @@ router.get('/ciclos', requireAuth, async (req, res) => {
         const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
         if (!idPeriodo) return res.json({ ciclos: [] });
         const r = await pool.query(
-            `SELECT id_ciclo, nombre, tipo, orden, peso
+            `SELECT id_ciclo, nombre, tipo, orden, peso, peso_formativa, peso_sumativa
              FROM ciclos_evaluativos WHERE id_periodo = $1 ORDER BY orden`,
             [idPeriodo]
         );
