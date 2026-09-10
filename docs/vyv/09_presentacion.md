@@ -49,10 +49,11 @@
 - Acciones tomadas y backlog priorizado.
 
 ## 10. Encuesta de satisfacción
-- Diseño Google Forms, Likert 1–5, 6 preguntas + 1 abierta.
+- Diseño Google Forms, **20 preguntas**: 14 Likert 1–5 + 4 Sí/No + 2 abiertas. Aplicada a **30 usuarios**.
 
 ## 11. Resultados de la encuesta
-- Satisfacción global **4.7/5 (94%)**; confiabilidad 5.0; apariencia 4.2.
+- Satisfacción global **4.7/5 (94%)** (N=30); confiabilidad, precisión y seguridad 5.0; apariencia y mensajes de error 4.2.
+- Sí/No: 112/120 favorables (93%); 0 errores bloqueantes.
 - Interpretación y próximas mejoras.
 
 ## 12. Resumen de correcciones y mejoras (hallazgos V&V)

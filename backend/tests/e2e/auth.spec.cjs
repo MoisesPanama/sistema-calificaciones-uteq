@@ -27,5 +27,5 @@ test('password incorrecta muestra error y no redirige', async ({ page }) => {
 
 test('sin sesion redirige al login', async ({ page }) => {
   await page.goto('/pages/auditoria.html');
-  await page.waitForURL('**/login.html', { timeout: 15000 });
+  await expect(page).toHaveURL(/login\.html/, { timeout: 15000 });
 });

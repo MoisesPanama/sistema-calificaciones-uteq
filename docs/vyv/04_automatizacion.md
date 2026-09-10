@@ -17,13 +17,13 @@ Se automatizaron dos niveles de pruebas, alineados con el **Plan de Mejoras v2**
 |---|---|
 | Framework | `@playwright/test` (^1.63.0) |
 | Navegador | Chromium |
-| Configuración | `backend/tests/playwright.config.cjs` |
+| Configuración | `backend/tests/playwright.config.js` |
 | Base URL | `http://localhost:3000` (API + frontend estático mismo origen) |
 | Ejecución API | `npm test` (desde `backend/`) |
 | Ejecución UI | `npm run test:e2e` (desde `backend/`) |
 | Reporter UI | HTML + list (carpeta `backend/tests/report/`) |
 
-`backend/tests/playwright.config.cjs`:
+`backend/tests/playwright.config.js`:
 
 ```js
 const { defineConfig } = require('@playwright/test');

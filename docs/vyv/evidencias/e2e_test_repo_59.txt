@@ -17,7 +17,7 @@
   OK Parcial invalido -> 400 El parcial seleccionado no pertenece al periodo activo.
 
 === 4. AUDITORIA DETALLE + RESUMEN ===
-  OK Audit query total=833
+  OK Audit query total=846
   OK Audit has user UPDATE id_usuario_app=6
   OK Resumen por categorias 5 bloques
   OK Filtro por fecha 
@@ -26,7 +26,7 @@
   OK Elena blocked from audit 
 
 === 5. PAGINACION UNICA (10 por pagina) ===
-  OK Estudiantes {datos,paginacion} total=110
+  OK Estudiantes {datos,paginacion} total=112
   OK Estudiantes default limit=10 limit=10
   OK Reportes {datos,paginacion} total=110
   OK Psicologo paginado + resumen total=110 alertas=10
@@ -36,7 +36,7 @@
   OK Curso duplicado -> 409 
   OK Editar curso 
   OK Borrar curso sin uso 
-  OK Crear ciclo (+pesos) {"ok":true,"id_ciclo":11,"advertencia":"La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00)."}
+  OK Crear ciclo (+pesos) {"ok":true,"id_ciclo":23,"advertencia":"La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00)."}
   INFO advertencia suma pesos: La suma de pesos de los ciclos del periodo es 1.05 (deberia ser 1.00).
   OK Pesos que no suman 1 -> 400 
   OK Crear parcial 
@@ -50,7 +50,7 @@
   OK Desglose materia ciclos=2 minimo=2
 
 === 8. RESPALDOS + LOG ===
-  OK Respaldo manual respaldo_20260909_235501.sql
+  OK Respaldo manual respaldo_20260910_084821.sql
   OK Historial paginado 5 filas
 
 === 9. ACCESS CONTROL ===
@@ -59,9 +59,9 @@
   OK Representante blocked from cursos POST 
 
 === 10. CONSULTA POR MATRICULA (refactor) ===
-  OK Materias desde asignacion (no solo con notas) totales=3
+  OK Materias desde asignacion (no solo con notas) totales=4
   OK Contadores coherentes con notas=3
-  OK Sin calificar tiene promedio null 0 sin calificar
+  OK Sin calificar tiene promedio null 1 sin calificar
 
 === 11. REPRESENTANTES + DASHBOARD POR ROL ===
   OK Buscar representantes 1 resultados
@@ -75,9 +75,9 @@
   OK Dashboard psicologo 
 
 === 12. CONSULTA POR BLOQUES + ASIGNACIONES ===
-  OK Bloques materia+paralelo 4 bloques
-  OK Nomina paginada del bloque total=60
-  OK Listar asignaciones 4
+  OK Bloques materia+paralelo 5 bloques
+  OK Nomina paginada del bloque total=110
+  OK Listar asignaciones 5
   OK Opciones para formulario 
   OK Asignar materia general 
   OK Asignacion duplicada -> 409 

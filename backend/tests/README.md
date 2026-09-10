@@ -19,7 +19,7 @@
 | 1 Headed | `npm run test:e2e:headed` | Los mismos 16 con navegador visible + video/screenshot si falla |
 
 ## Notas
-- La suite comparte UNA BD: `workers: 1` en `tests/playwright.config.cjs`
+- La suite comparte UNA BD: `workers: 1` en `tests/playwright.config.js`
   (sin paralelismo entre archivos). Nombres E2E-* únicos por timestamp.
 - Página por defecto: **10 registros** (`?page=&limit=`, formato único
   `{datos,paginacion}`) en estudiantes, reportes, auditoría, historial

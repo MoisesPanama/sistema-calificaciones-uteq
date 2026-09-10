@@ -5,7 +5,7 @@ const { login } = require('./helpers.cjs');
 test.beforeEach(async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
   await page.goto('/pages/auditoria.html');
-  await expect(page.locator('h1')).toContainText('Auditoria');
+  await expect(page.locator('h1')).toContainText(/Auditor[ií]a/);
 });
 
 test('resumen muestra bloques y entrar al detalle funciona', async ({ page }) => {
