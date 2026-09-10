@@ -34,23 +34,28 @@ test('crear estudiante con representante nuevo inline', async ({ page }) => {
   await page.goto('/pages/estudiante-form.html');
   const tag = Date.now().toString(36);
   await page.locator('#cedula').fill('19' + String(Date.now()).slice(-8));
-  await page.locator('#nombres').fill('PWEst' + tag);
-  await page.locator('#apellidos').fill('Prueba');
+  await page.locator('#nombre1').fill('PWEst');
+  await page.locator('#nombre2').fill(tag);
+  await page.locator('#apellido1').fill('Prueba');
+  await page.locator('#apellido2').fill('PW' + tag);
   await page.locator('#fecha_nacimiento').fill('2011-03-04');
-  // Buscar algo inexistente y crearlo inline.
+  // Buscar algo inexistente y crearlo inline (dos nombres/apellidos).
   await page.locator('#rep-buscar').fill('ZZZ-sin-coincidencia-' + tag);
   await expect(page.locator('#rep-resultados')).toContainText('Sin coincidencias', { timeout: 10000 });
-  await page.locator('#rep-nombres').fill('PWRep' + tag);
-  await page.locator('#rep-apellidos').fill('Prueba');
+  await page.locator('#rep-nombre1').fill('PWRep');
+  await page.locator('#rep-nombre2').fill(tag);
+  await page.locator('#rep-apellido1').fill('Prueba');
+  await page.locator('#rep-apellido2').fill('PW' + tag);
   await page.locator('#rep-telefono').fill('0990000' + String(Date.now()).slice(-3));
   await page.locator('#rep-crear').click();
   await expect(page.locator('#rep-elegido')).toContainText('Elegido:', { timeout: 10000 });
   await page.locator('#form-est button[type="submit"]').click();
   await page.waitForURL('**/estudiantes.html', { timeout: 15000 });
   // Buscarlo (con paginacion de 10 podria quedar en otra pagina).
-  await page.locator('#q').fill('PWEst' + tag);
+  // Ojo: nombre1+nombre2 se guardan con espacio intermedio.
+  await page.locator('#q').fill('PWEst ' + tag);
   await page.locator('#btn-buscar').click();
-  await expect(page.locator('#resultado')).toContainText('PWEst' + tag, { timeout: 15000 });
+  await expect(page.locator('#resultado')).toContainText('PWEst ' + tag, { timeout: 15000 });
   // Nota: estudiantes no tienen DELETE (se desactivan); el PWEst/PWRep
   // quedan como datos de prueba con timestamp unico. No rompen nada.
 });

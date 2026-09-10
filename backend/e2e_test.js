@@ -248,7 +248,7 @@ const loginAs = async (email) => {
   await loginAs('admin@uteq.edu.ec');
   const busq = await get('/representantes/?q=castillo&limit=5');
   log('Buscar representantes', busq.status === 200 && busq.body.datos?.length > 0, `${busq.body.datos?.length} resultados`);
-  const nomRep = `Administrador${stamp} Alfa`;
+  const nomRep = `Ewe${stamp} Alfa`;
   const apeRep = `Beta${stamp} Gamma`;
   const creaRep = await post('/representantes/', { nombres: nomRep, apellidos: apeRep, telefono: '0990000001' });
   log('Crear representante', creaRep.status === 201 && !!creaRep.body.id_representante, creaRep.body.error || '');

@@ -211,12 +211,12 @@
     async function verDetalle(idEstudiante) {
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}` +
         `&id_estudiante=${idEstudiante}&id_materia=${grupo.id_materia}`);
-      renderDetalle(d);
+      await renderDetalle(d);
       mostrar(3);
       window.scrollTo(0, 0);
     }
 
-    function renderDetalle(d) {
+    async function renderDetalle(d) {
       const div = document.getElementById('resultado');
       if (d.mensajeSinNotas) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
       const contador = (d.materiasTotales != null)
