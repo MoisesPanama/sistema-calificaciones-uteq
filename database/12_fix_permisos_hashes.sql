@@ -14,4 +14,4 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA colegio TO app_uteq;
 --    Si cambias la contrasena, genera un nuevo hash con:
 --    node -e "require('bcrypt').hash('NUEVA_PASS',10).then(h=>console.log(h))"
 -- Hash verificado con bcrypt 10 para password "UTEQ2026"
-UPDATE colegio.usuarios SET password_hash = '$2b$10$QegzO215GzG5v5xdY0Z72eOFW2TP5bnA3S.e/5.OxjIBD1fG0if/i' WHERE id_usuario IN (1, 4, 5, 6, 7, 8);
+UPDATE colegio.usuarios SET password_hash = '$2b$10$aN3On1M0roKSvyfVx5NaauXYJJ3AB0pczwU7mGQGty1S6K9EEKrbC' WHERE id_usuario IN (1, 4, 5, 6, 7, 8);
