@@ -6,6 +6,14 @@
 
 SET search_path TO colegio;
 
+-- Periodos 2 y 3 (05 solo crea el 1 y este seed los necesita para
+-- asignaciones/matriculas/notas en "los 3 quimestres").
+-- activo=FALSE para respetar el periodo unico activo
+-- (uq_periodo_unico_activo): el periodo 1 sigue siendo el actual.
+INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin, activo) VALUES
+    ('2026-2027 Segundo Quimestre', '2027-02-01', '2027-06-30', FALSE),
+    ('2026-2027 Tercer Quimestre', '2027-07-01', '2027-11-30', FALSE);
+
 -- Representantes adicionales (ya hay 2: ids 1-2)
 INSERT INTO representantes (nombres, apellidos, telefono, email) VALUES
     ('Carlos', 'Morales', '0991112233', 'carlos.morales@gmail.com'),
@@ -46,21 +54,26 @@ INSERT INTO materias (nombre, descripcion) VALUES
 
 -- Asignacion de profesores a materias en los 3 quimestres
 -- Periodo 1 (Q1) y Periodo 2 (Q2) y Periodo 3 (Q3)
+-- NOTA: 05 crea 2 materias (1-2) y este archivo agrega 5 (3-7),
+-- asi que los ids reales son: 3=Ciencias, 4=Sociales, 5=Ingles,
+-- 6=Ed.Fisica, 7=Arte.
 -- Profesor 1 (Carla Vera) -> Matematicas (1)
 -- Profesor 2 (Jorge Mendoza) -> Lengua y Literatura (2)
--- Profesor 3 (Elena Romero) -> Ciencias Naturales (4)
--- Profesor 4 (Andres Torres) -> Estudios Sociales (5)
--- Profesor 5 (Diana Vargas) -> Ingles (6)
--- Profesor 1 -> tambien Educacion Fisica (7)
--- Profesor 2 -> tambien Arte y Cultura (8)
+-- Profesor 3 (Elena Romero) -> Ciencias Naturales (3)
+-- Profesor 4 (Andres Torres) -> Estudios Sociales (4)
+-- Profesor 5 (Diana Vargas) -> Ingles (5)
+-- Profesor 1 -> tambien Educacion Fisica (6)
+-- Profesor 2 -> tambien Arte y Cultura (7)
 INSERT INTO profesor_materia_periodo (id_profesor, id_materia, id_periodo) VALUES
     -- Periodo 3
-    (1, 1, 3), (2, 2, 3), (3, 4, 3), (4, 5, 3), (5, 6, 3), (1, 7, 3), (2, 8, 3);
+    (1, 1, 3), (2, 2, 3), (3, 3, 3), (4, 4, 3), (5, 5, 3), (1, 6, 3), (2, 7, 3);
 
 -- Matriculas: TODOS los estudiantes en TODOS los 3 periodos
--- Ya existen: (1,1),(2,1),(3,1),(1,2),(2,2),(3,2)
--- Faltan: estudiantes 4-9 en periodos 1-3, y estudiantes 1-3 en periodo 3
+-- 05 solo matricula a 1-3 en el periodo 1, asi que aqui van
+-- tambien (1,2),(2,2),(3,2).
 INSERT INTO matriculas (id_estudiante, id_periodo) VALUES
+    -- Estudiantes 1-3 en Periodo 2 (05 no los incluyo)
+    (1, 2), (2, 2), (3, 2),
     -- Estudiantes 1-3 en Periodo 3
     (1, 3), (2, 3), (3, 3),
     -- Estudiante 4 (Valentina) en los 3 periodos

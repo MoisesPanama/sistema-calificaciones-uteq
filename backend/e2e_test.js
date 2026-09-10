@@ -91,8 +91,13 @@ const loginAs = async (email) => {
 
   console.log('\n=== 3. CALIFICACIONES CON PARCIAL/CICLO (Elena) ===');
   await loginAs('elena.romero@uteq.edu.ec');
-  const ctx = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
-  const materia = (ctx.body.materias || [])[0];
+  const ctx0 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const materia = (ctx0.body.materias || [])[0];
+  // Sin id_materia el contexto devuelve estudiantes=[] por diseno;
+  // se pide de nuevo con la materia para obtener estudiantes y tipos.
+  const ctx = materia
+    ? await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${materia.id_materia}`)
+    : ctx0;
   const estudiante = (ctx.body.estudiantes || [])[0];
   const tipo = (ctx.body.tiposEvaluacion || [])[0];
   log('Contexto usable', !!(materia && estudiante && tipo),
@@ -146,6 +151,8 @@ const loginAs = async (email) => {
     rep.body.mensajeSinDatos || `total=${rep.body.paginacion?.total}`);
 
   console.log('\n=== 6. CRUD CATALOGOS + REGLAS ===');
+  const listaCiclos = await get(`/ciclos/?id_periodo=${idPeriodo}`);
+  const ordenCicloLibre = 1 + Math.max(0, ...((listaCiclos.body.ciclos || []).map(c => c.orden)));
   const nombreCurso = `E2E-Curso-${stamp}`;
   const creaCurso = await post('/cursos/', { nombre: nombreCurso, paralelo: 'A', id_periodo: idPeriodo });
   log('Crear curso', creaCurso.status === 201 && !!creaCurso.body.id_curso, creaCurso.body.error || '');
@@ -158,7 +165,7 @@ const loginAs = async (email) => {
     const borraCurso = await del(`/cursos/${idCurso}`);
     log('Borrar curso sin uso', borraCurso.status === 200, borraCurso.body.error || '');
   }
-  const creaCiclo = await post('/ciclos/', { nombre: `E2E-Ciclo-${stamp}`, tipo: 'bimestre', orden: 97, peso: 0.05, peso_formativa: 0.7, peso_sumativa: 0.3, id_periodo: idPeriodo });
+  const creaCiclo = await post('/ciclos/', { nombre: `E2E-Ciclo-${stamp}`, tipo: 'bimestre', orden: ordenCicloLibre, peso: 0.05, peso_formativa: 0.7, peso_sumativa: 0.3, id_periodo: idPeriodo });
   log('Crear ciclo (+pesos)', creaCiclo.status === 201, creaCiclo.body.error || JSON.stringify(creaCiclo.body));
   if (creaCiclo.body.advertencia) console.log('  INFO advertencia suma pesos:', creaCiclo.body.advertencia);
   const idCiclo = creaCiclo.body.id_ciclo;

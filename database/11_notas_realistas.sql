@@ -1,6 +1,13 @@
 -- =========================================================
 -- 11_notas_realistas.sql
 -- Notas realistas: Q1 y Q2 todos pasan (>7), Q3 algunos bajan
+-- UPSERT idempotente: 05/06 ya cargaron notas para estas
+-- mismas claves, asi que se SOBRESCRIBEN los valores (las
+-- "realistas" mandan) en vez de fallar por duplicado.
+-- Clausula repetida al final de cada INSERT:
+--   ON CONFLICT (id_estudiante, id_materia, id_periodo,
+--     id_tipo_evaluacion) DO UPDATE SET valor = EXCLUDED.valor,
+--     registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 -- =========================================================
 
 -- Q1 (Periodo 1) - Todos los estudiantes aprueban (7.5 - 9.5)
@@ -15,7 +22,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 1, 1, 1, 7.50, 1), (7, 1, 1, 2, 7.80, 1), (7, 1, 1, 3, 7.60, 1),
 (8, 1, 1, 1, 8.20, 1), (8, 1, 1, 2, 8.50, 1), (8, 1, 1, 3, 8.00, 1),
 (9, 1, 1, 1, 9.10, 1), (9, 1, 1, 2, 9.30, 1), (9, 1, 1, 3, 9.00, 1),
-(10, 1, 1, 1, 7.70, 1), (10, 1, 1, 2, 8.00, 1), (10, 1, 1, 3, 7.90, 1);
+(10, 1, 1, 1, 7.70, 1), (10, 1, 1, 2, 8.00, 1), (10, 1, 1, 3, 7.90, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Materia 2: Lengua
 INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, registrado_por) VALUES
@@ -28,7 +37,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 2, 1, 1, 7.70, 1), (7, 2, 1, 2, 7.50, 1), (7, 2, 1, 3, 7.90, 1),
 (8, 2, 1, 1, 8.00, 1), (8, 2, 1, 2, 8.40, 1), (8, 2, 1, 3, 8.20, 1),
 (9, 2, 1, 1, 9.30, 1), (9, 2, 1, 2, 9.10, 1), (9, 2, 1, 3, 9.50, 1),
-(10, 2, 1, 1, 7.60, 1), (10, 2, 1, 2, 8.10, 1), (10, 2, 1, 3, 7.80, 1);
+(10, 2, 1, 1, 7.60, 1), (10, 2, 1, 2, 8.10, 1), (10, 2, 1, 3, 7.80, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Q2 (Periodo 2) - Todos los estudiantes aprueban (7.5 - 9.5)
 -- Materia 1: Matematicas
@@ -42,7 +53,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 1, 2, 1, 7.60, 1), (7, 1, 2, 2, 7.90, 1), (7, 1, 2, 3, 7.70, 1),
 (8, 1, 2, 1, 8.50, 1), (8, 1, 2, 2, 8.80, 1), (8, 1, 2, 3, 8.30, 1),
 (9, 1, 2, 1, 9.20, 1), (9, 1, 2, 2, 9.50, 1), (9, 1, 2, 3, 9.10, 1),
-(10, 1, 2, 1, 7.90, 1), (10, 1, 2, 2, 8.20, 1), (10, 1, 2, 3, 8.00, 1);
+(10, 1, 2, 1, 7.90, 1), (10, 1, 2, 2, 8.20, 1), (10, 1, 2, 3, 8.00, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Materia 2: Lengua
 INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, registrado_por) VALUES
@@ -55,7 +68,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 2, 2, 1, 7.80, 1), (7, 2, 2, 2, 7.60, 1), (7, 2, 2, 3, 8.00, 1),
 (8, 2, 2, 1, 8.30, 1), (8, 2, 2, 2, 8.60, 1), (8, 2, 2, 3, 8.10, 1),
 (9, 2, 2, 1, 9.40, 1), (9, 2, 2, 2, 9.20, 1), (9, 2, 2, 3, 9.60, 1),
-(10, 2, 2, 1, 7.80, 1), (10, 2, 2, 2, 8.30, 1), (10, 2, 2, 3, 7.90, 1);
+(10, 2, 2, 1, 7.80, 1), (10, 2, 2, 2, 8.30, 1), (10, 2, 2, 3, 7.90, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Q3 (Periodo 3) - Algunos estudiantes bajan (<7 en algunas materias)
 -- Estudiante 4: reprobado en Matematicas
@@ -72,7 +87,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 1, 3, 1, 7.80, 1), (7, 1, 3, 2, 8.10, 1), (7, 1, 3, 3, 7.90, 1),
 (8, 1, 3, 1, 8.60, 1), (8, 1, 3, 2, 8.90, 1), (8, 1, 3, 3, 8.40, 1),
 (9, 1, 3, 1, 9.40, 1), (9, 1, 3, 2, 9.60, 1), (9, 1, 3, 3, 9.20, 1),
-(10, 1, 3, 1, 4.80, 1), (10, 1, 3, 2, 5.50, 1), (10, 1, 3, 3, 5.20, 1);
+(10, 1, 3, 1, 4.80, 1), (10, 1, 3, 2, 5.50, 1), (10, 1, 3, 3, 5.20, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Materia 2: Lengua
 INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, registrado_por) VALUES
@@ -85,7 +102,9 @@ INSERT INTO calificaciones (id_estudiante, id_materia, id_periodo, id_tipo_evalu
 (7, 2, 3, 1, 5.80, 1), (7, 2, 3, 2, 6.30, 1), (7, 2, 3, 3, 5.50, 1),
 (8, 2, 3, 1, 8.40, 1), (8, 2, 3, 2, 8.70, 1), (8, 2, 3, 3, 8.20, 1),
 (9, 2, 3, 1, 9.50, 1), (9, 2, 3, 2, 9.30, 1), (9, 2, 3, 3, 9.70, 1),
-(10, 2, 3, 1, 4.50, 1), (10, 2, 3, 2, 5.20, 1), (10, 2, 3, 3, 4.80, 1);
+(10, 2, 3, 1, 4.50, 1), (10, 2, 3, 2, 5.20, 1), (10, 2, 3, 3, 4.80, 1)
+ON CONFLICT (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion)
+DO UPDATE SET valor = EXCLUDED.valor, registrado_por = EXCLUDED.registrado_por, fecha_registro = NOW();
 
 -- Recalcular promedios en matricula_materias
 UPDATE matricula_materias mm

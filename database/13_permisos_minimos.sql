@@ -92,6 +92,20 @@ GRANT SELECT, INSERT, UPDATE ON parciales TO app_uteq;
 GRANT SELECT, INSERT, UPDATE ON tipos_evaluacion TO app_uteq;
 GRANT SELECT, INSERT, UPDATE ON profesor_materia_periodo TO app_uteq;
 
+-- ---------------------------------------------------------
+-- 2b. EXCEPCION JUSTIFICADA: DELETE solo en los 4 catalogos
+--     que el admin mantiene desde la UI (Fase 6: cursos,
+--     ciclos, parciales, tipos). Cada ruta DELETE verifica
+--     antes que no haya registros asociados (409 si los hay:
+--     matriculas/asignaciones/notas) y el trigger de auditoria
+--     deja rastro del borrado. Ninguna otra tabla de negocio
+--     necesita DELETE.
+-- ---------------------------------------------------------
+GRANT DELETE ON cursos TO app_uteq;
+GRANT DELETE ON ciclos_evaluativos TO app_uteq;
+GRANT DELETE ON parciales TO app_uteq;
+GRANT DELETE ON tipos_evaluacion TO app_uteq;
+
 -- Usuarios: SELECT para el login (join con roles) + INSERT y
 -- UPDATE para los scripts de seed (seed-passwords.js y
 -- seed-test-users.js actualizan password_hash) y futura
@@ -138,21 +152,24 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA colegio TO app_uteq;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA colegio TO app_uteq;
 GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA colegio TO app_uteq;
 
--- Que las funciones/procedimientos que se creen a futuro
--- (el dueno habitual de los objetos es app_uteq o postgres
--- segun quien corra las migraciones) tambien queden usables:
+-- Que las funciones que se creen a futuro (el dueno habitual de
+-- los objetos es app_uteq o postgres segun quien corra las
+-- migraciones) tambien queden usables. NOTA: ALTER DEFAULT
+-- PRIVILEGES no acepta PROCEDURES como tipo de objeto; si una
+-- migracion futura crea un procedimiento nuevo, agregar su
+-- GRANT EXECUTE explicito (o re-ejecutar la seccion 6).
 ALTER DEFAULT PRIVILEGES FOR ROLE app_uteq IN SCHEMA colegio
     GRANT EXECUTE ON FUNCTIONS TO app_uteq;
-ALTER DEFAULT PRIVILEGES FOR ROLE app_uteq IN SCHEMA colegio
-    GRANT EXECUTE ON PROCEDURES TO app_uteq;
 -- NOTA: si las migraciones futuras se corren como 'postgres',
--- repetir esas dos lineas con FOR ROLE postgres, o re-ejecutar
+-- repetir esa linea con FOR ROLE postgres, o re-ejecutar
 -- la seccion 6 de este archivo.
 
 -- ---------------------------------------------------------
 -- 7. LO QUE DELIBERADAMENTE NO SE OTORGA (documentado para
 --    que nadie lo "arregle" por accidente):
---    - DELETE en tablas de negocio y auditoria.
+--    - DELETE salvo en los 4 catalogos de la seccion 2b
+--      (cursos, ciclos, parciales, tipos: mantenimiento admin
+--      con verificacion previa de uso + rastro en auditoria).
 --    - TRUNCATE / DROP / CREATE / ALTER (solo superusuario).
 --    - GRANT ALL en bloque (el atajo que origino este archivo).
 -- ---------------------------------------------------------

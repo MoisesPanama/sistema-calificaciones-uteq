@@ -1,0 +1,30 @@
+# =========================================================
+# docker-compose.test.yml — BD PostgreSQL EFIMERA para pruebas
+# (plan v2, 3 vias de test). No interfiere con el PG local
+# (usa el puerto 5433) ni con datos reales (volumen aparte).
+# Uso:
+#   docker compose -f docker-compose.test.yml up -d
+#   # ... correr migraciones 01..17 + seeds (ver tests/README.md)
+#   docker compose -f docker-compose.test.yml down -v
+# =========================================================
+services:
+  pg-test:
+    image: postgres:18-alpine
+    container_name: uteq-pg-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres-test
+      POSTGRES_DB: calificaciones_uteq_test
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - uteq-pg-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  uteq-pg-test-data:
