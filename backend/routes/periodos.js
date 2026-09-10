@@ -7,15 +7,14 @@ const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
+const { getAllPeriodos } = require('../helpers/periodos');
 
 // GET /api/periodos -> { periodos, periodoActivo }
 router.get('/', requireAuth, async (req, res) => {
     try {
-        const resultado = await pool.query(
-            'SELECT id_periodo, nombre, fecha_inicio, fecha_fin, activo FROM periodos_academicos ORDER BY fecha_inicio DESC'
-        );
+        const periodos = await getAllPeriodos();
         const periodoActivo = await getPeriodoActivo();
-        res.json({ periodos: resultado.rows, periodoActivo });
+        res.json({ periodos, periodoActivo });
     } catch (error) {
         console.error('Error al listar periodos:', error.message);
         res.status(500).json({ error: 'No se pudo cargar el listado de periodos.' });
@@ -48,6 +47,36 @@ router.post('/', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'La fecha de fin debe ser posterior a la fecha de inicio.' });
         }
         res.status(500).json({ error: 'No se pudo guardar el periodo.' });
+    }
+});
+
+// POST /api/periodos/:id/editar
+router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req, res) => {
+    const { nombre, fecha_inicio, fecha_fin } = req.body || {};
+    const errores = [];
+    if (!nombre || String(nombre).trim() === '') errores.push('El nombre del periodo es obligatorio.');
+    if (!fecha_inicio) errores.push('La fecha de inicio es obligatoria.');
+    if (!fecha_fin) errores.push('La fecha de fin es obligatoria.');
+    if (errores.length > 0) {
+        return res.status(400).json({ error: errores.join(' '), errores });
+    }
+
+    try {
+        await setUsuarioAuditoria(req.session.usuario.id_usuario);
+        const r = await pool.query(
+            'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
+            [nombre, fecha_inicio, fecha_fin, req.params.id]
+        );
+        if (r.rows.length === 0) {
+            return res.status(404).json({ error: 'Periodo no encontrado.' });
+        }
+        res.json({ ok: true, mensaje: 'Periodo actualizado correctamente.' });
+    } catch (error) {
+        console.error('Error al editar periodo:', error.message);
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Ya existe un periodo registrado con ese nombre.' });
+        }
+        res.status(500).json({ error: 'No se pudo editar el periodo.' });
     }
 });
 

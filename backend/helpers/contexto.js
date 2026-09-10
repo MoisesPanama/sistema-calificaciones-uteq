@@ -72,26 +72,30 @@ async function getMateriasPermitidas(client, usuario, idPeriodo) {
 
 // Cursos del periodo visibles para el usuario (mismo criterio).
 async function getCursosPermitidos(client, usuario, idPeriodo) {
-    if (esAdmin(usuario)) {
+    try {
+        if (esAdmin(usuario)) {
+            const r = await client.query(
+                `SELECT id_curso, nombre, paralelo FROM cursos
+                 WHERE id_periodo = $1 ORDER BY nombre, paralelo`,
+                [idPeriodo]
+            );
+            return r.rows;
+        }
+
+        const idProfesor = await getProfesorId(client, usuario.id_usuario);
+        if (!idProfesor) return [];
         const r = await client.query(
-            `SELECT id_curso, nombre, paralelo FROM cursos
-             WHERE id_periodo = $1 ORDER BY nombre, paralelo`,
-            [idPeriodo]
+            `SELECT DISTINCT c.id_curso, c.nombre, c.paralelo
+             FROM profesor_materia_periodo pmp
+             JOIN cursos c ON c.id_curso = pmp.id_curso
+             WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
+             ORDER BY c.nombre, c.paralelo`,
+            [idPeriodo, idProfesor]
         );
         return r.rows;
+    } catch (_) {
+        return [];
     }
-
-    const idProfesor = await getProfesorId(client, usuario.id_usuario);
-    if (!idProfesor) return [];
-    const r = await client.query(
-        `SELECT DISTINCT c.id_curso, c.nombre, c.paralelo
-         FROM profesor_materia_periodo pmp
-         JOIN cursos c ON c.id_curso = pmp.id_curso
-         WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
-         ORDER BY c.nombre, c.paralelo`,
-        [idPeriodo, idProfesor]
-    );
-    return r.rows;
 }
 
 module.exports = {

@@ -7,8 +7,11 @@
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-  <header class="header" id="app-header"></header>
-  <main class="main-content">
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
     <h1>Reporte de Promedios por Periodo</h1>
     <p class="periodo-fijo" id="info-periodo"></p>
     <p class="alert alert-error" id="error" style="display:none"></p>
@@ -21,7 +24,9 @@
       <select id="sel-mat"><option value="">-- Promedio general --</option></select>
     </div>
     <div id="resultado"></div>
-  </main>
+    </main>
+  </div>
+</div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
@@ -33,10 +38,20 @@
       if (document.getElementById('sel-mat').value) p.set('id_materia', document.getElementById('sel-mat').value);
       return p.toString();
     }
+    function escalaInfo(escala) {
+      const mapa = {
+        'AD': { desc: 'Logro Destacado', rango: '9.00 – 10.00', clase: 'badge badge-success' },
+        'A':  { desc: 'Logro Esperado',   rango: '7.00 – 8.99',  clase: 'badge badge-info' },
+        'AB': { desc: 'En Proceso',       rango: '4.00 – 6.99',  clase: 'badge badge-warning' },
+        'B':  { desc: 'En Inicio',        rango: '0.00 – 3.99',  clase: 'badge badge-danger' }
+      };
+      const info = mapa[escala] || { desc: escala, rango: '', clase: 'badge' };
+      return `<span class="${info.clase}" title="${info.desc} (${info.rango})">${esc(escala)}</span>`;
+    }
     async function cargar(first = false) {
       const d = await apiGet('/reportes/?' + q());
       document.getElementById('info-periodo').innerHTML =
-        `Periodo activo (fijo): <strong>${esc(d.periodoActivo?.nombre || '—')}</strong>`;
+        `Periodo seleccionado: <strong>${esc(d.periodoNombre || d.periodoActivo?.nombre || '—')}</strong>`;
       if (first) {
         document.getElementById('sel-periodo').innerHTML =
           d.periodos.map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === d.idPeriodo ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
@@ -48,17 +63,24 @@
       const div = document.getElementById('resultado');
       if (d.mensajeSinDatos) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinDatos)}</div>`; return; }
       const conMat = !!d.idMateria;
-      div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th><th>Curso</th>` +
-        (conMat ? '<th>Promedio materia</th>' : '') + '<th>Promedio general</th><th>Escala</th></tr></thead><tbody>' +
-        d.reporte.map(f => `<tr><td>${esc(f.nombres)}</td><td>${esc(f.apellidos)}</td><td>${esc(f.curso || '—')}</td>` +
-          (conMat ? `<td>${f.promedio_materia != null ? esc(f.promedio_materia) : 'Sin calificaciones'}</td>` : '') +
-          `<td>${f.promedio_general != null ? esc(f.promedio_general) : 'Sin calificaciones'}</td><td>${esc(f.escala || '')}</td></tr>`).join('') +
+      const conCurso = !!d.idCurso;
+      const ordenado = [...d.reporte].sort((a, b) => (b.promedio || 0) - (a.promedio || 0));
+      div.innerHTML = `<table><thead><tr><th>Nombres</th><th>Apellidos</th>` +
+        (conCurso ? '<th>Curso</th>' : '') +
+        '<th>Promedio</th><th>Escala</th></tr></thead><tbody>' +
+        ordenado.map(f => `<tr><td>${esc(f.nombres)}</td><td>${esc(f.apellidos)}</td>` +
+          (conCurso ? `<td>${esc(f.curso || '—')}</td>` : '') +
+          `<td>${f.promedio != null ? esc(f.promedio) : 'Sin calificaciones'}</td><td>${escalaInfo(f.escala)}</td></tr>`).join('') +
         '</tbody></table>';
     }
     (async () => {
       if (!await initPage()) return;
       await cargar(true).catch(showError);
-      document.getElementById('sel-periodo').onchange = () => cargar().catch(showError);
+      document.getElementById('sel-periodo').onchange = async () => {
+        const id = document.getElementById('sel-periodo').value;
+        await apiPost('/auth/periodo-seleccionado', { id_periodo: Number(id) });
+        location.reload();
+      };
       document.getElementById('sel-curso').onchange = () => cargar().catch(showError);
       document.getElementById('sel-mat').onchange = () => cargar().catch(showError);
     })();

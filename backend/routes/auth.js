@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
+const { requireAuth } = require('../middleware/auth');
 
 // POST /api/auth/login { email, password } -> { usuario }
 router.post('/login', async (req, res) => {
@@ -61,7 +62,18 @@ router.get('/me', (req, res) => {
     if (!req.session.usuario) {
         return res.status(401).json({ error: 'No autenticado.' });
     }
-    res.json({ usuario: req.session.usuario });
+    res.json({
+        usuario: req.session.usuario,
+        periodoSeleccionado: req.session.periodoSeleccionado || null
+    });
+});
+
+// POST /api/auth/periodo-seleccionado -> guarda periodo activo en sesion
+router.post('/periodo-seleccionado', requireAuth, (req, res) => {
+    const { id_periodo } = req.body || {};
+    if (!id_periodo) return res.status(400).json({ error: 'Falta id_periodo.' });
+    req.session.periodoSeleccionado = Number(id_periodo);
+    res.json({ ok: true });
 });
 
 // POST /api/auth/logout -> destruye la sesion

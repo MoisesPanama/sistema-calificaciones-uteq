@@ -3,35 +3,143 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auditoría - Sistema de Calificaciones</title>
+  <title>Auditoria - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .audit-stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .audit-stat {
+      background: white; border-radius: 10px; padding: 1rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 140px; text-align: center;
+    }
+    .audit-stat .num { font-size: 1.8rem; font-weight: 700; }
+    .audit-stat .lbl { font-size: 0.78rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 0.2rem; }
+    .audit-stat.total .num { color: #1e3a8a; }
+    .audit-stat.inserts .num { color: #16a34a; }
+    .audit-stat.updates .num { color: #d97706; }
+    .audit-stat.deletes .num { color: #dc2626; }
+
+    .audit-card {
+      background: white; border-radius: 12px; padding: 1rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 0.7rem;
+      border-left: 4px solid #d1d5db; transition: background 0.15s;
+    }
+    .audit-card:hover { background: #f9fafb; }
+    .audit-card.INSERT { border-left-color: #22c55e; }
+    .audit-card.UPDATE { border-left-color: #f59e0b; }
+    .audit-card.DELETE { border-left-color: #ef4444; }
+
+    .audit-header {
+      display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+      cursor: pointer; user-select: none;
+    }
+    .audit-header .fecha { font-size: 0.82rem; color: #6b7280; }
+    .audit-header .tabla { font-weight: 600; color: #1f2937; }
+    .audit-op {
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 6px;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .audit-op.INSERT { background: #dcfce7; color: #166534; }
+    .audit-op.UPDATE { background: #fef3c7; color: #92400e; }
+    .audit-op.DELETE { background: #fee2e2; color: #991b1b; }
+    .audit-header .usuario { font-size: 0.82rem; color: #6b7280; margin-left: auto; }
+    .audit-header .arrow { transition: transform 0.2s; font-size: 0.8rem; color: #9ca3af; }
+    .audit-card.abierto .audit-header .arrow { transform: rotate(90deg); }
+
+    .audit-body { display: none; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #f3f4f6; }
+    .audit-card.abierto .audit-body { display: block; }
+    .audit-json {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    .audit-json-block h4 { font-size: 0.78rem; color: #6b7280; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .audit-json pre {
+      background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 0.6rem 0.8rem; font-size: 0.78rem; overflow-x: auto;
+      max-height: 200px; overflow-y: auto; color: #374151;
+    }
+    .audit-json .empty { color: #9ca3af; font-style: italic; font-size: 0.85rem; }
+
+    @media (max-width: 768px) {
+      .audit-json { grid-template-columns: 1fr; }
+      .audit-header { gap: 0.4rem; }
+      .audit-header .usuario { margin-left: 0; }
+    }
+  </style>
 </head>
 <body>
-  <header class="header" id="app-header"></header>
-  <main class="main-content">
-    <h1>Auditoría del Sistema</h1>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Auditoria del Sistema</h1>
     <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="audit-stats" id="stats"></div>
     <div id="resultado"><p>Cargando...</p></div>
-  </main>
+    </main>
+  </div>
+</div>
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/layout.js"></script>
   <script>
+    function formatearJson(datos) {
+      if (!datos) return '<span class="empty">Sin datos</span>';
+      try {
+        const obj = typeof datos === 'string' ? JSON.parse(datos) : datos;
+        const limpio = {};
+        for (const [k, v] of Object.entries(obj)) {
+          if (k === 'password_hash') continue;
+          limpio[k] = v;
+        }
+        return '<pre>' + esc(JSON.stringify(limpio, null, 2)) + '</pre>';
+      } catch { return '<pre>' + esc(String(datos)) + '</pre>'; }
+    }
+
     (async () => {
       if (!await initPage({ adminOnly: true })) return;
       try {
         const { registros } = await apiGet('/auditoria/');
         const div = document.getElementById('resultado');
-        if (registros.length === 0) { div.innerHTML = '<p>No hay registros de auditoría todavía.</p>'; return; }
-        div.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tabla</th><th>Operación</th><th>ID registro</th>
-          <th>Usuario (app)</th><th>Usuario (BD)</th><th>Datos anteriores</th><th>Datos nuevos</th></tr></thead><tbody>` +
-          registros.map(r => `<tr><td>${new Date(r.fecha_evento).toLocaleString('es-EC')}</td>
-            <td>${esc(r.tabla_afectada)}</td><td>${esc(r.operacion)}</td><td>${esc(r.id_registro)}</td>
-            <td>${r.usuario_nombres ? esc(r.usuario_nombres + ' ' + r.usuario_apellidos) : '—'}</td>
-            <td>${esc(r.usuario_bd)}</td>
-            <td><pre>${esc(r.datos_anteriores ? JSON.stringify(r.datos_anteriores, null, 2) : '—')}</pre></td>
-            <td><pre>${esc(r.datos_nuevos ? JSON.stringify(r.datos_nuevos, null, 2) : '—')}</pre></td></tr>`).join('') +
-          '</tbody></table>';
+        const statsDiv = document.getElementById('stats');
+
+        const total = registros.length;
+        const inserts = registros.filter(r => r.operacion === 'INSERT').length;
+        const updates = registros.filter(r => r.operacion === 'UPDATE').length;
+        const deletes = registros.filter(r => r.operacion === 'DELETE').length;
+
+        statsDiv.innerHTML = `
+          <div class="audit-stat total"><div class="num">${total}</div><div class="lbl">Total</div></div>
+          <div class="audit-stat inserts"><div class="num">${inserts}</div><div class="lbl">Inserciones</div></div>
+          <div class="audit-stat updates"><div class="num">${updates}</div><div class="lbl">Actualizaciones</div></div>
+          <div class="audit-stat deletes"><div class="num">${deletes}</div><div class="lbl">Eliminaciones</div></div>`;
+
+        if (registros.length === 0) { div.innerHTML = '<p>No hay registros de auditoria todavia.</p>'; return; }
+
+        div.innerHTML = registros.map((r, i) => {
+          const fecha = new Date(r.fecha_evento).toLocaleString('es-EC');
+          const usuario = r.usuario_nombres ? esc(r.usuario_nombres + ' ' + r.usuario_apellidos) : '—';
+          return `<div class="audit-card ${r.operacion}" id="audit-${i}">
+            <div class="audit-header" onclick="document.getElementById('audit-${i}').classList.toggle('abierto')">
+              <span class="audit-op ${r.operacion}">${r.operacion}</span>
+              <span class="tabla">${esc(r.tabla_afectada)}</span>
+              <span class="fecha">${fecha}</span>
+              <span class="usuario">${usuario}</span>
+              <span class="arrow">&#9654;</span>
+            </div>
+            <div class="audit-body">
+              <div class="audit-json">
+                <div class="audit-json-block">
+                  <h4>Datos anteriores</h4>
+                  ${formatearJson(r.datos_anteriores)}
+                </div>
+                <div class="audit-json-block">
+                  <h4>Datos nuevos</h4>
+                  ${formatearJson(r.datos_nuevos)}
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
       } catch (err) { showError(err.message); }
     })();
   </script>

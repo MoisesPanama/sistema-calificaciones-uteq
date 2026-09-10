@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Respaldos - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Gestión de Respaldos</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+
+    <div class="cards-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+      <!-- Respaldo Manual -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem;">
+          <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#1e3a8a;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <h2 style="font-size:1.1rem;color:#1e3a8a;">Respaldo Manual</h2>
+        </div>
+        <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1.2rem;">Crea un respaldo inmediato de toda la base de datos.</p>
+        <button class="btn-primary" id="btn-respaldo" style="width:100%;">Crear Respaldo Ahora</button>
+      </div>
+
+      <!-- Respaldo Programado -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem;">
+          <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#1e3a8a;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+          <h2 style="font-size:1.1rem;color:#1e3a8a;">Respaldo Programado</h2>
+        </div>
+        <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1.2rem;">Configura una hora diaria para respaldos automaticos.</p>
+        <div id="estado-programado" style="font-size:0.85rem;margin-bottom:1rem;"></div>
+        <div style="display:flex;gap:0.8rem;align-items:flex-end;">
+          <div style="flex:1;">
+            <label for="hora-respaldo" style="font-size:0.82rem;font-weight:600;">Hora</label>
+            <input type="time" id="hora-respaldo" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+          </div>
+          <button class="btn-primary" id="btn-programar" style="white-space:nowrap;">Activar</button>
+          <button class="btn-secondary" id="btn-desactivar" style="white-space:nowrap;display:none;">Desactivar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de respaldos -->
+    <h2 style="font-size:1rem;margin-bottom:0.8rem;color:#1e3a8a;">Respaldos Guardados</h2>
+    <div id="lista-respaldos"></div>
+
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    function formatoTamano(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    async function cargar() {
+      const d = await apiGet('/respaldos/');
+
+      // Estado programado
+      const prog = d.programado || {};
+      const estadoDiv = document.getElementById('estado-programado');
+      const btnActivar = document.getElementById('btn-programar');
+      const btnDesactivar = document.getElementById('btn-desactivar');
+      const horaInput = document.getElementById('hora-respaldo');
+
+      if (prog.activo) {
+        estadoDiv.innerHTML = '<span class="badge badge-success">Activo a las ' + esc(prog.hora) + '</span>';
+        btnActivar.style.display = 'none';
+        btnDesactivar.style.display = 'inline-block';
+        horaInput.value = prog.hora;
+      } else {
+        estadoDiv.innerHTML = '<span class="badge badge-warning">Inactivo</span>';
+        btnActivar.style.display = 'inline-block';
+        btnDesactivar.style.display = 'none';
+      }
+
+      // Lista de respaldos
+      const div = document.getElementById('lista-respaldos');
+      if (!d.respaldos || d.respaldos.length === 0) {
+        div.innerHTML = '<p style="color:#6b7280;font-size:0.9rem;">No hay respaldos guardados.</p>';
+        return;
+      }
+      div.innerHTML = `<div class="table-responsive"><table>
+        <thead><tr><th>Archivo</th><th>Tamano</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>
+        ${d.respaldos.map(r => `<tr>
+          <td style="font-family:monospace;font-size:0.82rem;">${esc(r.nombre)}</td>
+          <td>${formatoTamano(r.tamano)}</td>
+          <td>${new Date(r.fecha).toLocaleString('es-EC')}</td>
+          <td class="td-actions" style="display:flex;gap:0.4rem;">
+            <button class="btn-primary btn-sm" data-descargar='${esc(r.nombre)}'>Descargar</button>
+            <button class="btn-secondary btn-sm btn-danger-text" data-eliminar='${esc(r.nombre)}'>Eliminar</button>
+          </td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+
+      div.querySelectorAll('[data-descargar]').forEach(b => b.onclick = () => {
+        const nombre = b.dataset.descargar;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/respaldos/descargar';
+        form.target = '_blank';
+        const input1 = document.createElement('input');
+        input1.type = 'hidden'; input1.name = 'nombre'; input1.value = nombre;
+        form.appendChild(input1);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      });
+
+      div.querySelectorAll('[data-eliminar]').forEach(b => b.onclick = async () => {
+        if (!confirm('Eliminar respaldo ' + b.dataset.eliminar + '?')) return;
+        try {
+          await apiPost('/respaldos/eliminar', { nombre: b.dataset.eliminar });
+          showOk('Respaldo eliminado.');
+          await cargar();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
+    (async () => {
+      if (!await initPage({ adminOnly: true })) return;
+      await cargar().catch(showError);
+
+      document.getElementById('btn-respaldo').onclick = async (e) => {
+        const btn = e.target;
+        btn.disabled = true;
+        btn.textContent = 'Creando respaldo...';
+        try {
+          const r = await apiPost('/respaldos/manual', {});
+          showOk('Respaldo creado: ' + r.respaldo.nombre);
+          await cargar();
+        } catch (err) { showError(err.message); }
+        btn.disabled = false;
+        btn.textContent = 'Crear Respaldo Ahora';
+      };
+
+      document.getElementById('btn-programar').onclick = async () => {
+        const val = document.getElementById('hora-respaldo').value;
+        if (!val) { showError('Seleccione una hora.'); return; }
+        const [h, m] = val.split(':');
+        try {
+          const r = await apiPost('/respaldos/programar', { hora: Number(h), minutos: Number(m), activo: true });
+          showOk(r.mensaje);
+          await cargar();
+        } catch (err) { showError(err.message); }
+      };
+
+      document.getElementById('btn-desactivar').onclick = async () => {
+        try {
+          const r = await apiPost('/respaldos/programar', { activo: false });
+          showOk(r.mensaje);
+          await cargar();
+        } catch (err) { showError(err.message); }
+      };
+    })();
+  </script>
+</body>
+</html>

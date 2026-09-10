@@ -39,7 +39,7 @@ router.get('/cursos', requireAuth, async (req, res) => {
 router.get('/tipos-evaluacion', requireAuth, async (req, res) => {
     try {
         const r = await pool.query(
-            'SELECT id_tipo_evaluacion, nombre, categoria, es_examen FROM tipos_evaluacion ORDER BY nombre'
+            'SELECT id_tipo_evaluacion, nombre, peso FROM tipos_evaluacion ORDER BY nombre'
         );
         res.json({ tiposEvaluacion: r.rows });
     } catch (error) {

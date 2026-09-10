@@ -14,6 +14,11 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD,
 });
 
+// Set search_path on every new connection
+pool.on('connect', () => {
+    pool.query('SET search_path TO colegio, public');
+});
+
 // Verifica la conexion apenas arranca el servidor,
 // para detectar errores de credenciales temprano.
 pool.query('SELECT NOW()')

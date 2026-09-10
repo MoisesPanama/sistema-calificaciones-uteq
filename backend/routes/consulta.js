@@ -9,6 +9,15 @@ const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
 
+function evaluarEscala(nota) {
+    if (nota == null) return 'S/N';
+    if (nota >= 9.0) return 'AD';
+    if (nota >= 7.0) return 'A';
+    if (nota >= 5.0) return 'B';
+    if (nota >= 3.0) return 'C';
+    return 'D';
+}
+
 router.get('/', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -20,18 +29,36 @@ router.get('/', requireAuth, async (req, res) => {
             'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
         );
 
-        const idPeriodo = req.query.id_periodo || String(periodoActivo.id_periodo);
+        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
         const idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.query.id_materia || '';
 
-        const resultadoEst = await pool.query(
-            `SELECT e.id_estudiante, e.nombres, e.apellidos
-             FROM matriculas m
-             JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-             WHERE m.id_periodo = $1
-             ORDER BY e.apellidos, e.nombres`,
-            [idPeriodo]
-        );
+        const periodoSel = periodos.rows.find(p => String(p.id_periodo) === String(idPeriodo));
+        const periodoNombre = periodoSel ? periodoSel.nombre : periodoActivo.nombre;
+
+        // Filtrar estudiantes segun rol
+        let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos
+                     FROM matriculas m
+                     JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                     WHERE m.id_periodo = $1`;
+        const paramsEst = [idPeriodo];
+
+        // Representante: solo ver sus hijos
+        if (req.session.usuario.nombre_rol === 'representante') {
+            const repResult = await pool.query(
+                'SELECT id_representante FROM representantes WHERE id_usuario = $1',
+                [req.session.usuario.id_usuario]
+            );
+            if (repResult.rows.length > 0) {
+                sqlEst += ' AND e.id_representante = $2';
+                paramsEst.push(repResult.rows[0].id_representante);
+            } else {
+                sqlEst += ' AND 1 = 0';
+            }
+        }
+
+        sqlEst += ' ORDER BY e.apellidos, e.nombres';
+        const resultadoEst = await pool.query(sqlEst, paramsEst);
 
         let materiasFiltro = [];
         let materias = [];
@@ -89,11 +116,15 @@ router.get('/', requireAuth, async (req, res) => {
                     [idEstudiante, materia.id_materia, idPeriodo]
                 );
                 materia.promedio = resultadoProm.rows[0].promedio;
-                const rEsc = await pool.query(
-                    'SELECT fn_escala_cualitativa($1) AS escala',
-                    [materia.promedio]
-                );
-                materia.escala = rEsc.rows[0].escala;
+                try {
+                    const rEsc = await pool.query(
+                        'SELECT fn_escala_cualitativa($1) AS escala',
+                        [materia.promedio]
+                    );
+                    materia.escala = rEsc.rows[0].escala;
+                } catch (_) {
+                    materia.escala = evaluarEscala(materia.promedio);
+                }
                 if (String(materia.id_materia) === String(idMateria)) {
                     promedioMateriaSel = materia.promedio;
                     escalaMateriaSel = materia.escala;
@@ -117,6 +148,7 @@ router.get('/', requireAuth, async (req, res) => {
 
         res.json({
             periodoActivo,
+            periodoNombre,
             periodos: periodos.rows,
             estudiantes: resultadoEst.rows,
             materiasFiltro,

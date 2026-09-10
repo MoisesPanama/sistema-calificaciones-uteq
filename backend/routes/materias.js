@@ -43,4 +43,30 @@ router.post('/', requireAuth, async (req, res) => {
     }
 });
 
+// POST /api/materias/:id/editar
+router.post('/:id/editar', requireAuth, async (req, res) => {
+    const { nombre, descripcion } = req.body || {};
+    if (!nombre || String(nombre).trim() === '') {
+        return res.status(400).json({ error: 'El nombre de la materia es obligatorio.' });
+    }
+
+    try {
+        await setUsuarioAuditoria(req.session.usuario.id_usuario);
+        const r = await pool.query(
+            'UPDATE materias SET nombre = $1, descripcion = $2 WHERE id_materia = $3 RETURNING id_materia',
+            [nombre, descripcion || null, req.params.id]
+        );
+        if (r.rows.length === 0) {
+            return res.status(404).json({ error: 'Materia no encontrada.' });
+        }
+        res.json({ ok: true, mensaje: 'Materia actualizada correctamente.' });
+    } catch (error) {
+        console.error('Error al editar materia:', error.message);
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Ya existe una materia registrada con ese nombre.' });
+        }
+        res.status(500).json({ error: 'No se pudo editar la materia.' });
+    }
+});
+
 module.exports = router;
