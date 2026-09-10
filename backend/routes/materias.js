@@ -28,12 +28,17 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
-            'INSERT INTO materias (nombre, descripcion) VALUES ($1, $2) RETURNING id_materia',
-            [nombre, descripcion || null]
-        );
-        res.status(201).json({ ok: true, id_materia: r.rows[0].id_materia });
+        const client = await pool.connect();
+        try {
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const r = await client.query(
+                'INSERT INTO materias (nombre, descripcion) VALUES ($1, $2) RETURNING id_materia',
+                [nombre, descripcion || null]
+            );
+            res.status(201).json({ ok: true, id_materia: r.rows[0].id_materia });
+        } finally {
+            client.release();
+        }
     } catch (error) {
         console.error('Error al crear materia:', error.message);
         if (error.code === '23505') {
@@ -51,15 +56,20 @@ router.post('/:id/editar', requireAuth, async (req, res) => {
     }
 
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
-            'UPDATE materias SET nombre = $1, descripcion = $2 WHERE id_materia = $3 RETURNING id_materia',
-            [nombre, descripcion || null, req.params.id]
-        );
-        if (r.rows.length === 0) {
-            return res.status(404).json({ error: 'Materia no encontrada.' });
+        const client = await pool.connect();
+        try {
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const r = await client.query(
+                'UPDATE materias SET nombre = $1, descripcion = $2 WHERE id_materia = $3 RETURNING id_materia',
+                [nombre, descripcion || null, req.params.id]
+            );
+            if (r.rows.length === 0) {
+                return res.status(404).json({ error: 'Materia no encontrada.' });
+            }
+            res.json({ ok: true, mensaje: 'Materia actualizada correctamente.' });
+        } finally {
+            client.release();
         }
-        res.json({ ok: true, mensaje: 'Materia actualizada correctamente.' });
     } catch (error) {
         console.error('Error al editar materia:', error.message);
         if (error.code === '23505') {

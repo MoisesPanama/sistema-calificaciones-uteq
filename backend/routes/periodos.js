@@ -33,12 +33,17 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
-            'INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin) VALUES ($1, $2, $3) RETURNING id_periodo',
-            [nombre, fecha_inicio, fecha_fin]
-        );
-        res.status(201).json({ ok: true, id_periodo: r.rows[0].id_periodo });
+        const client = await pool.connect();
+        try {
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const r = await client.query(
+                'INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin) VALUES ($1, $2, $3) RETURNING id_periodo',
+                [nombre, fecha_inicio, fecha_fin]
+            );
+            res.status(201).json({ ok: true, id_periodo: r.rows[0].id_periodo });
+        } finally {
+            client.release();
+        }
     } catch (error) {
         console.error('Error al crear periodo:', error.message);
         if (error.code === '23505') {
@@ -62,15 +67,20 @@ router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req
     }
 
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
-            'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
-            [nombre, fecha_inicio, fecha_fin, req.params.id]
-        );
-        if (r.rows.length === 0) {
-            return res.status(404).json({ error: 'Periodo no encontrado.' });
+        const client = await pool.connect();
+        try {
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const r = await client.query(
+                'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
+                [nombre, fecha_inicio, fecha_fin, req.params.id]
+            );
+            if (r.rows.length === 0) {
+                return res.status(404).json({ error: 'Periodo no encontrado.' });
+            }
+            res.json({ ok: true, mensaje: 'Periodo actualizado correctamente.' });
+        } finally {
+            client.release();
         }
-        res.json({ ok: true, mensaje: 'Periodo actualizado correctamente.' });
     } catch (error) {
         console.error('Error al editar periodo:', error.message);
         if (error.code === '23505') {
@@ -84,15 +94,20 @@ router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req
 // El trigger trg_solo_un_periodo_activo desactiva los demas.
 router.post('/:id/activar', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
-        await setUsuarioAuditoria(req.session.usuario.id_usuario);
-        const r = await pool.query(
-            'UPDATE periodos_academicos SET activo = TRUE WHERE id_periodo = $1 RETURNING nombre',
-            [req.params.id]
-        );
-        if (r.rows.length === 0) {
-            return res.status(404).json({ error: 'Periodo no encontrado.' });
+        const client = await pool.connect();
+        try {
+            await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+            const r = await client.query(
+                'UPDATE periodos_academicos SET activo = TRUE WHERE id_periodo = $1 RETURNING nombre',
+                [req.params.id]
+            );
+            if (r.rows.length === 0) {
+                return res.status(404).json({ error: 'Periodo no encontrado.' });
+            }
+            res.json({ ok: true, mensaje: `Periodo "${r.rows[0].nombre}" activado. Todo el sistema opera ahora sobre este periodo.` });
+        } finally {
+            client.release();
         }
-        res.json({ ok: true, mensaje: `Periodo "${r.rows[0].nombre}" activado. Todo el sistema opera ahora sobre este periodo.` });
     } catch (error) {
         console.error('Error al activar periodo:', error.message);
         res.status(500).json({ error: 'No se pudo activar el periodo.' });
