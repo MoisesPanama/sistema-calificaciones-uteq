@@ -2,6 +2,13 @@
 node_modules/
 npm-debug.log*
 
+# Playwright (reportes y videos locales de la bateria de tests)
+backend/test-results/
+backend/tests/report/
+# Respaldos generados al probar (los de ejemplo ya commiteados
+# quedan; estos son artefactos locales de cada corrida)
+backend/backups/respaldo_*.sql
+
 # Variables de entorno (contiene credenciales, nunca se sube)
 .env
 

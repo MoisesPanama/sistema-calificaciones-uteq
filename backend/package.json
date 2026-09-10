@@ -7,7 +7,9 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "seed:test-users": "node scripts/seed-test-users.js",
-    "test": "node e2e_test.js"
+    "test": "node e2e_test.js",
+    "test:e2e": "playwright test --config tests/playwright.config.cjs",
+    "test:e2e:headed": "playwright test --config tests/playwright.config.cjs --headed"
   },
   "keywords": [],
   "author": "Moises Panama",
@@ -27,6 +29,7 @@
     "pg": "^8.22.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "nodemon": "^3.1.14"
   }
 }
