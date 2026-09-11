@@ -1,0 +1,9 @@
+node_modules
+backend/node_modules
+.git
+.vscode
+docs
+observaciones
+*.md
+.dockerignore
+docker-compose.test.yml
