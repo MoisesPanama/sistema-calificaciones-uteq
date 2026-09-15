@@ -136,6 +136,13 @@ async function renderLayout(usuario, periodoSeleccionado) {
     location.href = 'login.html';
   });
 
+  // Toast container
+  if (!document.querySelector('.toast-container')) {
+    const tc = document.createElement('div');
+    tc.className = 'toast-container';
+    document.body.appendChild(tc);
+  }
+
   document.getElementById('btnPeriodo').addEventListener('click', (e) => {
     e.stopPropagation();
     document.getElementById('dropdownPeriodo').classList.toggle('activo');

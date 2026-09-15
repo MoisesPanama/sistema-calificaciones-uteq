@@ -31,11 +31,13 @@ function esc(s) {
     .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 function showError(msg) {
+  if (typeof toastError === 'function') { toastError(msg); }
   const el = document.getElementById('error');
   if (el) { el.textContent = msg; el.style.display = 'block'; }
   else alert(msg);
 }
 function showOk(msg) {
+  if (typeof toastSuccess === 'function') { toastSuccess(msg); }
   const el = document.getElementById('ok');
   if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
