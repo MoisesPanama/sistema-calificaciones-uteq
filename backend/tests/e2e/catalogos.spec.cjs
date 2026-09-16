@@ -80,3 +80,23 @@ test('cada pestana conserva su periodo', async ({ page }) => {
   await page.locator('#tab-btn-asig').click();
   expect(await page.locator('#asg-periodo').inputValue()).toBe(inicialAsg);
 });
+
+test('actas: crear borrador y eliminar desde la pestana', async ({ page }) => {
+  const tag = Date.now().toString(36);
+  const mat = await api(page, 'POST', '/materias/', { nombre: 'Acta UI ' + tag });
+  expect(mat.status).toBe(201);
+  await login(page, 'admin@uteq.edu.ec');
+  await page.goto('/pages/catalogos.html');
+  await page.locator('#tab-btn-actas').click();
+  await expect(page.locator('#lista-actas')).toBeVisible({ timeout: 15000 });
+  await page.locator('#act-mat').selectOption(String(mat.data.id_materia));
+  await page.locator('#act-guardar').click();
+  await expect(page.locator('#lista-actas')).toContainText('Acta UI ' + tag, { timeout: 15000 });
+  page.on('dialog', d => d.accept());
+  const fila = page.locator('#lista-actas tr', { hasText: 'Acta UI ' + tag });
+  await fila.locator('[data-eliminar-acta]').click();
+  await expect(page.locator('#lista-actas')).not.toContainText('Acta UI ' + tag, { timeout: 15000 });
+  // Nota: materias no tiene DELETE en la API (solo crear/editar);
+  // la materia de prueba queda huerfana sin referencias (sin notas
+  // ni asignaciones) con nombre unico por corrida.
+});

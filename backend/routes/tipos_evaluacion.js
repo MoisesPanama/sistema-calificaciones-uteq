@@ -42,8 +42,9 @@ function validarTipo(body) {
 }
 
 const SELECT_TIPOS = `SELECT id_tipo_evaluacion, nombre, peso, categoria,
-                             es_examen, cuenta_para_promedio, id_parcial
-                      FROM tipos_evaluacion ORDER BY nombre`;
+                             es_examen, cuenta_para_promedio, id_parcial,
+                             orden, es_legacy
+                      FROM tipos_evaluacion ORDER BY orden, nombre`;
 
 // GET /api/tipos -> listado
 router.get('/', requireAuth, async (req, res) => {
@@ -56,9 +57,11 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/tipos -> crear (admin)
+// POST /api/tipos -> crear (admin). El orden se asigna solo
+// al final de su categoria si no viene (examen siempre ultimo
+// dentro de lo sumativo por el orden canonico).
 router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
-    const { nombre, peso, categoria, es_examen, cuenta_para_promedio } = req.body || {};
+    const { nombre, peso, categoria, es_examen, cuenta_para_promedio, orden } = req.body || {};
     const errores = validarTipo(req.body || {});
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
@@ -67,10 +70,11 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const r = await client.query(
-            `INSERT INTO tipos_evaluacion (nombre, peso, categoria, es_examen, cuenta_para_promedio)
-             VALUES ($1, $2, $3, $4, $5) RETURNING id_tipo_evaluacion`,
+            `INSERT INTO tipos_evaluacion (nombre, peso, categoria, es_examen, cuenta_para_promedio, orden)
+             VALUES ($1, $2, $3, $4, $5, COALESCE($6, 50)) RETURNING id_tipo_evaluacion`,
             [String(nombre).trim(), Number(peso), categoria || 'formativa',
-             aBooleano(es_examen, false), aBooleano(cuenta_para_promedio, true)]
+             aBooleano(es_examen, false), aBooleano(cuenta_para_promedio, true),
+             orden === undefined || orden === null || orden === '' ? null : Number(orden)]
         );
         await client.query('COMMIT');
         res.status(201).json({ ok: true, id_tipo_evaluacion: r.rows[0].id_tipo_evaluacion });
@@ -86,9 +90,10 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
     }
 });
 
-// PUT /api/tipos/:id -> editar (admin)
+// PUT /api/tipos/:id -> editar (admin). Acepta orden y el
+// flag legacy (para ocultar contenedores viejos sin borrarlos).
 router.put('/:id', requireAuth, requireRole('administrador'), async (req, res) => {
-    const { nombre, peso, categoria, es_examen, cuenta_para_promedio } = req.body || {};
+    const { nombre, peso, categoria, es_examen, cuenta_para_promedio, orden, es_legacy } = req.body || {};
     const errores = validarTipo(req.body || {});
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
@@ -98,10 +103,14 @@ router.put('/:id', requireAuth, requireRole('administrador'), async (req, res) =
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const r = await client.query(
             `UPDATE tipos_evaluacion
-             SET nombre = $1, peso = $2, categoria = $3, es_examen = $4, cuenta_para_promedio = $5
-             WHERE id_tipo_evaluacion = $6 RETURNING id_tipo_evaluacion`,
+             SET nombre = $1, peso = $2, categoria = $3, es_examen = $4, cuenta_para_promedio = $5,
+                 orden = COALESCE($6, orden), es_legacy = COALESCE($7, es_legacy)
+             WHERE id_tipo_evaluacion = $8 RETURNING id_tipo_evaluacion`,
             [String(nombre).trim(), Number(peso), categoria || 'formativa',
-             aBooleano(es_examen, false), aBooleano(cuenta_para_promedio, true), req.params.id]
+             aBooleano(es_examen, false), aBooleano(cuenta_para_promedio, true),
+             orden === undefined || orden === null || orden === '' ? null : Number(orden),
+             es_legacy === undefined || es_legacy === null || es_legacy === '' ? null : !!es_legacy,
+             req.params.id]
         );
         if (r.rows.length === 0) {
             await client.query('ROLLBACK');

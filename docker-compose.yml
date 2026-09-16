@@ -1,18 +1,22 @@
+# =========================================================
+# docker-compose.yml — Stack Docker del proyecto (usado por
+# up.ps1/up.sh y down.ps1/down.sh).
+#   APP_PORT / DB_PORT configurables por entorno.
+#   Datos persistentes en volumen Docker (down -v los borra).
+# =========================================================
 services:
   db:
     image: postgres:18-alpine
     container_name: uteq-db
     environment:
-      POSTGRES_DB: calificaciones_uteq
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_ROOT_PASSWORD:-uteq-root-2026}
+      POSTGRES_PASSWORD: ${DB_SUPER_PASSWORD:-postgres}
+      POSTGRES_DB: calificaciones_uteq
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - uteq-db-data:/var/lib/postgresql/data
-      - ./database/init-db.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
-      - ./database:/docker-entrypoint-initdb.d/sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -20,22 +24,30 @@ services:
       retries: 20
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
     container_name: uteq-app
-    ports:
-      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: calificaciones_uteq
       DB_USER: app_uteq
-      DB_PASSWORD: ${DB_PASSWORD:-UTEQ2026}
-      SESSION_SECRET: ${SESSION_SECRET:-uteq-docker-session-2026}
-      FRONTEND_URL: "*"
-      NODE_ENV: production
-    depends_on:
-      db:
-        condition: service_healthy
+      DB_PASSWORD: ${DB_PASSWORD:-cambiar_esta_password}
+      DB_SUPER_PASSWORD: ${DB_SUPER_PASSWORD:-postgres}
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET:-uteq-docker-dev-secret}
+      TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-UTEQ2026}
+    ports:
+      - "${APP_PORT:-3001}:3000"
+    volumes:
+      - uteq-backups:/app/backups
+      - uteq-uploads:/app/uploads
 
 volumes:
   uteq-db-data:
+  uteq-backups:
+  uteq-uploads:

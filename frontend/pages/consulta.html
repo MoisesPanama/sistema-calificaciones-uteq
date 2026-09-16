@@ -142,6 +142,56 @@
   <script>
     let periodoId = '';
     let grupo = null;
+    let rolActual = '';
+    let detalleCtx = null;
+
+    async function htmlFaltas(idEst, idMat, idPer) {
+      try {
+        const d = await apiGet(`/asistencias/?id_estudiante=${idEst}&id_materia=${idMat}&id_periodo=${idPer}`);
+        const puede = (rolActual === 'administrador' || rolActual === 'profesor');
+        let h = `<div style="margin-top:0.6rem;font-size:0.85rem;">Faltas en la materia: <strong>${d.resumen.total}</strong>` +
+          ` (${d.resumen.justificadas} justificadas)` +
+          (puede ? ` <button class="btn-secondary btn-sm" data-falta-add="${idMat}">＋ Falta hoy</button>` : '') + '</div>';
+        if ((d.faltas || []).length > 0) {
+          h += `<div style="margin-top:0.4rem;font-size:0.82rem;color:#6b7280;">` +
+            d.faltas.map(f => `<span style="margin-right:0.8rem;">${esc(String(f.fecha).slice(0, 10))} (${esc(f.motivo)})` +
+              (puede ? ` <a href="#" data-falta-del="${f.id_asistencia}" style="color:#dc2626;">quitar</a>` : '') + '</span>').join('') + '</div>';
+        }
+        return h;
+      } catch (_) { return ''; }
+    }
+
+    async function recargarDetalle() {
+      if (!detalleCtx) return;
+      if (detalleCtx.modo === 'bloque') await verDetalle(detalleCtx.idEst);
+      else await verDetallePropio();
+    }
+
+    document.addEventListener('click', async (e) => {
+      const add = e.target.closest('[data-falta-add]');
+      if (add) {
+        e.preventDefault();
+        const motivo = confirm('¿Marcar como JUSTIFICADA? (Aceptar = justificada, Cancelar = falta simple)') ? 'justificada' : 'falta';
+        try {
+          await apiPost('/asistencias/', {
+            id_estudiante: detalleCtx.idEst, id_materia: Number(add.dataset.faltaAdd),
+            id_periodo: periodoId, motivo
+          });
+          showOk('Falta registrada.');
+          await recargarDetalle();
+        } catch (err) { showError(err.message); }
+        return;
+      }
+      const del = e.target.closest('[data-falta-del]');
+      if (del) {
+        e.preventDefault();
+        if (!confirm('¿Quitar esta falta?')) return;
+        try {
+          await apiDelete(`/asistencias/${del.dataset.faltaDel}`);
+          await recargarDetalle();
+        } catch (err) { showError(err.message); }
+      }
+    });
     let nomPage = 1;
 
     function mostrar(nivel) {
@@ -211,6 +261,7 @@
     }
 
     async function verDetalle(idEstudiante) {
+      detalleCtx = { modo: 'bloque', idEst: idEstudiante };
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}` +
         `&id_estudiante=${idEstudiante}&id_materia=${grupo.id_materia}`);
       await renderDetalle(d);
@@ -234,29 +285,32 @@
         `<div class="form-box"><h2>${esc(d.materia?.nombre || grupo.materia)}: ${d.promedioMateriaSel != null ? esc(d.promedioMateriaSel) + ' — ' + esc(d.escalaMateriaSel) : 'Sin calificar'}</h2><p><small>Aprueba con 7.00 o mas.</small></p></div>`;
       const soloEsta = (d.materias || []).filter(m => String(m.id_materia) === String(grupo.id_materia));
       const lista = soloEsta.length > 0 ? soloEsta : d.materias;
-      div.innerHTML = aviso + contador + headerMat +
-        lista.map((m, i) => {
-          const filas = m.parciales.length > 0
-            ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
-            : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
-          const prom = m.sin_notas
-            ? `<span class="mat-prom na">Sin calificar</span>`
-            : `<span class="mat-prom">${esc(m.promedio)}</span>`;
-          const esc_ = m.sin_notas
-            ? `<span class="mat-escala na">pendiente</span>`
-            : `<span class="mat-escala">${esc(m.escala)}</span>`;
-          return `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
+      let html = aviso + contador + headerMat;
+      for (let i = 0; i < lista.length; i++) {
+        const m = lista[i];
+        const filas = m.parciales.length > 0
+          ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}${p.observacion ? `<br><small style="color:#6b7280;">${esc(p.observacion)}</small>` : ''}</td></tr>`).join('')
+          : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
+        const prom = m.sin_notas
+          ? `<span class="mat-prom na">Sin calificar</span>`
+          : `<span class="mat-prom">${esc(m.promedio)}</span>`;
+        const esc_ = m.sin_notas
+          ? `<span class="mat-escala na">pendiente</span>`
+          : `<span class="mat-escala">${esc(m.escala)}</span>`;
+        html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
             <div class="mat-top">
               <span class="mat-nombre">${esc(m.nombre)}</span>
-              ${prom}${esc_}
+              ${prom}${esc_}${pillRec(m)}
               <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
-              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluacion</th><th>Nota</th></tr></thead>
+              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
               <tbody>${filas}</tbody></table></div>
+              ${await htmlFaltas(d.idEstudiante, m.id_materia, d.idPeriodo)}
             </div>
           </div>`;
-        }).join('');
+      }
+      div.innerHTML = html;
       const promGeneralBox = d.promedioGeneral != null
         ? `<div class="prom-general-box">
             <span class="prom-general-label">Promedio general del periodo</span>
@@ -267,8 +321,15 @@
       await cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
     }
 
-    function badgeEscala(escala) {
-      const e = (escala || 'S/N').toUpperCase();
+    // Pill de recuperacion validada (M8): si el ciclo cerro con
+    // supletorio/remedial/gracia se muestra junto al promedio.
+    function pillRec(m) {
+      if (!m || !m.recuperacion) return '';
+      const cls = m.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn';
+      return `<span class="pill ${cls}" title="Recuperación validada">${esc(m.recuperacion.instancia)}: ${esc(m.recuperacion.nota)}</span>`;
+    }
+
+    function badgeEscala(escala) {      const e = (escala || 'S/N').toUpperCase();
       const cls = e === 'AD' ? 'badge-AD' : e === 'A' ? 'badge-A' : e === 'AB' ? 'badge-AB' : e === 'B' ? 'badge-B' : 'badge-SN';
       return `<span class="badge-escala ${cls}">${e}</span>`;
     }
@@ -282,7 +343,7 @@
         if (!g.ciclos || g.ciclos.length === 0) return;
 
         div.innerHTML += `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial${append && g.materia ? ' — ' + esc(g.materia.nombre) : ''}</h3>
-          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.</p>` +
+          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.${g.recuperacion ? ` Recuperación validada: <span class="pill ${g.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn'}">${esc(g.recuperacion.instancia)}: ${esc(g.recuperacion.nota)}</span>` : ''}</p>` +
           g.ciclos.map((c, ci) => {
             const promStr = c.promedio != null ? esc(c.promedio) : '—';
             const escalaStr = c.escala || 'S/N';
@@ -327,9 +388,11 @@
     }
 
     async function verDetallePropio() {
+      detalleCtx = { modo: 'propio' };
       const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}`);
       mostrar(3);
-      renderDetalleDirecto(d);
+      detalleCtx.idEst = d.idEstudiante;
+      await renderDetalleDirecto(d);
       // Desglose por cada materia con notas (vista propia del estudiante).
       document.getElementById('desglose').innerHTML = '';
       for (const m of (d.materias || [])) {
@@ -339,7 +402,7 @@
       }
     }
 
-    function renderDetalleDirecto(d) {
+    async function renderDetalleDirecto(d) {
       const div = document.getElementById('resultado');
       const hayMaterias = (d.materias || []).length > 0;
       if (d.mensajeSinNotas && !hayMaterias) { div.innerHTML = `<div class="alert alert-error">${esc(d.mensajeSinNotas)}</div>`; return; }
@@ -350,29 +413,32 @@
         ? `<div class="form-box"><p><small>Materias con notas: <strong>${d.materiasConNotas} de ${d.materiasTotales}</strong> (promedio general sobre las calificadas).</small></p></div>`
         : '';
       const lista = d.materias || [];
-      div.innerHTML = aviso + contador +
-        lista.map((m, i) => {
-          const filas = m.parciales.length > 0
-            ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}</td></tr>`).join('')
-            : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
-          const prom = m.sin_notas
-            ? `<span class="mat-prom na">Sin calificar</span>`
-            : `<span class="mat-prom">${esc(m.promedio)}</span>`;
-          const esc_ = m.sin_notas
-            ? `<span class="mat-escala na">pendiente</span>`
-            : `<span class="mat-escala">${esc(m.escala)}</span>`;
-          return `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
+      let html = aviso + contador;
+      for (let i = 0; i < lista.length; i++) {
+        const m = lista[i];
+        const filas = m.parciales.length > 0
+          ? m.parciales.map(p => `<tr><td>${esc(p.tipo)}</td><td>${esc(p.valor)}${p.observacion ? `<br><small style="color:#6b7280;">${esc(p.observacion)}</small>` : ''}</td></tr>`).join('')
+          : `<tr><td colspan="2" style="color:#6b7280;">Sin notas registradas.</td></tr>`;
+        const prom = m.sin_notas
+          ? `<span class="mat-prom na">Sin calificar</span>`
+          : `<span class="mat-prom">${esc(m.promedio)}</span>`;
+        const esc_ = m.sin_notas
+          ? `<span class="mat-escala na">pendiente</span>`
+          : `<span class="mat-escala">${esc(m.escala)}</span>`;
+        html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
             <div class="mat-top">
               <span class="mat-nombre">${esc(m.nombre)}</span>
-              ${prom}${esc_}
+              ${prom}${esc_}${pillRec(m)}
               <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
-              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluacion</th><th>Nota</th></tr></thead>
+              <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
               <tbody>${filas}</tbody></table></div>
+              ${await htmlFaltas(d.idEstudiante, m.id_materia, d.idPeriodo)}
             </div>
           </div>`;
-        }).join('');
+      }
+      div.innerHTML = html;
       const promGeneralBox = d.promedioGeneral != null
         ? `<div class="prom-general-box">
             <span class="prom-general-label">Promedio general del periodo</span>
@@ -385,7 +451,8 @@
     (async () => {
       const usuario = await initPage();
       if (!usuario) return;
-      const esEstudiante = usuario.nombre_rol === 'estudiante';
+      rolActual = usuario.nombre_rol;
+      const esEstudiante = rolActual === 'estudiante';
       if (esEstudiante) {
         // El estudiante solo ve su detalle propio: sin botones
         // de regreso a bloques/nomina (no le corresponden).

@@ -17,10 +17,7 @@ const {
     getMateriasPermitidas,
     getCursosPermitidos
 } = require('../helpers/contexto');
-
-// Tipos de evaluacion permitidos en el formulario de carga.
-const TIPOS_PERMITIDOS = new Set([1, 2, 3, 4, 6, 9]);
-// Parcial 1, Parcial 2, Parcial 3, Tarea, Taller Grupal, Evaluacion Diagnostica
+const { tiposCalificables } = require('../helpers/tipos');
 
 // Carga estudiantes matriculados + notas existentes (reutilizable)
 async function cargarTabla(idPeriodo, idMateria, idCurso, page, limit) {
@@ -106,11 +103,10 @@ router.get('/contexto', requireAuth, async (req, res) => {
         const materias = await getMateriasPermitidas(pool, req.session.usuario, idPeriodo);
         const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
         const tiposRes = await pool.query(
-            `SELECT id_tipo_evaluacion, nombre, peso
+            `SELECT id_tipo_evaluacion, nombre, peso, categoria, es_examen, orden
              FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = ANY($1)
-             ORDER BY nombre`,
-            [Array.from(TIPOS_PERMITIDOS)]
+             WHERE NOT es_legacy AND categoria IN ('formativa', 'sumativa')
+             ORDER BY orden, nombre`
         );
 
         const idMateria = req.query.id_materia || '';
@@ -213,7 +209,7 @@ function responderErrorNegocio(res, error, mensajeDefecto) {
     if (error.status) {
         return res.status(error.status).json({ error: error.message });
     }
-    if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
+    if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango|no esta activo|acta validada|esta cerrada|esta inactiva/i.test(error.message)) {
         return res.status(400).json({ error: error.message });
     }
     console.error(mensajeDefecto + ':', error.message);
@@ -288,9 +284,10 @@ router.post('/lote', requireAuth, async (req, res) => {
 });
 
 // POST /api/calificaciones -> registro individual
-// Acepta id_actividad opcional (hereda tipo/parcial/ciclo).
+// Acepta id_actividad opcional (hereda tipo/parcial/ciclo) y
+// observacion opcional (comentario del docente sobre la nota).
 router.post('/', requireAuth, async (req, res) => {
-    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, id_parcial, id_ciclo, id_actividad } = req.body || {};
+    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, id_parcial, id_ciclo, id_actividad, observacion } = req.body || {};
     const errores = [];
     if (!id_estudiante) errores.push('Debe seleccionar un estudiante.');
     if (!id_materia) errores.push('Debe seleccionar una materia.');
@@ -333,8 +330,9 @@ router.post('/', requireAuth, async (req, res) => {
                 tipoEfectivo = rAct.rows[0].id_tipo_evaluacion;
             }
             await client.query(
-                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-                [id_estudiante, id_materia, id_periodo, tipoEfectivo, numerico, req.session.usuario.id_usuario, idParcial, idCiclo, numActividad]
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+                [id_estudiante, id_materia, id_periodo, tipoEfectivo, numerico, req.session.usuario.id_usuario, idParcial, idCiclo, numActividad,
+                 observacion ? String(observacion).trim().slice(0, 500) : null]
             );
             await client.query('COMMIT');
             res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });

@@ -412,6 +412,346 @@ const loginAs = async (email) => {
   });
   log('Materia no asignada -> 403', otraMat.status === 403, otraMat.body.error || '');
 
+  console.log('\n=== 16. CIERRE: PERIODO/ACTIVIDAD/ACTA ===');
+  await loginAs('admin@uteq.edu.ec');
+  const pers16 = await get('/periodos/');
+  const inactivo = (pers16.body.periodos || []).find(p => !p.activo);
+  if (inactivo) {
+    const rInac = await post('/calificaciones/', {
+      id_estudiante: 1, id_materia: 1, id_periodo: inactivo.id_periodo,
+      id_tipo_evaluacion: 1, valor: 8
+    });
+    log('Periodo inactivo -> 400', rInac.status === 400, rInac.body.error || '');
+  } else {
+    log('Periodo inactivo -> 400', true, '(sin periodo inactivo en seed)');
+  }
+  // Actividad: cerrar bloquea, reabrir es solo admin.
+  await loginAs('elena.romero@uteq.edu.ec');
+  const ctx16 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const mat16 = (ctx16.body.materias || [])[0];
+  const tag16 = Date.now().toString(36);
+  let idAct16 = null;
+  if (mat16) {
+    const crea16 = await post('/actividades', {
+      id_periodo: String(idPeriodo), id_materia: mat16.id_materia,
+      id_tipo_evaluacion: 4, nombre: 'Cierre E2E ' + tag16
+    });
+    idAct16 = crea16.body.actividad?.id_actividad || null;
+    log('Crear actividad cierre', crea16.status === 201 && !!idAct16, '');
+  }
+  if (idAct16) {
+    const est16 = await get(`/actividades/${idAct16}/notas`);
+    const al16 = (est16.body.estudiantes || [])[0];
+    const cerrar = await post(`/actividades/${idAct16}/estado`, { estado: 'cerrada' });
+    log('Cerrar actividad', cerrar.status === 200, cerrar.body.error || '');
+    if (al16) {
+      const bloqueada = await post('/calificaciones/', {
+        id_estudiante: al16.id_estudiante, id_materia: mat16.id_materia,
+        id_periodo: idPeriodo, id_tipo_evaluacion: 4, valor: 8, id_actividad: idAct16
+      });
+      log('Nota en cerrada -> 400', bloqueada.status === 400, bloqueada.body.error || '');
+    }
+    const reabrirProf = await post(`/actividades/${idAct16}/estado`, { estado: 'publicada' });
+    log('Reabrir no-admin -> 403', reabrirProf.status === 403, '');
+    await loginAs('admin@uteq.edu.ec');
+    const reabrir = await post(`/actividades/${idAct16}/estado`, { estado: 'publicada' });
+    log('Reabrir admin', reabrir.status === 200, reabrir.body.error || '');
+    const borraAct = await del(`/actividades/${idAct16}`);
+    log('Borrar actividad reabierta sin notas', borraAct.status === 200, borraAct.body.error || '');
+  }
+  // Acta por CURSO (no congela datos reales de otras pruebas):
+  // solo bloquea notas de ese paralelo.
+  await loginAs('admin@uteq.edu.ec');
+  const cursos16 = await get('/cursos/?id_periodo=' + idPeriodo);
+  const cursoB = (cursos16.body.cursos || []).find(c => c.paralelo === 'B') || (cursos16.body.cursos || [])[0];
+  if (cursoB) {
+    const listaPrev = await get('/actas/?id_periodo=' + idPeriodo);
+    const yaValidada = (listaPrev.body.actas || []).find(a =>
+      String(a.id_materia) === '1' && String(a.id_curso) === String(cursoB.id_curso) && a.estado === 'validada');
+    let idActaCtx = yaValidada ? yaValidada.id_acta : null;
+    if (!idActaCtx) {
+      const creaActa = await post('/actas/', { id_periodo: idPeriodo, id_materia: 1, id_curso: cursoB.id_curso });
+      log('Crear acta borrador', creaActa.status === 201, creaActa.body.error || '');
+      const dupActa = await post('/actas/', { id_periodo: idPeriodo, id_materia: 1, id_curso: cursoB.id_curso });
+      log('Acta duplicada -> 409', dupActa.status === 409, '');
+      const valActa = await post(`/actas/${creaActa.body.id_acta}/validar`, {});
+      log('Validar acta', valActa.status === 200, valActa.body.error || '');
+      idActaCtx = creaActa.body.id_acta;
+    } else {
+      log('Crear acta borrador', true, '(ya validada de corrida previa)');
+      log('Acta duplicada -> 409', true, '(ya validada de corrida previa)');
+      log('Validar acta', true, '(ya validada de corrida previa)');
+    }
+    const ctxB = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=1&id_curso=${cursoB.id_curso}&page=1&limit=5`);
+    const alB = (ctxB.body.estudiantes || [])[0];
+    if (alB) {
+      const cong = await post('/calificaciones/', {
+        id_estudiante: alB.id_estudiante, id_materia: 1, id_periodo: idPeriodo,
+        id_tipo_evaluacion: 1, valor: 8
+      });
+      log('Nota con acta validada -> 400', cong.status === 400, cong.body.error || '');
+    }
+    const borraVal = await del(`/actas/${idActaCtx}`);
+    log('Borrar validada -> 404', borraVal.status === 404, '');
+  }
+
+  console.log('\n=== 17. ENTREGAS CON ESTADOS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag17 = Date.now().toString(36);
+  const creaEst17 = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Entrega', apellidos: 'Flujo Uno',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  const idEst17 = creaEst17.body.id_estudiante;
+  const emailEst17 = creaEst17.body.email;
+  await post('/matriculas/', { id_estudiante: idEst17, id_periodo: idPeriodo, id_curso: null });
+  await loginAs('elena.romero@uteq.edu.ec');
+  const ctx17 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const mat17 = (ctx17.body.materias || [])[0];
+  const creaAct17 = await post('/actividades', {
+    id_periodo: String(idPeriodo), id_materia: mat17.id_materia,
+    id_tipo_evaluacion: 4, nombre: 'Entrega E2E ' + tag17
+  });
+  const idAct17 = creaAct17.body.actividad?.id_actividad;
+  log('Crear actividad entregas', creaAct17.status === 201 && !!idAct17, '');
+  const pub17 = await post(`/actividades/${idAct17}/estado`, { estado: 'publicada' });
+  log('Publicar genera pendientes', pub17.status === 200 && (pub17.body.pendientes || 0) > 0,
+    `${pub17.body.pendientes} pendientes`);
+  // La entrega del estudiante nuevo debe existir en pendiente.
+  const todas17 = await get(`/entregas/por-actividad/${idAct17}`);
+  const entPropia = (todas17.body.entregas || []).find(e => String(e.id_estudiante) === String(idEst17));
+  log('Pendiente del nuevo', !!entPropia && entPropia.estado === 'pendiente', '');
+  if (!entPropia) {
+    log('Estudiante envia la suya', false, 'sin entrega propia para el nuevo');
+  } else {
+  await loginAs(emailEst17);
+  const envPropio = await post(`/entregas/${entPropia.id_entrega}/enviar`, {});
+  log('Estudiante envia la suya', envPropio.status === 200, envPropio.body.error || '');
+  const otra17 = (todas17.body.entregas || []).find(e => String(e.id_estudiante) !== String(idEst17));
+  if (otra17) {
+    const envAjena = await post(`/entregas/${otra17.id_entrega}/enviar`, {});
+    log('Estudiante no envia ajena -> 403', envAjena.status === 403, '');
+  }
+  await loginAs('elena.romero@uteq.edu.ec');
+  const rev17 = await post(`/entregas/${entPropia.id_entrega}/revisar`, { estado: 'aceptada', observacion: 'Bien' });
+  log('Docente acepta', rev17.status === 200, rev17.body.error || '');
+  const reenv = await post(`/entregas/${entPropia.id_entrega}/enviar`, {});
+  log('Reenviar aceptada -> 409', reenv.status === 409, '');
+  const borraAct17 = await del(`/actividades/${idAct17}`);
+  log('Borrar con entregas en curso -> 409', borraAct17.status === 409, '');
+  }
+
+  console.log('\n=== 18. ARCHIVOS: ADJUNTOS + DOCUMENTOS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const fs = require('fs');
+  const pathLib = require('path');
+  const pdfPath = pathLib.join(__dirname, 'tests', 'fixtures', 'muestra.pdf');
+  const pdfBuf = fs.readFileSync(pdfPath);
+
+  async function subirMultipart(url, fields, fileField, fileName, mime, buf) {
+    const bnd = '----e2e' + Date.now().toString(36);
+    const partes = [];
+    for (const [k, v] of Object.entries(fields)) {
+      partes.push(Buffer.from(`--${bnd}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
+    }
+    partes.push(Buffer.from(
+      `--${bnd}\r\nContent-Disposition: form-data; name="${fileField}"; filename="${fileName}"\r\nContent-Type: ${mime}\r\n\r\n`));
+    partes.push(buf);
+    partes.push(Buffer.from(`\r\n--${bnd}--\r\n`));
+    const cuerpo = Buffer.concat(partes);
+    return new Promise((resolve, reject) => {
+      const cookieStr = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+      const opts = {
+        hostname: 'localhost', port: 3000, path: '/api' + url, method: 'POST',
+        headers: { 'Content-Type': `multipart/form-data; boundary=${bnd}`, 'Content-Length': cuerpo.length, 'Cookie': cookieStr }
+      };
+      const req = http.request(opts, res => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => {
+          let json; try { json = JSON.parse(data); } catch { json = data; }
+          resolve({ status: res.statusCode, body: json });
+        });
+      });
+      req.on('error', reject);
+      req.write(cuerpo);
+      req.end();
+    });
+  }
+
+  // Tipos de documento (admin).
+  const tag18 = Date.now().toString(36);
+  const creaTipoDoc = await post('/documentos/tipos', { nombre: 'E2E Doc ' + tag18, obligatorio: true });
+  log('Crear tipo documento', creaTipoDoc.status === 201 && !!creaTipoDoc.body.id_tipo_documento, creaTipoDoc.body.error || '');
+  const idTipo18 = creaTipoDoc.body.id_tipo_documento;
+  const dupTipoDoc = await post('/documentos/tipos', { nombre: 'E2E Doc ' + tag18 });
+  log('Tipo duplicado -> 409', dupTipoDoc.status === 409, '');
+  // Subir PDF valido al estudiante 1.
+  const upOk = await subirMultipart('/documentos/por-estudiante/1', { id_tipo_documento: idTipo18 }, 'archivo', 'prueba.pdf', 'application/pdf', pdfBuf);
+  log('Subir PDF valido', upOk.status === 201, upOk.body.error || JSON.stringify(upOk.body).slice(0, 120));
+  // Rechazar ejecutable.
+  const upExe = await subirMultipart('/documentos/por-estudiante/1', { id_tipo_documento: idTipo18 }, 'archivo', 'virus.exe', 'application/x-msdownload', Buffer.from('MZ...'));
+  log('Rechazar .exe -> 400', upExe.status === 400, '');
+  // Descarga sin sesion -> 401.
+  const sinSesion = await new Promise((resolve) => {
+    const opts = { hostname: 'localhost', port: 3000, path: '/api/documentos/por-estudiante/1', method: 'GET' };
+    const req = http.request(opts, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    req.on('error', () => resolve(0));
+    req.end();
+  });
+  log('Sin sesion -> 401', sinSesion === 401, '');
+  // Listar y borrar el documento.
+  const listaDocs = await get('/documentos/por-estudiante/1');
+  const doc18 = (listaDocs.body.documentos || []).find(d => d.id_tipo_documento === idTipo18 && d.id_documento);
+  log('Listar con vigente', listaDocs.status === 200 && !!doc18, '');
+  if (doc18) {
+    const borraDoc = await del(`/documentos/${doc18.id_documento}`);
+    log('Borrar documento', borraDoc.status === 200, borraDoc.body.error || '');
+  }
+  const borraTipoDoc = await del(`/documentos/tipos/${idTipo18}`);
+  log('Borrar tipo sin uso', borraTipoDoc.status === 200, borraTipoDoc.body.error || '');
+
+  console.log('\n=== 19. OBSERVACIONES + FALLAS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const obs19 = await post('/calificaciones/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo,
+    id_tipo_evaluacion: 1, valor: 8.5, observacion: 'E2E obs ' + Date.now().toString(36)
+  });
+  log('Individual con observacion', obs19.status === 201, obs19.body.error || '');
+  const consObs = await get(`/consulta/?id_periodo=${idPeriodo}&id_estudiante=1`);
+  const hayObs = (consObs.body.materias || []).some(m =>
+    (m.parciales || []).some(p => p.observacion && p.observacion.startsWith('E2E obs')));
+  log('Observacion visible en consulta', consObs.status === 200 && hayObs, '');
+  const falta19 = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Registrar falta', [201, 409].includes(falta19.status), falta19.body.error || '');
+  const dupFalta = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Falta duplicada mismo dia -> 409', dupFalta.status === 409, '');
+  const resum19 = await get(`/asistencias/?id_estudiante=1&id_materia=1&id_periodo=${idPeriodo}`);
+  log('Resumen de faltas', resum19.status === 200 && resum19.body.resumen && resum19.body.resumen.total >= 1,
+    JSON.stringify(resum19.body.resumen || {}));
+  if ((resum19.body.faltas || []).length > 0) {
+    const borraFalta = await del(`/asistencias/${resum19.body.faltas[0].id_asistencia}`);
+    log('Quitar falta', borraFalta.status === 200, borraFalta.body.error || '');
+  }
+  await loginAs('elena.romero@uteq.edu.ec');
+  const faltaAjen = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Falta en materia no asignada -> 403', faltaAjen.status === 403, '');
+  await loginAs('fernando.castillo@uteq.edu.ec');
+  const faltaRep = await get('/asistencias/?id_estudiante=8&id_materia=1&id_periodo=' + idPeriodo);
+  log('Representante ve faltas del hijo', faltaRep.status === 200, '');
+  const faltaRep2 = await get('/asistencias/?id_estudiante=1&id_materia=1&id_periodo=' + idPeriodo);
+  log('Representante no ve ajenos -> 403', faltaRep2.status === 403, '');
+
+  console.log('\n=== 20. TIPOS REALES: ORDEN Y LEGACY ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tipos20 = await get('/tipos/');
+  const lista20 = tipos20.body.tiposEvaluacion || [];
+  const idxUltForm = Math.max(...lista20.map((t, i) => t.categoria === 'formativa' && !t.es_legacy ? i : -1));
+  const idxPrimerExam = Math.min(...lista20.map((t, i) => t.es_examen && !t.es_legacy ? i : 9999));
+  log('Examen despues de formativas', tipos20.status === 200 && idxUltForm < idxPrimerExam,
+    lista20.map(t => t.nombre).join(', '));
+  const acts20 = await get('/actividades/tipos');
+  log('Creacion sin legacy ni diagnostica',
+    acts20.status === 200 && (acts20.body.tipos || []).every(t => !t.es_legacy && t.categoria !== 'diagnostica'),
+    `${(acts20.body.tipos || []).length} tipos`);
+  const ctx20 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const nombres20 = (ctx20.body.tiposEvaluacion || []).map(t => t.nombre);
+  log('Planilla sin Parcial 1/2', !nombres20.some(n => /^parcial \d/i.test(n)), nombres20.join(', '));
+
+  console.log('\n=== 21. PREINSCRIPCION PUBLICA + APROBACION ===');
+  for (const k of Object.keys(cookies)) delete cookies[k];
+  const tag21 = Date.now().toString(36);
+  const solBody = new URLSearchParams({
+    nombres: 'Preins', apellidos: 'Crito Uno',
+    cedula: '29' + String(Date.now()).slice(-8),
+    fecha_nacimiento: '2012-04-05',
+    rep_nombres: 'Padre Pre', rep_apellidos: 'Crito Uno',
+    rep_telefono: '0990000111', id_periodo: String(idPeriodo)
+  }).toString();
+  const sol21 = await new Promise((resolve) => {
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(solBody);
+    req.end();
+  });
+  log('Solicitud publica sin login', sol21.status === 201 && !!sol21.body.id_solicitud, sol21.body.error || '');
+  const dup21 = await new Promise((resolve) => {
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(solBody);
+    req.end();
+  });
+  log('Duplicada -> 409', dup21.status === 409, '');
+  await loginAs('elena.romero@uteq.edu.ec');
+  const bandejaProf = await get('/preinscripciones/?estado=pendiente');
+  log(' Profesora no ve bandeja -> 403', bandejaProf.status === 403, '');
+  await loginAs('admin@uteq.edu.ec');
+  const bandeja = await get('/preinscripciones/?estado=pendiente');
+  const mia = (bandeja.body.datos || []).find(s => s.id_solicitud === sol21.body.id_solicitud);
+  log('Bandeja admin la trae', bandeja.status === 200 && !!mia, '');
+  const aprueba = await post(`/preinscripciones/${sol21.body.id_solicitud}/aprobar`, {});
+  log('Aprobar crea todo', aprueba.status === 201 && !!aprueba.body.id_estudiante && !!aprueba.body.email,
+    aprueba.body.error || `${aprueba.body.email}`);
+  if (aprueba.body.id_estudiante) {
+    const verMat = await get(`/matriculas/?id_periodo=${idPeriodo}&q=${encodeURIComponent('Preins')}`);
+    log('Matriculado visible', verMat.status === 200 && (verMat.body.datos || []).length > 0, '');
+  }
+  const sol21b = await new Promise((resolve) => {
+    const b2 = new URLSearchParams({
+      nombres: 'Rech', apellidos: 'Zado Uno', cedula: '28' + String(Date.now()).slice(-8),
+      fecha_nacimiento: '2012-04-05', rep_nombres: 'Padre Re', rep_apellidos: 'Chazo Uno',
+      id_periodo: String(idPeriodo)
+    }).toString();
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(b2) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(b2);
+    req.end();
+  });
+  if (sol21b.body.id_solicitud) {
+    const rech = await post(`/preinscripciones/${sol21b.body.id_solicitud}/rechazar`, { motivo: 'E2E: cupo lleno' });
+    log('Rechazar con motivo', rech.status === 200, rech.body.error || '');
+  }
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

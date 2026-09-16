@@ -26,12 +26,9 @@ const {
 } = require('../helpers/contexto');
 const { validarContextoEvaluativo } = require('./calificaciones');
 
-// Tipos que pueden usarse como actividad (formativa/sumativa
-// que cuentan para promedio; se excluyen los pseudo-tipos
-// legacy Parcial 1/2 que eran contenedores, no insumos).
-const TIPOS_ACTIVIDAD = [3, 4, 5, 6, 7, 8];
-// 3 Examen Final, 4 Tarea, 5 Leccion, 6 Taller Grupal,
-// 7 Proyecto Interdisciplinar, 8 Examen Quimestral
+// Tipos calificables salen de la BD (helpers/tipos): nada
+// hardcodeado por id, ordenados con examen al ultimo.
+const { tiposCalificables } = require('../helpers/tipos');
 
 async function materiaPermitida(usuario, idPeriodo, idMateria) {
     const materias = await getMateriasPermitidas(pool, usuario, idPeriodo);
@@ -41,14 +38,7 @@ async function materiaPermitida(usuario, idPeriodo, idMateria) {
 // GET /api/actividades/tipos -> catalogo para el formulario
 router.get('/tipos', requireAuth, async (req, res) => {
     try {
-        const r = await pool.query(
-            `SELECT id_tipo_evaluacion, nombre, categoria, es_examen
-             FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = ANY($1)
-             ORDER BY CASE WHEN categoria = 'formativa' THEN 0 ELSE 1 END, nombre`,
-            [TIPOS_ACTIVIDAD]
-        );
-        res.json({ tipos: r.rows });
+        res.json({ tipos: await tiposCalificables(pool) });
     } catch (error) {
         console.error('Error al listar tipos de actividad:', error.message);
         res.status(500).json({ error: 'No se pudieron cargar los tipos de actividad.' });
@@ -78,9 +68,10 @@ router.get('/', requireAuth, async (req, res) => {
 
         const r = await pool.query(
             `SELECT a.id_actividad, a.nombre, a.descripcion, a.fecha_actividad,
+                    a.fecha_limite,
                     a.id_tipo_evaluacion, te.nombre AS tipo_nombre,
                     te.categoria AS tipo_categoria, te.es_examen,
-                    a.id_ciclo, a.id_parcial, a.id_curso,
+                    a.id_ciclo, a.id_parcial, a.id_curso, a.estado,
                     COUNT(DISTINCT c.id_estudiante)::int AS n_calificados,
                     ROUND(AVG(c.valor), 2) AS promedio
              FROM actividades a
@@ -102,13 +93,17 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
     const {
         id_materia, id_periodo, id_ciclo, id_parcial, id_curso,
-        id_tipo_evaluacion, nombre, descripcion, fecha_actividad
+        id_tipo_evaluacion, nombre, descripcion, fecha_actividad, fecha_limite
     } = req.body || {};
     const errores = [];
     if (!id_materia) errores.push('Debe seleccionar una materia.');
     if (!id_periodo) errores.push('Falta el periodo.');
     if (!id_tipo_evaluacion) errores.push('Debe elegir el tipo de actividad (tarea, leccion, taller...).');
     if (!nombre || !String(nombre).trim()) errores.push('La actividad necesita un nombre (p. ej. "Leccion escrita 1").');
+    const fechaEmision = fecha_actividad || new Date().toISOString().slice(0, 10);
+    if (fecha_limite && String(fecha_limite) < String(fechaEmision)) {
+        errores.push('La fecha limite no puede ser anterior a la fecha de la actividad.');
+    }
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
     if (!(await materiaPermitida(req.session.usuario, id_periodo, id_materia))) {
@@ -124,8 +119,9 @@ router.post('/', requireAuth, async (req, res) => {
         const rTipo = await client.query(
             `SELECT id_tipo_evaluacion, nombre, categoria
              FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = $1 AND id_tipo_evaluacion = ANY($2)`,
-            [id_tipo_evaluacion, TIPOS_ACTIVIDAD]
+             WHERE id_tipo_evaluacion = $1
+               AND NOT es_legacy AND categoria IN ('formativa', 'sumativa')`,
+            [id_tipo_evaluacion]
         );
         if (rTipo.rows.length === 0) {
             const error = new Error('El tipo de actividad no es valido para calificar.');
@@ -150,14 +146,15 @@ router.post('/', requireAuth, async (req, res) => {
         const r = await client.query(
             `INSERT INTO actividades
                  (id_materia, id_periodo, id_ciclo, id_parcial, id_curso,
-                  id_tipo_evaluacion, nombre, descripcion, fecha_actividad, creado_por)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                  id_tipo_evaluacion, nombre, descripcion, fecha_actividad, fecha_limite, creado_por)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
              RETURNING id_actividad, nombre`,
             [
                 id_materia, id_periodo, idCiclo, idParcial, numCurso,
                 id_tipo_evaluacion, String(nombre).trim(),
                 descripcion ? String(descripcion).trim() : null,
-                fecha_actividad || new Date().toISOString().slice(0, 10),
+                fechaEmision,
+                fecha_limite || null,
                 req.session.usuario.id_usuario
             ]
         );
@@ -177,15 +174,19 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // PUT /api/actividades/:id -> editar datos basicos
+// Bloqueado si esta cerrada (reabrir primero, solo admin).
 router.put('/:id', requireAuth, async (req, res) => {
-    const { nombre, descripcion, fecha_actividad } = req.body || {};
+    const { nombre, descripcion, fecha_actividad, fecha_limite } = req.body || {};
     try {
         const r = await pool.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado, fecha_actividad FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
         const act = r.rows[0];
+        if (act.estado === 'cerrada') {
+            return res.status(409).json({ error: 'La actividad esta cerrada: reabra antes de editar.' });
+        }
         const esAdmin = req.session.usuario.nombre_rol === 'administrador';
         if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
             return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede editarla.' });
@@ -193,14 +194,20 @@ router.put('/:id', requireAuth, async (req, res) => {
         if (!(await materiaPermitida(req.session.usuario, act.id_periodo, act.id_materia))) {
             return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo.' });
         }
+        const nuevaEmision = fecha_actividad || act.fecha_actividad;
+        if (fecha_limite && String(fecha_limite) < String(nuevaEmision).slice(0, 10)) {
+            return res.status(400).json({ error: 'La fecha limite no puede ser anterior a la fecha de la actividad.' });
+        }
         await pool.query(
             `UPDATE actividades SET nombre = COALESCE($1, nombre),
-             descripcion = $2, fecha_actividad = COALESCE($3, fecha_actividad)
-             WHERE id_actividad = $4`,
+             descripcion = $2, fecha_actividad = COALESCE($3, fecha_actividad),
+             fecha_limite = $4
+             WHERE id_actividad = $5`,
             [
                 nombre ? String(nombre).trim() : null,
                 descripcion !== undefined ? (descripcion ? String(descripcion).trim() : null) : undefined,
                 fecha_actividad || null,
+                fecha_limite !== undefined ? (fecha_limite || null) : undefined,
                 req.params.id
             ]
         );
@@ -218,12 +225,15 @@ router.put('/:id', requireAuth, async (req, res) => {
 router.delete('/:id', requireAuth, async (req, res) => {
     try {
         const r = await pool.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
         const act = r.rows[0];
         const esAdmin = req.session.usuario.nombre_rol === 'administrador';
+        if (act.estado === 'cerrada') {
+            return res.status(409).json({ error: 'La actividad esta cerrada: reabra antes de borrar.' });
+        }
         if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
             return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede borrarla.' });
         }
@@ -237,6 +247,16 @@ router.delete('/:id', requireAuth, async (req, res) => {
         if (rNotas.rows[0].total > 0) {
             return res.status(409).json({
                 error: `La actividad ya tiene ${rNotas.rows[0].total} nota(s) registrada(s): no se puede borrar.`
+            });
+        }
+        const rEnt = await pool.query(
+            `SELECT COUNT(*)::int AS total FROM entregas
+             WHERE id_actividad = $1 AND estado <> 'pendiente'`,
+            [req.params.id]
+        );
+        if (rEnt.rows[0].total > 0) {
+            return res.status(409).json({
+                error: 'La actividad ya tiene entregas en curso: no se puede borrar.'
             });
         }
         await pool.query('DELETE FROM actividades WHERE id_actividad = $1', [req.params.id]);
@@ -281,6 +301,84 @@ function filtroCursoMatriculas(vis, pushParams) {
     }
     return '';
 }
+// POST /api/actividades/:id/estado { estado } -> cambiar estado.
+// Flujo: borrador -> publicada -> cerrada. Reabrir (cerrada ->
+// publicada) solo admin. Calificar exige publicada (lo valida el SP).
+router.post('/:id/estado', requireAuth, async (req, res) => {
+    const { estado } = req.body || {};
+    const VALIDOS = ['borrador', 'publicada', 'cerrada'];
+    if (!VALIDOS.includes(estado)) {
+        return res.status(400).json({ error: 'Estado no valido: borrador, publicada o cerrada.' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const r = await client.query(
+            'SELECT id_actividad, id_materia, id_periodo, id_curso, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            [req.params.id]
+        );
+        if (r.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Actividad no encontrada.' });
+        }
+        const act = r.rows[0];
+        const esAdmin = req.session.usuario.nombre_rol === 'administrador';
+        if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede cambiar su estado.' });
+        }
+        if (!(await materiaPermitida(req.session.usuario, act.id_periodo, act.id_materia))) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo.' });
+        }
+        if (act.estado === 'cerrada' && estado !== 'publicada') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Cerrada solo puede reabrirse a publicada.' });
+        }
+        if (act.estado === 'cerrada' && estado === 'publicada' && !esAdmin) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Solo el administrador puede reabrir una actividad cerrada.' });
+        }
+        await client.query('UPDATE actividades SET estado = $1 WHERE id_actividad = $2', [estado, req.params.id]);
+        let pendientes = 0;
+        if (estado === 'publicada') {
+            // Al publicar se generan las entregas pendientes de la
+            // nomina visible (idempotente por UNIQUE).
+            try {
+                const vis = await cursosVisibles({ ...act, estado }, req.session.usuario);
+                const paramsR = [act.id_periodo];
+                let filtroR = '';
+                if (vis.fijo) {
+                    paramsR.push(vis.fijo);
+                    filtroR = ` AND (m.id_curso = $${paramsR.length} OR m.id_curso IS NULL)`;
+                } else if (vis.ids && vis.ids.length > 0) {
+                    paramsR.push(vis.ids);
+                    filtroR = ` AND (m.id_curso = ANY($${paramsR.length}) OR m.id_curso IS NULL)`;
+                }
+                const rIns = await client.query(
+                    `INSERT INTO entregas (id_actividad, id_estudiante)
+                     SELECT $1, m.id_estudiante FROM matriculas m
+                     WHERE m.id_periodo = $${paramsR.length + 1}${filtroR}
+                     ON CONFLICT DO NOTHING`,
+                    [req.params.id, ...paramsR]
+                );
+                pendientes = rIns.rowCount;
+            } catch (e) {
+                console.error('No se pudieron generar entregas:', e.message);
+            }
+        }
+        await client.query('COMMIT');
+        res.json({ ok: true, mensaje: `Actividad ${estado}.`, pendientes });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Error al cambiar estado:', error.message);
+        res.status(500).json({ error: 'No se pudo cambiar el estado.' });
+    } finally {
+        client.release();
+    }
+});
+
 // GET /api/actividades/:id/promedios -> resumen por estudiante del parcial
 // (n° insumos y promedios formativos/sumativos + promedio del
 // parcial via fn oficial; los promedios se calculan solos).
@@ -376,11 +474,14 @@ router.get('/:id/notas', requireAuth, async (req, res) => {
         }
         params.push(act.id_actividad);
         const r = await pool.query(
-            `SELECT e.id_estudiante, e.nombres, e.apellidos, c.valor AS nota
+            `SELECT e.id_estudiante, e.nombres, e.apellidos, c.valor AS nota,
+                    en.id_entrega, en.estado AS entrega_estado
              FROM matriculas m
              JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
              LEFT JOIN calificaciones c
                ON c.id_actividad = $${params.length} AND c.id_estudiante = e.id_estudiante
+             LEFT JOIN entregas en
+               ON en.id_actividad = $${params.length} AND en.id_estudiante = e.id_estudiante
              WHERE m.id_periodo = $1${filtroCurso}
              ORDER BY e.apellidos, e.nombres`,
             params

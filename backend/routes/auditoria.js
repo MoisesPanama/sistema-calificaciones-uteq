@@ -18,9 +18,10 @@ const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 // ---------------------------------------------------------
 const CATEGORIAS = {
     calificaciones: ['calificaciones'],
+    actividades_entregas: ['actividades', 'entregas'],
     matriculas_estudiantes: ['matriculas', 'estudiantes'],
     materias_asignaciones: ['materias', 'profesor_materia_periodo'],
-    periodos_catalogos: ['periodos_academicos', 'cursos', 'ciclos_evaluativos', 'parciales', 'tipos_evaluacion'],
+    periodos_catalogos: ['periodos_academicos', 'cursos', 'ciclos_evaluativos', 'parciales', 'tipos_evaluacion', 'actas'],
     usuarios_accesos: ['usuarios', 'profesores', 'representantes']
 };
 const TABLAS_EXCLUIDAS = ['matricula_materias', 'sesiones'];

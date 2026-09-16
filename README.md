@@ -29,6 +29,28 @@ El script es re-ejecutable: si la BD ya existe, la conserva.
 > (Terminal → Run Task…). Si `psql` pide password de superusuario, es solo la
 > primera vez (para crear rol/BD).
 
+### Alternativa: stack Docker (Windows y Linux)
+
+Si prefieres no instalar PostgreSQL local, usa los scripts con Docker
+(los datos quedan en un volumen; `down` los conserva, `down -Volumes` los borra):
+
+```powershell
+# Windows (primera vez compila la imagen; luego sin -Build)
+powershell -ExecutionPolicy Bypass -File .\up.ps1 -Build
+powershell -ExecutionPolicy Bypass -File .\down.ps1
+```
+
+```bash
+# Linux
+./up.sh --build
+./down.sh
+```
+
+Levanta BD + API con migraciones `01..26` y seeds aplicados
+automáticamente si la BD está vacía, en `http://localhost:3001`
+(`APP_PORT`/`DB_PORT` configurables por entorno). Usa
+`docker-compose.yml` + `backend/Dockerfile` (incluidos).
+
 ## Integrantes del equipo
 
 - Moises Panama — Backend, base de datos, interfaces de gestión
@@ -70,7 +92,7 @@ Esquema `colegio`, normalizado (1FN–3FN), con las siguientes tablas:
 `roles`, `usuarios`, `representantes`, `estudiantes`, `profesores`,
 `materias`, `periodos_academicos`, `matriculas`,
 `profesor_materia_periodo`, `tipos_evaluacion`, `calificaciones`,
-`auditoria`, `sesiones`.
+`auditoria`, `sesiones`, `solicitudes_matricula`, `supletorios`.
 
 ### Funciones y procedimientos
 
@@ -167,6 +189,17 @@ psql -U postgres -d calificaciones_uteq -f database/17_indices_rendimiento.sql
 psql -U postgres -d calificaciones_uteq -f database/18_representantes.sql
 psql -U postgres -d calificaciones_uteq -f database/19_datos_sinteticos.sql
 psql -U postgres -d calificaciones_uteq -f database/20_unique_asignaciones_por_curso.sql
+psql -U postgres -d calificaciones_uteq -f database/21_rol_estudiante_y_matriculas.sql
+psql -U postgres -d calificaciones_uteq -f database/22_actividades.sql
+psql -U postgres -d calificaciones_uteq -f database/23_cierre_notas.sql
+psql -U postgres -d calificaciones_uteq -f database/24_entregas.sql
+psql -U postgres -d calificaciones_uteq -f database/25_adjuntos.sql
+psql -U postgres -d calificaciones_uteq -f database/26_fallas_observaciones.sql
+psql -U postgres -d calificaciones_uteq -f database/27_tipos_reales.sql
+psql -U postgres -d calificaciones_uteq -f database/28_preinscripciones.sql
+psql -U postgres -d calificaciones_uteq -f database/29_supletorios.sql
+psql -U postgres -d calificaciones_uteq -f database/30_cierre_recuperacion.sql
+psql -U postgres -d calificaciones_uteq -f database/31_notas_coherentes.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -284,7 +317,8 @@ sistema-calificaciones-uteq/
 | GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
 | GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
-| GET | `/api/reportes/` | Reporte paginado (admin/profesor/representante; estudiante 403, usa su consulta) |
+| GET | `/api/reportes/` | Reporte paginado con la fórmula oficial (misma que consulta/boletín; admin/profesor/representante; estudiante 403, usa su consulta) |
+| PUT | `/api/auth/password` | Cambio de clave propia `{actual, nueva}` |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
@@ -304,6 +338,28 @@ sistema-calificaciones-uteq/
 | GET/POST | `/api/asignaciones/` | Asignaciones del periodo / asignar materia＋curso a profesor (solo admin) |
 | GET | `/api/asignaciones/opciones` | Profesores, materias y cursos para el formulario |
 | DELETE | `/api/asignaciones/:id` | Quitar asignación (solo admin) |
+| GET/POST | `/api/actas/` | Actas del periodo / crear borrador (solo admin) |
+| POST | `/api/actas/:id/validar` | Congelar contexto (solo admin) |
+| DELETE | `/api/actas/:id` | Eliminar solo en borrador (solo admin) |
+| GET | `/api/supletorios/?id_periodo=&id_materia=&id_curso=` | Nómina con promedio anual + elegibilidad <7 + instancias + estado final (docente asignado o admin) |
+| POST | `/api/supletorios/` | Registrar nota (`instancia`: supletorio/remedial/gracia en orden; <7 verificado en servidor) |
+| PUT | `/api/supletorios/:id` | Editar nota (solo registrado, no validado) |
+| POST | `/api/supletorios/:id/validar` | Congelar acta y cerrar estado de la materia (solo admin) |
+| DELETE | `/api/supletorios/:id` | Eliminar solo en registrado (admin o quien lo creó) |
+| POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
+| GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |
+| POST | `/api/entregas/:id/enviar` | Marcar enviada (propio, docente o admin) |
+| POST | `/api/entregas/:id/revisar` | aceptada/rechazada/cambios (docente o admin) |
+| GET/POST | `/api/adjuntos/por-actividad/:id` | Material de la actividad / subir PDF-imagen (docente o admin) |
+| GET/DELETE | `/api/adjuntos/:id` + `/descargar` | Descargar (con auth) / quitar |
+| GET/POST | `/api/documentos/tipos` | Tipos de documento (admin escribe) |
+| PUT/DELETE | `/api/documentos/tipos/:id` | Editar / borrar sin uso (admin) |
+| GET/POST | `/api/documentos/por-estudiante/:id` | Checklist + subir (reemplaza vigente) |
+| GET/DELETE | `/api/documentos/:id` + `/descargar` | Descargar (con auth) / quitar |
+| GET/POST | `/api/asistencias/` | Faltas por estudiante/materia/periodo / registrar |
+| DELETE | `/api/asistencias/:id` | Quitar falta |
+| Páginas | `boletin.html` | Boletín imprimible por estudiante (con fallas y observaciones) |
+| Páginas | `planilla.html` | Planilla en blanco para el aula (docente/admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |
@@ -340,6 +396,8 @@ sistema-calificaciones-uteq/
 7. Consulta de calificaciones por estudiante
 8. Reporte de promedios por periodo
 9. Panel de auditoría (solo administrador)
+10. Preinscripción pública + bandeja de aprobación (solo admin)
+11. Supletorio: ciclo supletorio → remedial → gracia + cierre de estado (docente/admin, valida admin)
 
 ## Notas de diseño
 

@@ -20,15 +20,8 @@
     .act-nueva:hover { border-color: var(--primary); color: var(--primary); }
     .seccion-titulo { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; }
     .seccion-titulo h2 { font-size: 1.1rem; color: var(--primary); }
-    .badge-formativa { background-color: var(--info-bg); color: var(--info-text); }
-    .badge-sumativa { background-color: var(--warning-bg); color: var(--warning-dark); }
-    .badge-examen { background-color: var(--danger-bg); color: var(--danger-dark); }
     #vista-calificar { margin-top: 1rem; }
     .resumen-table td:nth-child(n+2), .resumen-table th:nth-child(n+2) { text-align: center; }
-    .prom-pill { display: inline-block; min-width: 3em; padding: 0.15rem 0.5rem; border-radius: 6px;
-      background: var(--border-light); font-weight: 700; }
-    .prom-bajo { background: var(--danger-bg); color: var(--danger-dark); }
-    .prom-ok { background: var(--success-bg); color: var(--success-dark); }
   </style>
 </head>
 <body>
@@ -83,6 +76,14 @@
         <h2 id="cal-titulo">Calificar</h2>
         <button class="btn-secondary" id="btn-volver">← Volver a actividades</button>
       </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3 style="font-size:0.95rem;color:#1e3a8a;margin-bottom:0.6rem;">Material de la actividad (PDF o imagen, max configurable)</h3>
+        <div id="lista-adjuntos" style="margin-bottom:0.6rem;"></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="input-adjuntos" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp">
+          <button class="btn-secondary btn-sm" id="btn-subir-adj">Subir</button>
+        </div>
+      </div>
       <div id="tabla"></div>
       <p><small>Las celdas vacias no se guardan (conservan la nota anterior). Aprueba con 7.</small></p>
     </div>
@@ -100,6 +101,8 @@
       <select id="act-tipo" style="width:100%;margin:0.3rem 0 0.8rem 0;"></select>
       <label for="act-fecha">Fecha</label>
       <input type="date" id="act-fecha" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
+      <label for="act-limite">Fecha límite de entrega (opcional)</label>
+      <input type="date" id="act-limite" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
       <label for="act-desc">Descripción (opcional)</label>
       <input type="text" id="act-desc" placeholder="Tema o indicaciones breves" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
       <div class="form-actions">
@@ -137,6 +140,83 @@
       if (a.es_examen) return '<span class="badge badge-examen">Examen</span>';
       if (a.tipo_categoria === 'sumativa') return '<span class="badge badge-sumativa">Sumativa</span>';
       return '<span class="badge badge-formativa">Formativa</span>';
+    }
+
+    function badgeEntrega(e) {
+      if (!e.id_entrega) return '<span style="color:#9ca3af;font-size:0.82rem;">—</span>';
+      const mapa = {
+        pendiente: ['badge-warning', 'Pendiente'],
+        enviada: ['badge-info', 'Enviada'],
+        aceptada: ['badge-success', 'Aceptada'],
+        rechazada: ['badge-danger', 'Rechazada'],
+        cambios: ['badge-warning', 'Cambios']
+      };
+      const [cls, txt] = mapa[e.entrega_estado] || ['badge-info', e.entrega_estado];
+      let btns = '';
+      if (e.entrega_estado === 'pendiente') {
+        btns = `<button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="enviar">Recibida</button>`;
+      } else if (e.entrega_estado === 'enviada') {
+        btns = `<button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="aceptada">Aceptar</button>
+                <button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="cambios">Pedir cambios</button>
+                <button class="btn-secondary btn-sm btn-danger-text" data-entrega="${e.id_entrega}" data-accion="rechazada">Rechazar</button>`;
+      }
+      return `<span class="badge ${cls}">${txt}</span><br>${btns}`;
+    }
+
+    async function moverEntrega(idEntrega, accion) {
+      try {
+        let r;
+        if (accion === 'enviar') {
+          r = await apiPost(`/entregas/${idEntrega}/enviar`, {});
+        } else {
+          const obs = (accion === 'aceptada') ? null : prompt('Observación para el estudiante (opcional):');
+          if (obs === null && accion !== 'aceptada') return;
+          r = await apiPost(`/entregas/${idEntrega}/revisar`, { estado: accion, observacion: obs });
+        }
+        showOk(r.mensaje);
+        await abrirCalificar(actividadActual.id_actividad);
+      } catch (err) { showError(err.message); }
+    }
+
+    async function cargarAdjuntos() {
+      const div = document.getElementById('lista-adjuntos');
+      try {
+        const d = await apiGet(`/adjuntos/por-actividad/${actividadActual.id_actividad}`);
+        const arr = d.adjuntos || [];
+        div.innerHTML = arr.length === 0
+          ? '<p style="font-size:0.85rem;color:#6b7280;">Sin material adjunto.</p>'
+          : arr.map(a => `<div style="display:flex;gap:0.6rem;align-items:center;font-size:0.87rem;padding:0.3rem 0;">
+              <span>📎 ${esc(a.nombre_original)} <small style="color:#6b7280;">(${(a.tamano_bytes / 1024).toFixed(0)} KB)</small></span>
+              <button class="btn-secondary btn-sm" data-desc-adj="${a.id_adjunto}">Descargar</button>
+              <button class="btn-secondary btn-sm btn-danger-text" data-del-adj="${a.id_adjunto}">Quitar</button>
+            </div>`).join('');
+        div.querySelectorAll('[data-desc-adj]').forEach(b => b.onclick = () => {
+          window.open(`/api/adjuntos/${b.dataset.descAdj}/descargar`, '_blank');
+        });
+        div.querySelectorAll('[data-del-adj]').forEach(b => b.onclick = async () => {
+          if (!confirm('¿Quitar este adjunto?')) return;
+          try {
+            await api(`/adjuntos/${b.dataset.delAdj}`, { method: 'DELETE' });
+            await cargarAdjuntos();
+          } catch (err) { showError(err.message); }
+        });
+      } catch (err) {
+        div.innerHTML = '<p style="font-size:0.85rem;color:#6b7280;">Adjuntos no disponibles.</p>';
+      }
+    }
+
+    function badgeEstado(a) {
+      const mapa = { borrador: 'badge-warning', publicada: 'badge-success', cerrada: 'badge-danger' };
+      const txt = { borrador: 'Borrador', publicada: 'Publicada', cerrada: 'Cerrada' };
+      return `<span class="badge ${mapa[a.estado] || 'badge-warning'}">${txt[a.estado] || a.estado}</span>`;
+    }
+
+    async function cambiarEstado(id, estado) {
+      try {
+        const r = await apiPost(`/actividades/${id}/estado`, { estado });
+        showOk(r.mensaje);
+        await cargarActividades();
+      } catch (err) { showError(err.message); }
     }
 
     async function cargarBase(first = false) {
@@ -197,24 +277,40 @@
       try {
         const d = await apiGet('/actividades?' + params().toString());
         const acts = d.actividades || [];
-        let html = acts.map(a => `
+        let html = acts.map(a => {
+          const est = a.estado || 'borrador';
+          const btnEstado = est === 'borrador'
+            ? `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|publicada">Publicar</button>`
+            : est === 'publicada'
+              ? `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|cerrada">Cerrar</button>`
+              : `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|publicada" title="Solo admin">Reabrir</button>`;
+          const btnCalificar = est === 'cerrada'
+            ? `<button class="btn-primary btn-sm" disabled title="Cerrada: no admite notas">Calificar</button>`
+            : `<button class="btn-primary btn-sm" data-calificar="${a.id_actividad}">Calificar</button>`;
+          return `
           <div class="act-card">
             <h3>${esc(a.nombre)}</h3>
-            <div>${badgeTipo(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}</span></div>
+            <div>${badgeTipo(a)} ${badgeEstado(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}${a.fecha_limite ? ' · límite ' + esc(String(a.fecha_limite).slice(0, 10)) : ''}</span></div>
             <div class="act-stats">
               <div><strong>${a.n_calificados}</strong><span class="act-meta">calificados</span></div>
               <div><strong>${a.promedio == null ? '—' : a.promedio}</strong><span class="act-meta">promedio</span></div>
             </div>
             <div class="act-actions">
-              <button class="btn-primary btn-sm" data-calificar="${a.id_actividad}">Calificar</button>
+              ${btnCalificar}
+              ${btnEstado}
               <button class="btn-secondary btn-sm" data-borrar="${a.id_actividad}" data-nombre="${esc(a.nombre)}">Borrar</button>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
         html += `<div class="act-card act-nueva" id="card-nueva" role="button" tabindex="0">＋ Nueva actividad</div>`;
         lista.innerHTML = html;
         document.getElementById('card-nueva').onclick = abrirModal;
         lista.querySelectorAll('[data-calificar]').forEach(b => {
           b.onclick = () => abrirCalificar(Number(b.dataset.calificar));
+        });
+        lista.querySelectorAll('[data-estado]').forEach(b => {
+          const [id, estado] = b.dataset.estado.split('|');
+          b.onclick = () => cambiarEstado(Number(id), estado);
         });
         lista.querySelectorAll('[data-borrar]').forEach(b => {
           b.onclick = () => borrarActividad(Number(b.dataset.borrar), b.dataset.nombre);
@@ -236,6 +332,7 @@
       document.getElementById('act-nombre').value = '';
       document.getElementById('act-desc').value = '';
       document.getElementById('act-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('act-limite').value = '';
       document.getElementById('modal-actividad').classList.add('activo');
     }
 
@@ -251,7 +348,8 @@
           id_tipo_evaluacion: document.getElementById('act-tipo').value,
           nombre: document.getElementById('act-nombre').value,
           descripcion: document.getElementById('act-desc').value,
-          fecha_actividad: document.getElementById('act-fecha').value
+          fecha_actividad: document.getElementById('act-fecha').value,
+          fecha_limite: document.getElementById('act-limite').value || null
         });
         document.getElementById('modal-actividad').classList.remove('activo');
         showOk(r.mensaje);
@@ -280,6 +378,7 @@
         vista.style.display = 'block';
         document.getElementById('cal-titulo').textContent =
           `Calificar: ${d.actividad.nombre} (${d.actividad.tipo_nombre})`;
+        await cargarAdjuntos();
         const est = d.estudiantes || [];
         if (est.length === 0) {
           document.getElementById('tabla').innerHTML = '<p>No hay estudiantes matriculados para calificar.</p>';
@@ -287,16 +386,28 @@
         }
         document.getElementById('tabla').innerHTML =
           `<p>Se cargaron <strong>${est.length}</strong> estudiantes. Escriba las notas y guarde por estudiante o todas de una vez:</p>
-          <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th><th>Nota (0–10)</th><th></th></tr></thead><tbody>` +
+          <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th><th>Nota (0–10)</th><th>Entrega</th><th></th></tr></thead><tbody>` +
           est.map(e => `<tr><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>
             <td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
               data-est="${e.id_estudiante}" data-original="${e.nota == null ? '' : esc(e.nota)}" value="${e.nota == null ? '' : esc(e.nota)}"></td>
-            <td><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button></td></tr>`).join('') +
+            <td>${badgeEntrega(e)}</td>
+            <td style="white-space:nowrap;"><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button>
+              <button class="btn-secondary btn-sm" data-ausente="${e.id_estudiante}" title="Ausente: registra 0">Aus.</button></td></tr>`).join('') +
           `</tbody></table></div>
           <div class="form-actions"><button class="btn-secondary" id="btn-guardar">Guardar todas</button></div>`;
         document.getElementById('btn-guardar').onclick = guardarTodas;
         document.querySelectorAll('[data-guardar-est]').forEach(btn => {
           btn.onclick = () => guardarEstudiante(btn.dataset.guardarEst);
+        });
+        document.querySelectorAll('[data-ausente]').forEach(btn => {
+          btn.onclick = () => {
+            const inp = document.querySelector(`input[data-est="${btn.dataset.ausente}"]`);
+            if (inp) { inp.value = '0'; inp.dispatchEvent(new Event('input')); }
+            guardarEstudiante(btn.dataset.ausente);
+          };
+        });
+        document.querySelectorAll('[data-entrega]').forEach(btn => {
+          btn.onclick = () => moverEntrega(btn.dataset.entrega, btn.dataset.accion);
         });
         document.querySelectorAll('input[data-est]').forEach(inp => {
           inp.addEventListener('input', () => {
@@ -426,6 +537,22 @@
         if (hayCambiosSinGuardar && !confirm('Tiene notas sin guardar. ¿Volver?')) return;
         hayCambiosSinGuardar = false;
         await cargarActividades().catch(showError);
+      };
+      document.getElementById('btn-subir-adj').onclick = async () => {
+        const input = document.getElementById('input-adjuntos');
+        if (!input.files || input.files.length === 0) { showError('Elige al menos un archivo (PDF o imagen).'); return; }
+        try {
+          const fd = new FormData();
+          for (const f of input.files) fd.append('archivos', f);
+          const res = await fetch(`/api/adjuntos/por-actividad/${actividadActual.id_actividad}`, {
+            method: 'POST', credentials: 'include', body: fd
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+          showOk(`${data.adjuntos.length} archivo(s) subido(s).`);
+          input.value = '';
+          await cargarAdjuntos();
+        } catch (err) { showError(err.message); }
       };
     })();
   </script>
