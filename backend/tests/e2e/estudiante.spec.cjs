@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   tag = Date.now().toString(36);
   const crea = await api(page, 'POST', '/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'PWE' + tag + ' Uno', apellidos: 'Prueba ' + tag,
+    nombres: 'PWE' + tag + ' Uno', apellidos: tag + ' Prueba',
     fecha_nacimiento: '2011-05-06', id_representante: 1
   });
   expect(crea.status).toBe(201);
@@ -38,7 +38,7 @@ test('sin notas ve tarjetas Sin calificar, no error', async ({ page }) => {
   const t2 = Date.now().toString(36);
   const crea = await api(page, 'POST', '/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'PWVacio ' + t2, apellidos: 'SinNotas ' + t2,
+    nombres: 'PWVacio ' + t2, apellidos: t2 + ' Nulo',
     fecha_nacimiento: '2011-05-06', id_representante: 1
   });
   expect(crea.status).toBe(201);
@@ -71,7 +71,7 @@ test('sin botones de regreso a bloques/nomina', async ({ page }) => {
   const t3 = Date.now().toString(36);
   const crea = await api(page, 'POST', '/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'PWVuelta ' + t3, apellidos: 'SinRegreso ' + t3,
+    nombres: 'PWVuelta ' + t3, apellidos: t3 + ' Giro',
     fecha_nacimiento: '2011-05-06', id_representante: 1
   });
   expect(crea.status).toBe(201);

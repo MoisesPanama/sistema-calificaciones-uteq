@@ -306,7 +306,7 @@ const loginAs = async (email) => {
   const tag13 = Date.now().toString(36);
   const creaEst = await post('/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'Ewe Uno', apellidos: 'Prueba Dos',
+    nombres: 'Ewe Uno', apellidos: stamp + ' Dos',
     fecha_nacimiento: '2011-05-06', id_representante: 1
   });
   log('Crear estudiante con usuario', creaEst.status === 201 && !!creaEst.body.email, creaEst.body.email || creaEst.body.error);
@@ -335,7 +335,7 @@ const loginAs = async (email) => {
   const tag14 = Date.now().toString(36);
   const creaSin = await post('/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'Ewe Nulo', apellidos: 'Sin Notas',
+    nombres: 'Ewe Nulo', apellidos: tag14 + ' Notas',
     fecha_nacimiento: '2011-05-06', id_representante: 1
   });
   const idSin = creaSin.body.id_estudiante;
