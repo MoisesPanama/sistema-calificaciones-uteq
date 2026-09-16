@@ -51,6 +51,7 @@ async function renderLayout(usuario, periodoSeleccionado) {
     { href: 'consulta.html',        icon: '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>', label: 'Consultar Notas' },
     { href: 'reportes.html',        icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2V7h2v10z"/>', label: 'Reportes' },
     { href: 'boletin.html',         icon: '<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7H7v-2h6v2zm0 4H7v-2h6v2z"/>', label: 'Boletín' },
+    { href: 'supletorio.html',       icon: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>', label: 'Supletorio' },
     { href: 'planilla.html',        icon: '<path d="M3 3v18h18V3H3zm8 16H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z"/>', label: 'Planilla' },
   ];
 

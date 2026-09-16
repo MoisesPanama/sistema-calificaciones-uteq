@@ -69,6 +69,7 @@ app.use('/api/asistencias', require('./routes/asistencias'));
 app.use('/api/adjuntos', require('./routes/adjuntos'));
 app.use('/api/documentos', require('./routes/documentos'));
 app.use('/api/actas', require('./routes/actas'));
+app.use('/api/supletorios', require('./routes/supletorios'));
 app.use('/api/consulta', require('./routes/consulta'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/auditoria', require('./routes/auditoria'));

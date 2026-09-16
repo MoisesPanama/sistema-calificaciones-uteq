@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supletorio - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Recuperación: supletorio → remedial → gracia</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <p style="font-size:0.88rem;color:#6b7280;margin-bottom:1.2rem;max-width:760px;">
+      Solo el promedio anual <strong>menor a 7</strong> entra a recuperación,
+      en orden: <strong>supletorio → remedial → gracia</strong>.
+      Al <strong>validar</strong> (solo admin) el acta queda congelada y se
+      cierra el estado de la materia (aprobado/reprobado).
+    </p>
+    <div class="search-bar">
+      <select id="sel-materia" aria-label="Materia"></select>
+      <select id="sel-curso" aria-label="Curso"><option value="">Todos los cursos</option></select>
+      <button class="btn-primary btn-sm" id="btn-cargar">Cargar nómina</button>
+    </div>
+    <div class="table-responsive table-sticky-wrap">
+      <table class="table-sticky">
+        <thead><tr>
+          <th>Estudiante</th><th>Promedio</th><th>Supletorio</th><th>Remedial</th><th>Gracia</th><th>Final</th><th></th>
+        </tr></thead>
+        <tbody id="filas"><tr><td colspan="7">Selecciona materia y pulsa Cargar nómina.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="form-box" style="margin-top:1.2rem;">
+      <h3 style="font-size:0.95rem;color:#1e3a8a;">Registrar / editar nota</h3>
+      <label for="sel-est">Estudiante (solo elegibles &lt;7)</label>
+      <select id="sel-est"></select>
+      <label for="sel-inst">Instancia</label>
+      <select id="sel-inst">
+        <option value="supletorio">Supletorio</option>
+        <option value="remedial">Remedial</option>
+        <option value="gracia">De gracia</option>
+      </select>
+      <label for="inp-nota">Nota (0–10)</label>
+      <input type="number" id="inp-nota" min="0" max="10" step="0.01" placeholder="Ej. 7.50">
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-guardar">Guardar</button>
+      </div>
+    </div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    let periodoId = '';
+    function pill(texto, clase) { return `<span class="pill ${clase}">${esc(texto)}</span>`; }
+    function pillPromedio(p) {
+      if (p === null || p === undefined) return pill('sin notas', 'pill-muted');
+      if (p >= 7) return pill('aprobado ' + p, 'pill-ok');
+      return pill('supletorio ' + p, 'pill-warn');
+    }
+
+    async function cargarBase() {
+      const per = await apiGet('/periodos/');
+      periodoId = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+      document.getElementById('info-periodo').innerHTML =
+        `Periodo: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
+      const ctx = await apiGet('/calificaciones/contexto?id_periodo=' + encodeURIComponent(periodoId));
+      document.getElementById('sel-materia').innerHTML =
+        (ctx.materias || []).map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('') || '<option value="">Sin materias</option>';
+      document.getElementById('sel-curso').innerHTML = '<option value="">Todos los cursos</option>' +
+        (ctx.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+    }
+
+    async function cargarNomina() {
+      const idMateria = document.getElementById('sel-materia').value;
+      const idCurso = document.getElementById('sel-curso').value;
+      if (!idMateria) { showError('Selecciona una materia.'); return; }
+      const d = await apiGet(`/supletorios/?id_periodo=${encodeURIComponent(periodoId)}&id_materia=${encodeURIComponent(idMateria)}&id_curso=${encodeURIComponent(idCurso)}`);
+      const arr = d.supletorios || [];
+      const tb = document.getElementById('filas');
+      if (arr.length === 0) { tb.innerHTML = '<tr><td colspan="7">Sin estudiantes matriculados.</td></tr>'; return; }
+      const celdaInst = (r, nombre) => {
+        const it = (r.instancias || {})[nombre];
+        if (!it) return '<span style="color:#9ca3af;">—</span>';
+        const est = it.estado === 'validado' ? pill('validado', 'pill-ok') : pill('registrado', 'pill-info');
+        const acc = it.estado === 'validado' ? '' :
+          `<br><button class="btn-secondary btn-sm" data-editar="${it.id_supletorio}" data-nota="${esc(it.nota)}" data-est="${r.id_estudiante}" data-inst="${nombre}">Editar</button>
+           <button class="btn-primary btn-sm" data-validar="${it.id_supletorio}">Validar</button>
+           <button class="btn-secondary btn-sm" data-borrar="${it.id_supletorio}">Borrar</button>`;
+        return `${esc(it.nota)} ${est}${acc}`;
+      };
+      const pillFinal = (r) => {
+        if (r.estado_materia === 'aprobado') return pill('aprobado', 'pill-ok');
+        if (r.estado_materia === 'reprobado') return pill('reprobado', 'pill-danger');
+        return pillPromedio(r.promedio_anual);
+      };
+      tb.innerHTML = arr.map(r => {
+        const reg = r.siguiente
+          ? `<button class="btn-primary btn-sm" data-registrar="${r.id_estudiante}" data-inst="${r.siguiente}">Registrar ${esc(r.siguiente)}</button>` : '';
+        return `<tr><td>${esc(r.apellidos)} ${esc(r.nombres)}</td>
+          <td>${pillPromedio(r.promedio_anual)}</td>
+          <td>${celdaInst(r, 'supletorio')}</td>
+          <td>${celdaInst(r, 'remedial')}</td>
+          <td>${celdaInst(r, 'gracia')}</td>
+          <td>${pillFinal(r)}</td><td class="td-actions">${reg}</td></tr>`;
+      }).join('');
+      document.getElementById('sel-est').innerHTML =
+        arr.filter(r => r.siguiente)
+           .map(r => `<option value="${r.id_estudiante}">${esc(r.apellidos)} ${esc(r.nombres)} (${r.promedio_anual} → ${esc(r.siguiente)})</option>`).join('')
+        || '<option value="">Sin elegibles pendientes</option>';
+      tb.querySelectorAll('[data-registrar]').forEach(b => b.onclick = () => {
+        document.getElementById('sel-est').value = b.dataset.registrar;
+        document.getElementById('sel-inst').value = b.dataset.inst;
+        document.getElementById('inp-nota').focus();
+      });
+      tb.querySelectorAll('[data-editar]').forEach(b => b.onclick = async () => {
+        document.getElementById('sel-est').innerHTML = `<option value="${b.dataset.est}">Seleccionado</option>`;
+        document.getElementById('sel-est').value = b.dataset.est;
+        document.getElementById('inp-nota').value = b.dataset.nota;
+        document.getElementById('inp-nota').dataset.id = b.dataset.editar;
+        document.getElementById('inp-nota').focus();
+      });
+      tb.querySelectorAll('[data-validar]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Validar? El acta quedará congelada.')) return;
+        try { const r = await apiPost(`/supletorios/${b.dataset.validar}/validar`, {}); showOk(r.mensaje); await cargarNomina(); }
+        catch (err) { showError(err.message); }
+      });
+      tb.querySelectorAll('[data-borrar]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Borrar este supletorio?')) return;
+        try { const r = await api(`/supletorios/${b.dataset.borrar}`, { method: 'DELETE' }); showOk(r.mensaje); await cargarNomina(); }
+        catch (err) { showError(err.message); }
+      });
+    }
+
+    (async () => {
+      const u = await initPage();
+      if (!u) return;
+      if (u.nombre_rol !== 'administrador' && u.nombre_rol !== 'profesor') {
+        document.querySelector('main').innerHTML = '<div class="alert alert-error">Solo docente o admin.</div>';
+        return;
+      }
+      try {
+        await cargarBase();
+        document.getElementById('btn-cargar').onclick = () => cargarNomina().catch(e => showError(e.message));
+        document.getElementById('btn-guardar').onclick = async () => {
+          try {
+            const idEst = document.getElementById('sel-est').value;
+            const nota = document.getElementById('inp-nota').value;
+            const idEdit = document.getElementById('inp-nota').dataset.id;
+            if (!idEst) { showError('Selecciona un estudiante elegible.'); return; }
+            if (idEdit) {
+              const r = await apiPut('/supletorios/' + idEdit, { nota: Number(nota) });
+              showOk(r.mensaje);
+              delete document.getElementById('inp-nota').dataset.id;
+            } else {
+              await apiPost('/supletorios/', {
+                id_estudiante: Number(idEst),
+                id_materia: Number(document.getElementById('sel-materia').value),
+                id_periodo: Number(periodoId),
+                id_curso: document.getElementById('sel-curso').value ? Number(document.getElementById('sel-curso').value) : null,
+                nota: Number(nota),
+                instancia: document.getElementById('sel-inst').value
+              });
+              showOk('Recuperación registrada.');
+            }
+            document.getElementById('inp-nota').value = '';
+            await cargarNomina();
+          } catch (err) { showError(err.message); }
+        };
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>
