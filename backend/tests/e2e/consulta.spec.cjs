@@ -35,11 +35,10 @@ test('asignar desde catalogos responde ok o 409 justificado', async ({ page }) =
   await page.locator('#tab-btn-asig').click();
   await expect(page.locator('#lista-asig')).toBeVisible({ timeout: 15000 });
   await page.locator('#asg-guardar').click();
-  await page.waitForTimeout(1500);
-  const okVisible = await page.locator('#ok').isVisible();
-  const errVisible = await page.locator('#error').isVisible();
-  expect(okVisible || errVisible).toBe(true);
-  if (errVisible) {
+  await expect.poll(async () =>
+    await page.locator('#ok').isVisible() || await page.locator('#error').isVisible(),
+    { timeout: 20000 }).toBe(true);
+  if (await page.locator('#error').isVisible()) {
     await expect(page.locator('#error')).toContainText(/ya la dicta|obligatorios/i);
   }
 });

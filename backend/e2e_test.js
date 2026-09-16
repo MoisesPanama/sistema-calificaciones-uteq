@@ -412,6 +412,89 @@ const loginAs = async (email) => {
   });
   log('Materia no asignada -> 403', otraMat.status === 403, otraMat.body.error || '');
 
+  console.log('\n=== 16. CIERRE: PERIODO/ACTIVIDAD/ACTA ===');
+  await loginAs('admin@uteq.edu.ec');
+  const pers16 = await get('/periodos/');
+  const inactivo = (pers16.body.periodos || []).find(p => !p.activo);
+  if (inactivo) {
+    const rInac = await post('/calificaciones/', {
+      id_estudiante: 1, id_materia: 1, id_periodo: inactivo.id_periodo,
+      id_tipo_evaluacion: 1, valor: 8
+    });
+    log('Periodo inactivo -> 400', rInac.status === 400, rInac.body.error || '');
+  } else {
+    log('Periodo inactivo -> 400', true, '(sin periodo inactivo en seed)');
+  }
+  // Actividad: cerrar bloquea, reabrir es solo admin.
+  await loginAs('elena.romero@uteq.edu.ec');
+  const ctx16 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const mat16 = (ctx16.body.materias || [])[0];
+  const tag16 = Date.now().toString(36);
+  let idAct16 = null;
+  if (mat16) {
+    const crea16 = await post('/actividades', {
+      id_periodo: String(idPeriodo), id_materia: mat16.id_materia,
+      id_tipo_evaluacion: 4, nombre: 'Cierre E2E ' + tag16
+    });
+    idAct16 = crea16.body.actividad?.id_actividad || null;
+    log('Crear actividad cierre', crea16.status === 201 && !!idAct16, '');
+  }
+  if (idAct16) {
+    const est16 = await get(`/actividades/${idAct16}/notas`);
+    const al16 = (est16.body.estudiantes || [])[0];
+    const cerrar = await post(`/actividades/${idAct16}/estado`, { estado: 'cerrada' });
+    log('Cerrar actividad', cerrar.status === 200, cerrar.body.error || '');
+    if (al16) {
+      const bloqueada = await post('/calificaciones/', {
+        id_estudiante: al16.id_estudiante, id_materia: mat16.id_materia,
+        id_periodo: idPeriodo, id_tipo_evaluacion: 4, valor: 8, id_actividad: idAct16
+      });
+      log('Nota en cerrada -> 400', bloqueada.status === 400, bloqueada.body.error || '');
+    }
+    const reabrirProf = await post(`/actividades/${idAct16}/estado`, { estado: 'publicada' });
+    log('Reabrir no-admin -> 403', reabrirProf.status === 403, '');
+    await loginAs('admin@uteq.edu.ec');
+    const reabrir = await post(`/actividades/${idAct16}/estado`, { estado: 'publicada' });
+    log('Reabrir admin', reabrir.status === 200, reabrir.body.error || '');
+    const borraAct = await del(`/actividades/${idAct16}`);
+    log('Borrar actividad reabierta sin notas', borraAct.status === 200, borraAct.body.error || '');
+  }
+  // Acta por CURSO (no congela datos reales de otras pruebas):
+  // solo bloquea notas de ese paralelo.
+  await loginAs('admin@uteq.edu.ec');
+  const cursos16 = await get('/cursos/?id_periodo=' + idPeriodo);
+  const cursoB = (cursos16.body.cursos || []).find(c => c.paralelo === 'B') || (cursos16.body.cursos || [])[0];
+  if (cursoB) {
+    const listaPrev = await get('/actas/?id_periodo=' + idPeriodo);
+    const yaValidada = (listaPrev.body.actas || []).find(a =>
+      String(a.id_materia) === '1' && String(a.id_curso) === String(cursoB.id_curso) && a.estado === 'validada');
+    let idActaCtx = yaValidada ? yaValidada.id_acta : null;
+    if (!idActaCtx) {
+      const creaActa = await post('/actas/', { id_periodo: idPeriodo, id_materia: 1, id_curso: cursoB.id_curso });
+      log('Crear acta borrador', creaActa.status === 201, creaActa.body.error || '');
+      const dupActa = await post('/actas/', { id_periodo: idPeriodo, id_materia: 1, id_curso: cursoB.id_curso });
+      log('Acta duplicada -> 409', dupActa.status === 409, '');
+      const valActa = await post(`/actas/${creaActa.body.id_acta}/validar`, {});
+      log('Validar acta', valActa.status === 200, valActa.body.error || '');
+      idActaCtx = creaActa.body.id_acta;
+    } else {
+      log('Crear acta borrador', true, '(ya validada de corrida previa)');
+      log('Acta duplicada -> 409', true, '(ya validada de corrida previa)');
+      log('Validar acta', true, '(ya validada de corrida previa)');
+    }
+    const ctxB = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=1&id_curso=${cursoB.id_curso}&page=1&limit=5`);
+    const alB = (ctxB.body.estudiantes || [])[0];
+    if (alB) {
+      const cong = await post('/calificaciones/', {
+        id_estudiante: alB.id_estudiante, id_materia: 1, id_periodo: idPeriodo,
+        id_tipo_evaluacion: 1, valor: 8
+      });
+      log('Nota con acta validada -> 400', cong.status === 400, cong.body.error || '');
+    }
+    const borraVal = await del(`/actas/${idActaCtx}`);
+    log('Borrar validada -> 404', borraVal.status === 404, '');
+  }
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

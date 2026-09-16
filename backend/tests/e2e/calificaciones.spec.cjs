@@ -45,3 +45,23 @@ test('crear actividad, calificar y guardar la nota', async ({ page }) => {
   await page.locator('[data-guardar-est]').first().click();
   await expect(page.locator('#ok')).toBeVisible({ timeout: 15000 });
 });
+
+test('publicar y cerrar actividad desde sus tarjetas', async ({ page }) => {
+  const tag = Date.now().toString(36);
+  const selMat = page.locator('#sel-materia');
+  await expect(selMat).toBeVisible({ timeout: 10000 });
+  await selMat.selectOption({ index: 1 });
+  await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
+  await page.locator('#card-nueva').click();
+  await page.locator('#act-nombre').fill('Estado PW ' + tag);
+  await page.locator('#act-tipo').selectOption({ index: 0 });
+  await page.locator('#act-guardar').click();
+  const card = page.locator('.act-card', { hasText: 'Estado PW ' + tag });
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await expect(card).toContainText('Borrador');
+  await card.locator('[data-estado]').click();
+  await expect(card).toContainText('Publicada', { timeout: 10000 });
+  await card.locator('[data-estado]').click();
+  await expect(card).toContainText('Cerrada', { timeout: 10000 });
+  await expect(card.locator('[data-estado]')).toContainText('Reabrir');
+});

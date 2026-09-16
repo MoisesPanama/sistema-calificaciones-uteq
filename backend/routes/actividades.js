@@ -80,7 +80,7 @@ router.get('/', requireAuth, async (req, res) => {
             `SELECT a.id_actividad, a.nombre, a.descripcion, a.fecha_actividad,
                     a.id_tipo_evaluacion, te.nombre AS tipo_nombre,
                     te.categoria AS tipo_categoria, te.es_examen,
-                    a.id_ciclo, a.id_parcial, a.id_curso,
+                    a.id_ciclo, a.id_parcial, a.id_curso, a.estado,
                     COUNT(DISTINCT c.id_estudiante)::int AS n_calificados,
                     ROUND(AVG(c.valor), 2) AS promedio
              FROM actividades a
@@ -177,15 +177,19 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // PUT /api/actividades/:id -> editar datos basicos
+// Bloqueado si esta cerrada (reabrir primero, solo admin).
 router.put('/:id', requireAuth, async (req, res) => {
     const { nombre, descripcion, fecha_actividad } = req.body || {};
     try {
         const r = await pool.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
         const act = r.rows[0];
+        if (act.estado === 'cerrada') {
+            return res.status(409).json({ error: 'La actividad esta cerrada: reabra antes de editar.' });
+        }
         const esAdmin = req.session.usuario.nombre_rol === 'administrador';
         if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
             return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede editarla.' });
@@ -218,12 +222,15 @@ router.put('/:id', requireAuth, async (req, res) => {
 router.delete('/:id', requireAuth, async (req, res) => {
     try {
         const r = await pool.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
         const act = r.rows[0];
         const esAdmin = req.session.usuario.nombre_rol === 'administrador';
+        if (act.estado === 'cerrada') {
+            return res.status(409).json({ error: 'La actividad esta cerrada: reabra antes de borrar.' });
+        }
         if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
             return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede borrarla.' });
         }
@@ -281,6 +288,57 @@ function filtroCursoMatriculas(vis, pushParams) {
     }
     return '';
 }
+// POST /api/actividades/:id/estado { estado } -> cambiar estado.
+// Flujo: borrador -> publicada -> cerrada. Reabrir (cerrada ->
+// publicada) solo admin. Calificar exige publicada (lo valida el SP).
+router.post('/:id/estado', requireAuth, async (req, res) => {
+    const { estado } = req.body || {};
+    const VALIDOS = ['borrador', 'publicada', 'cerrada'];
+    if (!VALIDOS.includes(estado)) {
+        return res.status(400).json({ error: 'Estado no valido: borrador, publicada o cerrada.' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
+        const r = await client.query(
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            [req.params.id]
+        );
+        if (r.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Actividad no encontrada.' });
+        }
+        const act = r.rows[0];
+        const esAdmin = req.session.usuario.nombre_rol === 'administrador';
+        if (!esAdmin && String(act.creado_por) !== String(req.session.usuario.id_usuario)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Solo quien creo la actividad (o el administrador) puede cambiar su estado.' });
+        }
+        if (!(await materiaPermitida(req.session.usuario, act.id_periodo, act.id_materia))) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo.' });
+        }
+        if (act.estado === 'cerrada' && estado !== 'publicada') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Cerrada solo puede reabrirse a publicada.' });
+        }
+        if (act.estado === 'cerrada' && estado === 'publicada' && !esAdmin) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Solo el administrador puede reabrir una actividad cerrada.' });
+        }
+        await client.query('UPDATE actividades SET estado = $1 WHERE id_actividad = $2', [estado, req.params.id]);
+        await client.query('COMMIT');
+        res.json({ ok: true, mensaje: `Actividad ${estado}.` });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Error al cambiar estado:', error.message);
+        res.status(500).json({ error: 'No se pudo cambiar el estado.' });
+    } finally {
+        client.release();
+    }
+});
+
 // GET /api/actividades/:id/promedios -> resumen por estudiante del parcial
 // (n° insumos y promedios formativos/sumativos + promedio del
 // parcial via fn oficial; los promedios se calculan solos).

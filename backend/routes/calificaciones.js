@@ -213,7 +213,7 @@ function responderErrorNegocio(res, error, mensajeDefecto) {
     if (error.status) {
         return res.status(error.status).json({ error: error.message });
     }
-    if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango/i.test(error.message)) {
+    if (error.code === 'P0001' || /no tiene asignada|no esta matriculado|fuera de rango|no esta activo|acta validada|esta cerrada|esta inactiva/i.test(error.message)) {
         return res.status(400).json({ error: error.message });
     }
     console.error(mensajeDefecto + ':', error.message);

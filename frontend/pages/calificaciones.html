@@ -139,6 +139,20 @@
       return '<span class="badge badge-formativa">Formativa</span>';
     }
 
+    function badgeEstado(a) {
+      const mapa = { borrador: 'badge-warning', publicada: 'badge-success', cerrada: 'badge-danger' };
+      const txt = { borrador: 'Borrador', publicada: 'Publicada', cerrada: 'Cerrada' };
+      return `<span class="badge ${mapa[a.estado] || 'badge-warning'}">${txt[a.estado] || a.estado}</span>`;
+    }
+
+    async function cambiarEstado(id, estado) {
+      try {
+        const r = await apiPost(`/actividades/${id}/estado`, { estado });
+        showOk(r.mensaje);
+        await cargarActividades();
+      } catch (err) { showError(err.message); }
+    }
+
     async function cargarBase(first = false) {
       const data = await apiGet('/calificaciones/contexto?' + params().toString());
       ctxPeriodo = data.idPeriodo;
@@ -197,24 +211,40 @@
       try {
         const d = await apiGet('/actividades?' + params().toString());
         const acts = d.actividades || [];
-        let html = acts.map(a => `
+        let html = acts.map(a => {
+          const est = a.estado || 'borrador';
+          const btnEstado = est === 'borrador'
+            ? `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|publicada">Publicar</button>`
+            : est === 'publicada'
+              ? `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|cerrada">Cerrar</button>`
+              : `<button class="btn-secondary btn-sm" data-estado="${a.id_actividad}|publicada" title="Solo admin">Reabrir</button>`;
+          const btnCalificar = est === 'cerrada'
+            ? `<button class="btn-primary btn-sm" disabled title="Cerrada: no admite notas">Calificar</button>`
+            : `<button class="btn-primary btn-sm" data-calificar="${a.id_actividad}">Calificar</button>`;
+          return `
           <div class="act-card">
             <h3>${esc(a.nombre)}</h3>
-            <div>${badgeTipo(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}</span></div>
+            <div>${badgeTipo(a)} ${badgeEstado(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}</span></div>
             <div class="act-stats">
               <div><strong>${a.n_calificados}</strong><span class="act-meta">calificados</span></div>
               <div><strong>${a.promedio == null ? '—' : a.promedio}</strong><span class="act-meta">promedio</span></div>
             </div>
             <div class="act-actions">
-              <button class="btn-primary btn-sm" data-calificar="${a.id_actividad}">Calificar</button>
+              ${btnCalificar}
+              ${btnEstado}
               <button class="btn-secondary btn-sm" data-borrar="${a.id_actividad}" data-nombre="${esc(a.nombre)}">Borrar</button>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
         html += `<div class="act-card act-nueva" id="card-nueva" role="button" tabindex="0">＋ Nueva actividad</div>`;
         lista.innerHTML = html;
         document.getElementById('card-nueva').onclick = abrirModal;
         lista.querySelectorAll('[data-calificar]').forEach(b => {
           b.onclick = () => abrirCalificar(Number(b.dataset.calificar));
+        });
+        lista.querySelectorAll('[data-estado]').forEach(b => {
+          const [id, estado] = b.dataset.estado.split('|');
+          b.onclick = () => cambiarEstado(Number(id), estado);
         });
         lista.querySelectorAll('[data-borrar]').forEach(b => {
           b.onclick = () => borrarActividad(Number(b.dataset.borrar), b.dataset.nombre);
