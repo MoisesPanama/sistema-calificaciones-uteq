@@ -199,6 +199,7 @@ psql -U postgres -d calificaciones_uteq -f database/27_tipos_reales.sql
 psql -U postgres -d calificaciones_uteq -f database/28_preinscripciones.sql
 psql -U postgres -d calificaciones_uteq -f database/29_supletorios.sql
 psql -U postgres -d calificaciones_uteq -f database/30_cierre_recuperacion.sql
+psql -U postgres -d calificaciones_uteq -f database/31_notas_coherentes.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -316,7 +317,8 @@ sistema-calificaciones-uteq/
 | GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
 | GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
-| GET | `/api/reportes/` | Reporte paginado (admin/profesor/representante; estudiante 403, usa su consulta) |
+| GET | `/api/reportes/` | Reporte paginado con la fórmula oficial (misma que consulta/boletín; admin/profesor/representante; estudiante 403, usa su consulta) |
+| PUT | `/api/auth/password` | Cambio de clave propia `{actual, nueva}` |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |

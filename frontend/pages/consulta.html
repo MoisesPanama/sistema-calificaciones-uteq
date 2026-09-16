@@ -300,7 +300,7 @@
         html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
             <div class="mat-top">
               <span class="mat-nombre">${esc(m.nombre)}</span>
-              ${prom}${esc_}
+              ${prom}${esc_}${pillRec(m)}
               <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
@@ -321,8 +321,15 @@
       await cargarDesglose({ idMateria: grupo.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo });
     }
 
-    function badgeEscala(escala) {
-      const e = (escala || 'S/N').toUpperCase();
+    // Pill de recuperacion validada (M8): si el ciclo cerro con
+    // supletorio/remedial/gracia se muestra junto al promedio.
+    function pillRec(m) {
+      if (!m || !m.recuperacion) return '';
+      const cls = m.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn';
+      return `<span class="pill ${cls}" title="Recuperación validada">${esc(m.recuperacion.instancia)}: ${esc(m.recuperacion.nota)}</span>`;
+    }
+
+    function badgeEscala(escala) {      const e = (escala || 'S/N').toUpperCase();
       const cls = e === 'AD' ? 'badge-AD' : e === 'A' ? 'badge-A' : e === 'AB' ? 'badge-AB' : e === 'B' ? 'badge-B' : 'badge-SN';
       return `<span class="badge-escala ${cls}">${e}</span>`;
     }
@@ -336,7 +343,7 @@
         if (!g.ciclos || g.ciclos.length === 0) return;
 
         div.innerHTML += `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial${append && g.materia ? ' — ' + esc(g.materia.nombre) : ''}</h3>
-          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.</p>` +
+          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.${g.recuperacion ? ` Recuperación validada: <span class="pill ${g.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn'}">${esc(g.recuperacion.instancia)}: ${esc(g.recuperacion.nota)}</span>` : ''}</p>` +
           g.ciclos.map((c, ci) => {
             const promStr = c.promedio != null ? esc(c.promedio) : '—';
             const escalaStr = c.escala || 'S/N';
@@ -421,7 +428,7 @@
         html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
             <div class="mat-top">
               <span class="mat-nombre">${esc(m.nombre)}</span>
-              ${prom}${esc_}
+              ${prom}${esc_}${pillRec(m)}
               <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">

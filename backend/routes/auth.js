@@ -76,6 +76,43 @@ router.post('/periodo-seleccionado', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
+// PUT /api/auth/password { actual, nueva } -> cambio de clave propia.
+// M8 seguridad minima: antes no habia forma de cambiarla sin psql.
+router.put('/password', requireAuth, async (req, res) => {
+    const { actual, nueva } = req.body || {};
+    if (!actual || !nueva) {
+        return res.status(400).json({ error: 'Debes ingresar tu clave actual y la nueva.' });
+    }
+    if (String(nueva).length < 6) {
+        return res.status(400).json({ error: 'La nueva clave debe tener al menos 6 caracteres.' });
+    }
+    if (String(actual) === String(nueva)) {
+        return res.status(400).json({ error: 'La nueva clave debe ser distinta a la actual.' });
+    }
+    try {
+        const r = await pool.query(
+            'SELECT password_hash FROM colegio.usuarios WHERE id_usuario = $1',
+            [req.session.usuario.id_usuario]
+        );
+        if (r.rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+        const ok = await bcrypt.compare(String(actual), r.rows[0].password_hash);
+        if (!ok) {
+            return res.status(401).json({ error: 'Tu clave actual no es correcta.' });
+        }
+        const hash = await bcrypt.hash(String(nueva), 10);
+        await pool.query(
+            'UPDATE colegio.usuarios SET password_hash = $1 WHERE id_usuario = $2',
+            [hash, req.session.usuario.id_usuario]
+        );
+        res.json({ ok: true, mensaje: 'Clave actualizada.' });
+    } catch (error) {
+        console.error('Error al cambiar clave:', error.message);
+        res.status(500).json({ error: 'No se pudo cambiar la clave.' });
+    }
+});
+
 // POST /api/auth/logout -> destruye la sesion
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {

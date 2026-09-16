@@ -80,11 +80,15 @@
           faltasTxt = `${f.resumen.total} (${f.resumen.justificadas} just.)`;
         } catch (_) { /* sin datos */ }
         const obs = (m.parciales || []).filter(p => p.observacion).map(p => `${esc(p.tipo)}: ${esc(p.observacion)}`).join('<br>');
+        const rec = m.recuperacion
+          ? `<span class="pill ${m.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn'}">${esc(m.recuperacion.instancia)}: ${esc(m.recuperacion.nota)}</span>`
+          : '';
+        const obsFinal = [obs, rec].filter(Boolean).join('<br>') || '—';
         filas += `<tr><td>${esc(m.nombre)}</td>
           <td style="text-align:center;">${m.promedio != null ? esc(m.promedio) : 'S/C'}</td>
           <td>${esc(m.escala)}</td>
           <td style="text-align:center;">${faltasTxt}</td>
-          <td style="font-size:0.82rem;">${obs || '—'}</td></tr>`;
+          <td style="font-size:0.82rem;">${obsFinal}</td></tr>`;
       }
       div.innerHTML = `
         <div class="bol-encabezado">

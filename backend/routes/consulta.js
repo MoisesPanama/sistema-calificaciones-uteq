@@ -36,6 +36,30 @@ async function escalaOficial(conn, promedio) {
     return evaluarEscala(promedio);
 }
 
+// Recuperacion validada + estado final (M8, v_estado_final).
+// Si el supletorio/remedial/gracia cerro el ciclo, el boletin
+// y la consulta lo muestran en vez de solo "reprobado".
+async function estadoRecuperacion(conn, idEstudiante, idMateria, idPeriodo) {
+    try {
+        const r = await conn.query(
+            `SELECT estado_materia, instancia_validada, nota_recuperacion
+             FROM v_estado_final
+             WHERE id_estudiante = $1 AND id_materia = $2 AND id_periodo = $3`,
+            [idEstudiante, idMateria, idPeriodo]
+        );
+        if (r.rows.length === 0) return { recuperacion: null, estado_final: null };
+        const v = r.rows[0];
+        return {
+            estado_final: v.estado_materia,
+            recuperacion: v.instancia_validada
+                ? { instancia: v.instancia_validada, nota: v.nota_recuperacion }
+                : null
+        };
+    } catch (_) {
+        return { recuperacion: null, estado_final: null };
+    }
+}
+
 // GET /api/consulta/materia/:id_materia?id_estudiante=&id_periodo=
 // Promedio de UN estudiante en UNA materia con desglose por
 // parcial/ciclo/anual + minimo de insumos (Fase 7).
@@ -177,7 +201,8 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
             promedio,
             escala,
             ciclos,
-            mensajeSinNotas
+            mensajeSinNotas,
+            ...(await estadoRecuperacion(pool, idEstudiante, idMateria, idPeriodo))
         });
     } catch (error) {
         console.error('Error en consulta por materia:', error.message);
@@ -490,6 +515,7 @@ router.get('/', requireAuth, async (req, res) => {
                         throw error;
                     }
                 }
+                Object.assign(materia, await estadoRecuperacion(pool, idEstudiante, materia.id_materia, idPeriodo));
                 if (String(materia.id_materia) === String(idMateriaValida)) {
                     promedioMateriaSel = materia.promedio;
                     escalaMateriaSel = materia.escala;

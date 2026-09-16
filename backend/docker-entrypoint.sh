@@ -27,7 +27,7 @@ NEEDS_SCHEMA=$(psql -h "$DB_HOST" -p "$DB_PORT" -U postgres -d "$DB_NAME" -t -A 
   -c "SELECT COUNT(*) FROM colegio.usuarios;" 2>/dev/null || echo "init")
 
 if [ "$NEEDS_SCHEMA" = "init" ] || [ "$NEEDS_SCHEMA" = "0" ]; then
-  echo "Aplicando migraciones 01..30..."
+  echo "Aplicando migraciones 01..31..."
   psql -h "$DB_HOST" -p "$DB_PORT" -U postgres -d "$DB_NAME" \
     -c "ALTER DATABASE \"$DB_NAME\" SET search_path TO colegio, public;" >/dev/null
   for f in /migrations/01_schema.sql \
@@ -60,7 +60,8 @@ if [ "$NEEDS_SCHEMA" = "init" ] || [ "$NEEDS_SCHEMA" = "0" ]; then
            /migrations/27_tipos_reales.sql \
            /migrations/28_preinscripciones.sql \
            /migrations/29_supletorios.sql \
-           /migrations/30_cierre_recuperacion.sql; do
+           /migrations/30_cierre_recuperacion.sql \
+           /migrations/31_notas_coherentes.sql; do
     echo "-> $(basename $f)"
     psql -h "$DB_HOST" -p "$DB_PORT" -U postgres -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$f" >/dev/null
   done

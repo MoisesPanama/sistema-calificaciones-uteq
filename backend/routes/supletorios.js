@@ -94,6 +94,7 @@ router.get('/', requireAuth, async (req, res) => {
             `SELECT e.id_estudiante, e.nombres, e.apellidos, e.cedula,
                     m.id_curso, c.nombre AS curso_nombre, c.paralelo,
                     mm.estado AS estado_materia,
+                    fn_promedio_materia_safe(e.id_estudiante, $2, $1) AS promedio_anual,
                     s.id_supletorio, s.instancia, s.nota AS supletorio_nota,
                     s.estado AS supletorio_estado
              FROM matriculas m
@@ -112,6 +113,8 @@ router.get('/', requireAuth, async (req, res) => {
         const porEstudiante = new Map();
         for (const row of r.rows) {
             if (!porEstudiante.has(row.id_estudiante)) {
+                const num = row.promedio_anual === null || row.promedio_anual === undefined
+                    ? null : Number(row.promedio_anual);
                 porEstudiante.set(row.id_estudiante, {
                     id_estudiante: row.id_estudiante,
                     nombres: row.nombres,
@@ -121,6 +124,8 @@ router.get('/', requireAuth, async (req, res) => {
                     curso_nombre: row.curso_nombre,
                     paralelo: row.paralelo,
                     estado_materia: row.estado_materia,
+                    promedio_anual: num,
+                    elegible: num !== null && num < 7,
                     instancias: {}
                 });
             }
@@ -136,8 +141,6 @@ router.get('/', requireAuth, async (req, res) => {
 
         const filas = [];
         for (const est of porEstudiante.values()) {
-            const promedio = await promedioAnual(pool, est.id_estudiante, idMateria, idPeriodo);
-            const num = promedio === null || promedio === undefined ? null : Number(promedio);
             const sup = est.instancias.supletorio || null;
             filas.push({
                 ...est,
@@ -145,9 +148,7 @@ router.get('/', requireAuth, async (req, res) => {
                 id_supletorio: sup ? sup.id_supletorio : null,
                 supletorio_nota: sup ? sup.nota : null,
                 supletorio_estado: sup ? sup.estado : null,
-                promedio_anual: num,
-                elegible: num !== null && num < 7,
-                siguiente: (num !== null && num < 7) ? siguienteInstancia(est.instancias) : null
+                siguiente: est.elegible ? siguienteInstancia(est.instancias) : null
             });
         }
         res.json({ supletorios: filas });

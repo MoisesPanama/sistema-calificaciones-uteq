@@ -2,6 +2,10 @@
 // routes/reportes.js — GET /api/reportes
 // Promedios por estudiante en el periodo, con filtros
 // opcionales de curso y materia.
+// UNA SOLA VERDAD (M8): usa fn_promedio_reporte (alias de la
+// oficial) y fn_promedio_general, igual que consulta/boletin.
+// Antes calculaba a mano (pesos muertos, sin 80/20) y daba
+// otro numero que el boletin para el mismo estudiante.
 // =========================================================
 
 const express = require('express');
@@ -11,12 +15,30 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const { getPeriodoActivo } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
-function evaluarEscala(nota) {
-    if (nota == null) return 'S/N';
-    if (nota >= 9.0) return 'AD';
-    if (nota >= 7.0) return 'A';
-    if (nota >= 5.0) return 'B';
-    if (nota >= 3.0) return 'C';
+// Promedio via BD (null si P0001 = sin notas). Nunca a mano.
+async function promedioOficial(conn, idEstudiante, idMateria, idPeriodo) {
+    try {
+        const r = idMateria
+            ? await conn.query('SELECT fn_promedio_reporte($1, $2, $3) AS promedio', [idEstudiante, idMateria, idPeriodo])
+            : await conn.query('SELECT fn_promedio_general($1, $2) AS promedio', [idEstudiante, idPeriodo]);
+        return r.rows[0] ? r.rows[0].promedio : null;
+    } catch (error) {
+        if (error.code === 'P0001') return null;
+        throw error;
+    }
+}
+
+// Escala oficial con fallback local (igual que consulta).
+async function escalaOficial(conn, promedio) {
+    try {
+        const r = await conn.query('SELECT fn_escala_cualitativa($1) AS escala', [promedio]);
+        if (r.rows[0]?.escala) return r.rows[0].escala;
+    } catch (_) { /* usa escala local */ }
+    if (promedio == null) return 'S/N';
+    if (promedio >= 9.0) return 'AD';
+    if (promedio >= 7.0) return 'A';
+    if (promedio >= 5.0) return 'B';
+    if (promedio >= 3.0) return 'C';
     return 'D';
 }
 
@@ -108,33 +130,8 @@ router.get('/', requireAuth, requireRole('administrador', 'profesor', 'represent
                 );
                 paginacion = { page, limit, total, totalPages: Math.ceil(total / limit) };
                 for (const est of rEst.rows) {
-                    let sqlProm = '';
-                    let paramsProm = [];
-                    if (idMateria) {
-                        sqlProm = `SELECT ROUND(SUM(c.valor * te.peso) / NULLIF(SUM(te.peso), 0), 2) AS promedio
-                                   FROM calificaciones c
-                                   JOIN tipos_evaluacion te ON te.id_tipo_evaluacion = c.id_tipo_evaluacion
-                                   WHERE c.id_estudiante = $1 AND c.id_periodo = $2 AND c.id_materia = $3`;
-                        paramsProm = [est.id_estudiante, idPeriodo, idMateria];
-                    } else {
-                        sqlProm = `SELECT ROUND(
-                            SUM(c.valor * te.peso) / NULLIF(SUM(te.peso), 0), 2
-                           ) AS promedio
-                           FROM calificaciones c
-                           JOIN tipos_evaluacion te ON te.id_tipo_evaluacion = c.id_tipo_evaluacion
-                           WHERE c.id_estudiante = $1 AND c.id_periodo = $2`;
-                        paramsProm = [est.id_estudiante, idPeriodo];
-                    }
-                    const rProm = await pool.query(sqlProm, paramsProm);
-                    const promedio = rProm.rows[0]?.promedio;
-                    let escala = evaluarEscala(promedio);
-                    try {
-                        const rEsc = await pool.query(
-                            'SELECT fn_escala_cualitativa($1) AS escala',
-                            [promedio]
-                        );
-                        if (rEsc.rows[0]?.escala) escala = rEsc.rows[0].escala;
-                    } catch (_) { /* usa escala local */ }
+                    const promedio = await promedioOficial(pool, est.id_estudiante, idMateria || null, idPeriodo);
+                    const escala = await escalaOficial(pool, promedio);
                     reporte.push({
                         id_estudiante: est.id_estudiante,
                         nombres: est.nombres,
