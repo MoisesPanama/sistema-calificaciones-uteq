@@ -221,8 +221,10 @@ function responderErrorNegocio(res, error, mensajeDefecto) {
 }
 
 // POST /api/calificaciones/lote -> guarda la tabla masiva en transaccion
+// Acepta id_actividad opcional: si viene, las notas se guardan
+// ligadas a esa actividad (el tipo/parcial/ciclo se heredan).
 router.post('/lote', requireAuth, async (req, res) => {
-    const { id_periodo, id_materia, notas, id_parcial, id_ciclo } = req.body || {};
+    const { id_periodo, id_materia, notas, id_parcial, id_ciclo, id_actividad } = req.body || {};
 
     if (!id_periodo) return res.status(400).json({ error: 'Falta el periodo.' });
     if (!id_materia) return res.status(400).json({ error: 'Debe seleccionar una materia.' });
@@ -237,19 +239,42 @@ router.post('/lote', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'No ingreso ninguna calificacion.' });
     }
 
+    let numActividad = null;
+    if (id_actividad !== undefined && id_actividad !== null && id_actividad !== '') {
+        numActividad = Number(id_actividad);
+        if (!Number.isInteger(numActividad)) {
+            return res.status(400).json({ error: 'La actividad seleccionada no es valida.' });
+        }
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const { idParcial, idCiclo } = await validarContextoEvaluativo(client, id_periodo, id_parcial, id_ciclo);
+        // Con actividad, el tipo lo hereda el SP; aqui se usa el
+        // tipo real de la actividad para el CAST del CALL.
+        let tipoActividad = null;
+        if (numActividad !== null) {
+            const rAct = await client.query(
+                'SELECT id_tipo_evaluacion FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+                [numActividad]
+            );
+            if (rAct.rows.length === 0) {
+                const error = new Error('La actividad seleccionada no existe.');
+                error.status = 400;
+                throw error;
+            }
+            tipoActividad = rAct.rows[0].id_tipo_evaluacion;
+        }
         for (const e of entradas) {
             const valor = Number(String(e.crudo).replace(',', '.'));
             if (!Number.isFinite(valor)) {
                 throw new Error('Valor no numerico para el estudiante ' + e.idEst + ': "' + e.crudo + '"');
             }
             await client.query(
-                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8)',
-                [e.idEst, id_materia, id_periodo, e.idTipo, valor, req.session.usuario.id_usuario, idParcial, idCiclo]
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+                [e.idEst, id_materia, id_periodo, tipoActividad !== null ? tipoActividad : e.idTipo, valor, req.session.usuario.id_usuario, idParcial, idCiclo, numActividad]
             );
         }
         await client.query('COMMIT');
@@ -263,18 +288,25 @@ router.post('/lote', requireAuth, async (req, res) => {
 });
 
 // POST /api/calificaciones -> registro individual
+// Acepta id_actividad opcional (hereda tipo/parcial/ciclo).
 router.post('/', requireAuth, async (req, res) => {
-    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, id_parcial, id_ciclo } = req.body || {};
+    const { id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor, id_parcial, id_ciclo, id_actividad } = req.body || {};
     const errores = [];
     if (!id_estudiante) errores.push('Debe seleccionar un estudiante.');
     if (!id_materia) errores.push('Debe seleccionar una materia.');
     if (!id_periodo) errores.push('Debe seleccionar un periodo.');
-    if (!id_tipo_evaluacion) errores.push('Debe seleccionar un tipo de evaluacion.');
+    if (!id_tipo_evaluacion && !id_actividad) errores.push('Debe seleccionar un tipo de evaluacion.');
     if (valor === undefined || valor === null || String(valor).trim() === '') errores.push('Debe ingresar una calificacion.');
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
     const numerico = Number(String(valor).replace(',', '.'));
     if (isNaN(numerico)) return res.status(400).json({ error: 'La calificacion debe ser un numero.' });
+
+    let numActividad = null;
+    if (id_actividad !== undefined && id_actividad !== null && id_actividad !== '') {
+        numActividad = Number(id_actividad);
+        if (!Number.isInteger(numActividad)) return res.status(400).json({ error: 'La actividad seleccionada no es valida.' });
+    }
 
     const permitidas = await getMateriasPermitidas(pool, req.session.usuario, id_periodo);
     if (!permitidas.some((m) => String(m.id_materia) === String(id_materia))) {
@@ -287,9 +319,22 @@ router.post('/', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const { idParcial, idCiclo } = await validarContextoEvaluativo(client, id_periodo, id_parcial, id_ciclo);
+            let tipoEfectivo = id_tipo_evaluacion;
+            if (numActividad !== null) {
+                const rAct = await client.query(
+                    'SELECT id_tipo_evaluacion FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+                    [numActividad]
+                );
+                if (rAct.rows.length === 0) {
+                    const error = new Error('La actividad seleccionada no existe.');
+                    error.status = 400;
+                    throw error;
+                }
+                tipoEfectivo = rAct.rows[0].id_tipo_evaluacion;
+            }
             await client.query(
-                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8)',
-                [id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, numerico, req.session.usuario.id_usuario, idParcial, idCiclo]
+                'CALL sp_registrar_calificacion($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+                [id_estudiante, id_materia, id_periodo, tipoEfectivo, numerico, req.session.usuario.id_usuario, idParcial, idCiclo, numActividad]
             );
             await client.query('COMMIT');
             res.status(201).json({ ok: true, mensaje: 'Calificacion registrada correctamente.' });
@@ -305,3 +350,4 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.validarContextoEvaluativo = validarContextoEvaluativo;

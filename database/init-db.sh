@@ -1,7 +1,12 @@
 #!/bin/sh
 set -e
 
-PSQL="psql -U postgres -d calificaciones_uteq"
+# Las migraciones 10+ no declaran SET search_path (el proceso
+# manual usa ALTER DATABASE ... SET search_path). Aqui se
+# fija por sesion para que los nombres sin esquema resuelvan
+# a colegio. ON_ERROR_STOP: falla rapido en vez de cascada.
+export PGOPTIONS="-c search_path=colegio,public"
+PSQL="psql -v ON_ERROR_STOP=1 -U postgres -d calificaciones_uteq"
 
 echo "=== [init] Ejecutando migraciones 01-21 ==="
 
@@ -28,7 +33,8 @@ for f in \
   18_representantes.sql \
   19_datos_sinteticos.sql \
   20_unique_asignaciones_por_curso.sql \
-  21_rol_estudiante_y_matriculas.sql
+  21_rol_estudiante_y_matriculas.sql \
+  22_actividades.sql
 do
   echo "  -> $f"
   $PSQL -f "/docker-entrypoint-initdb.d/sql/$f"
@@ -36,5 +42,9 @@ done
 
 echo "=== [init] Configurando password de app_uteq ==="
 $PSQL -c "ALTER ROLE app_uteq WITH PASSWORD 'UTEQ2026';"
+
+echo "=== [init] search_path por defecto (igual que instalacion manual) ==="
+$PSQL -c "ALTER DATABASE calificaciones_uteq SET search_path TO colegio, public;"
+$PSQL -c "ALTER ROLE app_uteq SET search_path TO colegio, public;"
 
 echo "=== [init] Listo ==="
