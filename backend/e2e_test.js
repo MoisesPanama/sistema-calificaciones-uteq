@@ -665,6 +665,93 @@ const loginAs = async (email) => {
   const nombres20 = (ctx20.body.tiposEvaluacion || []).map(t => t.nombre);
   log('Planilla sin Parcial 1/2', !nombres20.some(n => /^parcial \d/i.test(n)), nombres20.join(', '));
 
+  console.log('\n=== 21. PREINSCRIPCION PUBLICA + APROBACION ===');
+  for (const k of Object.keys(cookies)) delete cookies[k];
+  const tag21 = Date.now().toString(36);
+  const solBody = new URLSearchParams({
+    nombres: 'Preins', apellidos: 'Crito Uno',
+    cedula: '29' + String(Date.now()).slice(-8),
+    fecha_nacimiento: '2012-04-05',
+    rep_nombres: 'Padre Pre', rep_apellidos: 'Crito Uno',
+    rep_telefono: '0990000111', id_periodo: String(idPeriodo)
+  }).toString();
+  const sol21 = await new Promise((resolve) => {
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(solBody);
+    req.end();
+  });
+  log('Solicitud publica sin login', sol21.status === 201 && !!sol21.body.id_solicitud, sol21.body.error || '');
+  const dup21 = await new Promise((resolve) => {
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(solBody);
+    req.end();
+  });
+  log('Duplicada -> 409', dup21.status === 409, '');
+  await loginAs('elena.romero@uteq.edu.ec');
+  const bandejaProf = await get('/preinscripciones/?estado=pendiente');
+  log(' Profesora no ve bandeja -> 403', bandejaProf.status === 403, '');
+  await loginAs('admin@uteq.edu.ec');
+  const bandeja = await get('/preinscripciones/?estado=pendiente');
+  const mia = (bandeja.body.datos || []).find(s => s.id_solicitud === sol21.body.id_solicitud);
+  log('Bandeja admin la trae', bandeja.status === 200 && !!mia, '');
+  const aprueba = await post(`/preinscripciones/${sol21.body.id_solicitud}/aprobar`, {});
+  log('Aprobar crea todo', aprueba.status === 201 && !!aprueba.body.id_estudiante && !!aprueba.body.email,
+    aprueba.body.error || `${aprueba.body.email}`);
+  if (aprueba.body.id_estudiante) {
+    const verMat = await get(`/matriculas/?id_periodo=${idPeriodo}&q=${encodeURIComponent('Preins')}`);
+    log('Matriculado visible', verMat.status === 200 && (verMat.body.datos || []).length > 0, '');
+  }
+  const sol21b = await new Promise((resolve) => {
+    const b2 = new URLSearchParams({
+      nombres: 'Rech', apellidos: 'Zado Uno', cedula: '28' + String(Date.now()).slice(-8),
+      fecha_nacimiento: '2012-04-05', rep_nombres: 'Padre Re', rep_apellidos: 'Chazo Uno',
+      id_periodo: String(idPeriodo)
+    }).toString();
+    const opts = {
+      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(b2) }
+    };
+    const req = http.request(opts, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        let json; try { json = JSON.parse(data); } catch { json = data; }
+        resolve({ status: res.statusCode, body: json });
+      });
+    });
+    req.on('error', () => resolve({ status: 0, body: {} }));
+    req.write(b2);
+    req.end();
+  });
+  if (sol21b.body.id_solicitud) {
+    const rech = await post(`/preinscripciones/${sol21b.body.id_solicitud}/rechazar`, { motivo: 'E2E: cupo lleno' });
+    log('Rechazar con motivo', rech.status === 200, rech.body.error || '');
+  }
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preinscripción - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .wizard-pasos { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
+    .wizard-pasos span { flex: 1; text-align: center; font-size: 0.78rem; font-weight: 700; padding: 0.45rem; border-radius: 8px; background: #eef2f7; color: #6b7280; }
+    .wizard-pasos span.activo { background: #1e3a8a; color: white; }
+    .wizard-panel { display: none; }
+    .wizard-panel.activo { display: block; }
+  </style>
+</head>
+<body class="login-body">
+  <div class="login-box" style="max-width:560px;">
+    <h1>Preinscripción</h1>
+    <h2>Completa los datos; el colegio revisará tu solicitud</h2>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <div id="formulario">
+      <div class="wizard-pasos">
+        <span id="paso-t1" class="activo">1. Estudiante</span>
+        <span id="paso-t2">2. Acudiente</span>
+        <span id="paso-t3">3. Curso y envío</span>
+      </div>
+      <div class="wizard-panel activo" id="paso-1">
+        <label for="nombres">Nombres del aspirante</label>
+        <input type="text" id="nombres" required>
+        <label for="apellidos">Apellidos</label>
+        <input type="text" id="apellidos" required>
+        <label for="cedula">Cédula</label>
+        <input type="text" id="cedula" required>
+        <label for="fecha_nacimiento">Fecha de nacimiento</label>
+        <input type="date" id="fecha_nacimiento" required>
+        <div class="form-actions"><button class="btn-primary" id="sig1">Siguiente</button></div>
+      </div>
+      <div class="wizard-panel" id="paso-2">
+        <label for="rep_nombres">Nombres del acudiente</label>
+        <input type="text" id="rep_nombres" required>
+        <label for="rep_apellidos">Apellidos del acudiente</label>
+        <input type="text" id="rep_apellidos" required>
+        <label for="rep_telefono">Teléfono</label>
+        <input type="text" id="rep_telefono">
+        <label for="rep_email">Email</label>
+        <input type="email" id="rep-email" placeholder="avisa el resultado">
+        <div class="form-actions">
+          <button class="btn-secondary" id="ant2">Atrás</button>
+          <button class="btn-primary" id="sig2">Siguiente</button>
+        </div>
+      </div>
+      <div class="wizard-panel" id="paso-3">
+        <label for="sel-periodo">Periodo</label>
+        <select id="sel-periodo"></select>
+        <label for="sel-curso">Curso (opcional)</label>
+        <select id="sel-curso"><option value="">-- Sin preferencia --</option></select>
+        <label for="documento">Documento PDF (opcional)</label>
+        <input type="file" id="documento" accept=".pdf">
+        <div class="form-actions">
+          <button class="btn-secondary" id="ant3">Atrás</button>
+          <button class="btn-primary" id="enviar">Enviar solicitud</button>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:1rem;font-size:0.85rem;"><a href="login.html">Volver al inicio de sesión</a></p>
+  </div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+    function irPaso(n) {
+      [1, 2, 3].forEach(i => {
+        document.getElementById('paso-' + i).classList.toggle('activo', i === n || (n === 4));
+        document.getElementById('paso-t' + i).classList.toggle('activo', i <= n);
+      });
+      if (n === 4) document.getElementById('formulario').style.display = 'none';
+    }
+    function req(id, nombre) {
+      const v = document.getElementById(id).value.trim();
+      if (!v) { showError('Falta: ' + nombre + '.'); return null; }
+      return v;
+    }
+    (async () => {
+      try {
+        const d = await apiGet('/preinscripciones/opciones');
+        document.getElementById('sel-periodo').innerHTML =
+          (d.periodos || []).map(p => `<option value="${p.id_periodo}" ${String(p.id_periodo) === String(d.periodoActivo?.id_periodo) ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('');
+        const pintarCursos = async () => {
+          const c = await apiGet('/preinscripciones/opciones?id_periodo=' + encodeURIComponent(document.getElementById('sel-periodo').value));
+          document.getElementById('sel-curso').innerHTML = '<option value="">-- Sin preferencia --</option>' +
+            (c.cursos || []).map(x => `<option value="${x.id_curso}">${esc(x.nombre)} ${esc(x.paralelo || '')}</option>`).join('');
+        };
+        await pintarCursos();
+        document.getElementById('sel-periodo').onchange = () => pintarCursos().catch(showError);
+      } catch (err) { showError(err.message); return; }
+
+      document.getElementById('sig1').onclick = () => {
+        if (!req('nombres', 'nombres') || !req('apellidos', 'apellidos') ||
+            !req('cedula', 'cédula') || !req('fecha_nacimiento', 'fecha')) return;
+        irPaso(2);
+      };
+      document.getElementById('ant2').onclick = () => irPaso(1);
+      document.getElementById('sig2').onclick = () => {
+        if (!req('rep_nombres', 'nombres del acudiente') || !req('rep_apellidos', 'apellidos del acudiente')) return;
+        irPaso(3);
+      };
+      document.getElementById('ant3').onclick = () => irPaso(2);
+      document.getElementById('enviar').onclick = async () => {
+        try {
+          const fd = new FormData();
+          ['nombres', 'apellidos', 'cedula', 'fecha_nacimiento', 'rep_nombres', 'rep_apellidos'].forEach(k =>
+            fd.append(k, document.getElementById(k).value));
+          fd.append('rep_telefono', document.getElementById('rep_telefono').value);
+          fd.append('rep_email', document.getElementById('rep-email').value);
+          fd.append('id_periodo', document.getElementById('sel-periodo').value);
+          fd.append('id_curso', document.getElementById('sel-curso').value);
+          const f = document.getElementById('documento').files[0];
+          if (f) fd.append('documento', f);
+          const res = await fetch('/api/preinscripciones/', { method: 'POST', body: fd });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+          document.getElementById('ok').textContent = data.mensaje + ' (N.º ' + data.id_solicitud + ')';
+          document.getElementById('ok').style.display = 'block';
+          irPaso(4);
+        } catch (err) { showError(err.message); }
+      };
+    })();
+  </script>
+</body>
+</html>

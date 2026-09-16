@@ -28,8 +28,8 @@ test('planilla en blanco para el aula', async ({ page }) => {
   const nombres = headers.slice(2).map(h => h.trim());
   expect(nombres.length).toBeGreaterThan(0);
   expect(nombres.some(n => /^parcial \d/i.test(n))).toBe(false);
-  const idxExam = nombres.findIndex(n => /examen/i.test(n));
-  expect(idxExam === -1 || idxExam === nombres.length - 1).toBe(true);
+  // Examen al ultimo (puede haber Examen Final + Quimestral al cierre).
+  expect(/examen/i.test(nombres[nombres.length - 1])).toBe(true);
 });
 
 test('estudiante ve su boletin propio', async ({ page }) => {
