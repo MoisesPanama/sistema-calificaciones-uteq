@@ -422,7 +422,7 @@ router.get('/', requireAuth, async (req, res) => {
                 ? idMateria : '';
 
             let sqlNotas = `SELECT c.id_materia, mat.nombre AS materia,
-                                   te.nombre AS tipo_evaluacion, c.valor
+                                   te.nombre AS tipo_evaluacion, c.valor, c.observacion
                             FROM calificaciones c
                             JOIN materias mat ON mat.id_materia = c.id_materia
                             JOIN tipos_evaluacion te ON te.id_tipo_evaluacion = c.id_tipo_evaluacion
@@ -457,7 +457,8 @@ router.get('/', requireAuth, async (req, res) => {
                 }
                 materiasMap.get(fila.id_materia).parciales.push({
                     tipo: fila.tipo_evaluacion,
-                    valor: fila.valor
+                    valor: fila.valor,
+                    observacion: fila.observacion || null
                 });
             });
             materias = Array.from(materiasMap.values());

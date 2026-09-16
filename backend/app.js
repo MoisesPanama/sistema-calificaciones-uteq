@@ -64,6 +64,7 @@ app.use('/api/periodos', require('./routes/periodos'));
 app.use('/api/calificaciones', require('./routes/calificaciones'));
 app.use('/api/actividades', require('./routes/actividades'));
 app.use('/api/entregas', require('./routes/entregas'));
+app.use('/api/asistencias', require('./routes/asistencias'));
 app.use('/api/adjuntos', require('./routes/adjuntos'));
 app.use('/api/documentos', require('./routes/documentos'));
 app.use('/api/actas', require('./routes/actas'));

@@ -172,6 +172,7 @@ psql -U postgres -d calificaciones_uteq -f database/22_actividades.sql
 psql -U postgres -d calificaciones_uteq -f database/23_cierre_notas.sql
 psql -U postgres -d calificaciones_uteq -f database/24_entregas.sql
 psql -U postgres -d calificaciones_uteq -f database/25_adjuntos.sql
+psql -U postgres -d calificaciones_uteq -f database/26_fallas_observaciones.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -322,6 +323,8 @@ sistema-calificaciones-uteq/
 | PUT/DELETE | `/api/documentos/tipos/:id` | Editar / borrar sin uso (admin) |
 | GET/POST | `/api/documentos/por-estudiante/:id` | Checklist + subir (reemplaza vigente) |
 | GET/DELETE | `/api/documentos/:id` + `/descargar` | Descargar (con auth) / quitar |
+| GET/POST | `/api/asistencias/` | Faltas por estudiante/materia/periodo / registrar |
+| DELETE | `/api/asistencias/:id` | Quitar falta |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

@@ -612,6 +612,43 @@ const loginAs = async (email) => {
   const borraTipoDoc = await del(`/documentos/tipos/${idTipo18}`);
   log('Borrar tipo sin uso', borraTipoDoc.status === 200, borraTipoDoc.body.error || '');
 
+  console.log('\n=== 19. OBSERVACIONES + FALLAS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const obs19 = await post('/calificaciones/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo,
+    id_tipo_evaluacion: 1, valor: 8.5, observacion: 'E2E obs ' + Date.now().toString(36)
+  });
+  log('Individual con observacion', obs19.status === 201, obs19.body.error || '');
+  const consObs = await get(`/consulta/?id_periodo=${idPeriodo}&id_estudiante=1`);
+  const hayObs = (consObs.body.materias || []).some(m =>
+    (m.parciales || []).some(p => p.observacion && p.observacion.startsWith('E2E obs')));
+  log('Observacion visible en consulta', consObs.status === 200 && hayObs, '');
+  const falta19 = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Registrar falta', [201, 409].includes(falta19.status), falta19.body.error || '');
+  const dupFalta = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Falta duplicada mismo dia -> 409', dupFalta.status === 409, '');
+  const resum19 = await get(`/asistencias/?id_estudiante=1&id_materia=1&id_periodo=${idPeriodo}`);
+  log('Resumen de faltas', resum19.status === 200 && resum19.body.resumen && resum19.body.resumen.total >= 1,
+    JSON.stringify(resum19.body.resumen || {}));
+  if ((resum19.body.faltas || []).length > 0) {
+    const borraFalta = await del(`/asistencias/${resum19.body.faltas[0].id_asistencia}`);
+    log('Quitar falta', borraFalta.status === 200, borraFalta.body.error || '');
+  }
+  await loginAs('elena.romero@uteq.edu.ec');
+  const faltaAjen = await post('/asistencias/', {
+    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+  });
+  log('Falta en materia no asignada -> 403', faltaAjen.status === 403, '');
+  await loginAs('fernando.castillo@uteq.edu.ec');
+  const faltaRep = await get('/asistencias/?id_estudiante=8&id_materia=1&id_periodo=' + idPeriodo);
+  log('Representante ve faltas del hijo', faltaRep.status === 200, '');
+  const faltaRep2 = await get('/asistencias/?id_estudiante=1&id_materia=1&id_periodo=' + idPeriodo);
+  log('Representante no ve ajenos -> 403', faltaRep2.status === 403, '');
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;
