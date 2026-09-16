@@ -1,10 +1,10 @@
 // Calificaciones por actividades: crear, calificar y guardar.
 const { test, expect } = require('@playwright/test');
-const { login } = require('./helpers.cjs');
+const { go, login } = require('./helpers.cjs');
 
 test.beforeEach(async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
-  await page.goto('/pages/calificaciones.html');
+  await go(page, '/pages/calificaciones.html');
   await expect(page.locator('h1')).toContainText('Registrar Calificaciones');
 });
 
