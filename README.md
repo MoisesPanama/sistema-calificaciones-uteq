@@ -325,6 +325,8 @@ sistema-calificaciones-uteq/
 | GET/DELETE | `/api/documentos/:id` + `/descargar` | Descargar (con auth) / quitar |
 | GET/POST | `/api/asistencias/` | Faltas por estudiante/materia/periodo / registrar |
 | DELETE | `/api/asistencias/:id` | Quitar falta |
+| Páginas | `boletin.html` | Boletín imprimible por estudiante (con fallas y observaciones) |
+| Páginas | `planilla.html` | Planilla en blanco para el aula (docente/admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |
