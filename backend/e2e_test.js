@@ -649,6 +649,22 @@ const loginAs = async (email) => {
   const faltaRep2 = await get('/asistencias/?id_estudiante=1&id_materia=1&id_periodo=' + idPeriodo);
   log('Representante no ve ajenos -> 403', faltaRep2.status === 403, '');
 
+  console.log('\n=== 20. TIPOS REALES: ORDEN Y LEGACY ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tipos20 = await get('/tipos/');
+  const lista20 = tipos20.body.tiposEvaluacion || [];
+  const idxUltForm = Math.max(...lista20.map((t, i) => t.categoria === 'formativa' && !t.es_legacy ? i : -1));
+  const idxPrimerExam = Math.min(...lista20.map((t, i) => t.es_examen && !t.es_legacy ? i : 9999));
+  log('Examen despues de formativas', tipos20.status === 200 && idxUltForm < idxPrimerExam,
+    lista20.map(t => t.nombre).join(', '));
+  const acts20 = await get('/actividades/tipos');
+  log('Creacion sin legacy ni diagnostica',
+    acts20.status === 200 && (acts20.body.tipos || []).every(t => !t.es_legacy && t.categoria !== 'diagnostica'),
+    `${(acts20.body.tipos || []).length} tipos`);
+  const ctx20 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const nombres20 = (ctx20.body.tiposEvaluacion || []).map(t => t.nombre);
+  log('Planilla sin Parcial 1/2', !nombres20.some(n => /^parcial \d/i.test(n)), nombres20.join(', '));
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

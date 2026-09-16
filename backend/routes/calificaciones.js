@@ -17,10 +17,7 @@ const {
     getMateriasPermitidas,
     getCursosPermitidos
 } = require('../helpers/contexto');
-
-// Tipos de evaluacion permitidos en el formulario de carga.
-const TIPOS_PERMITIDOS = new Set([1, 2, 3, 4, 6, 9]);
-// Parcial 1, Parcial 2, Parcial 3, Tarea, Taller Grupal, Evaluacion Diagnostica
+const { tiposCalificables } = require('../helpers/tipos');
 
 // Carga estudiantes matriculados + notas existentes (reutilizable)
 async function cargarTabla(idPeriodo, idMateria, idCurso, page, limit) {
@@ -106,11 +103,10 @@ router.get('/contexto', requireAuth, async (req, res) => {
         const materias = await getMateriasPermitidas(pool, req.session.usuario, idPeriodo);
         const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
         const tiposRes = await pool.query(
-            `SELECT id_tipo_evaluacion, nombre, peso
+            `SELECT id_tipo_evaluacion, nombre, peso, categoria, es_examen, orden
              FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = ANY($1)
-             ORDER BY nombre`,
-            [Array.from(TIPOS_PERMITIDOS)]
+             WHERE NOT es_legacy AND categoria IN ('formativa', 'sumativa')
+             ORDER BY orden, nombre`
         );
 
         const idMateria = req.query.id_materia || '';

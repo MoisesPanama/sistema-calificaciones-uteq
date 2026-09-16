@@ -26,12 +26,9 @@ const {
 } = require('../helpers/contexto');
 const { validarContextoEvaluativo } = require('./calificaciones');
 
-// Tipos que pueden usarse como actividad (formativa/sumativa
-// que cuentan para promedio; se excluyen los pseudo-tipos
-// legacy Parcial 1/2 que eran contenedores, no insumos).
-const TIPOS_ACTIVIDAD = [3, 4, 5, 6, 7, 8];
-// 3 Examen Final, 4 Tarea, 5 Leccion, 6 Taller Grupal,
-// 7 Proyecto Interdisciplinar, 8 Examen Quimestral
+// Tipos calificables salen de la BD (helpers/tipos): nada
+// hardcodeado por id, ordenados con examen al ultimo.
+const { tiposCalificables } = require('../helpers/tipos');
 
 async function materiaPermitida(usuario, idPeriodo, idMateria) {
     const materias = await getMateriasPermitidas(pool, usuario, idPeriodo);
@@ -41,14 +38,7 @@ async function materiaPermitida(usuario, idPeriodo, idMateria) {
 // GET /api/actividades/tipos -> catalogo para el formulario
 router.get('/tipos', requireAuth, async (req, res) => {
     try {
-        const r = await pool.query(
-            `SELECT id_tipo_evaluacion, nombre, categoria, es_examen
-             FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = ANY($1)
-             ORDER BY CASE WHEN categoria = 'formativa' THEN 0 ELSE 1 END, nombre`,
-            [TIPOS_ACTIVIDAD]
-        );
-        res.json({ tipos: r.rows });
+        res.json({ tipos: await tiposCalificables(pool) });
     } catch (error) {
         console.error('Error al listar tipos de actividad:', error.message);
         res.status(500).json({ error: 'No se pudieron cargar los tipos de actividad.' });
@@ -124,8 +114,9 @@ router.post('/', requireAuth, async (req, res) => {
         const rTipo = await client.query(
             `SELECT id_tipo_evaluacion, nombre, categoria
              FROM tipos_evaluacion
-             WHERE id_tipo_evaluacion = $1 AND id_tipo_evaluacion = ANY($2)`,
-            [id_tipo_evaluacion, TIPOS_ACTIVIDAD]
+             WHERE id_tipo_evaluacion = $1
+               AND NOT es_legacy AND categoria IN ('formativa', 'sumativa')`,
+            [id_tipo_evaluacion]
         );
         if (rTipo.rows.length === 0) {
             const error = new Error('El tipo de actividad no es valido para calificar.');
