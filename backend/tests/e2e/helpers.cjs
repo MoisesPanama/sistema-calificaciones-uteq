@@ -1,4 +1,8 @@
 // Helpers compartidos de la suite Playwright.
+// BASE_URL absoluta: no depende solo del baseURL del config, asi los
+// tests corren igual con --config o sin el (p. ej. desde la raiz o VSCode).
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+
 async function login(page, email, password = 'UTEQ2026') {
   // Sin esto, el auto-redirect del login (si ya hay sesion)
   // saca a dashboard y los fill() esperan eternamente.
@@ -9,7 +13,7 @@ async function login(page, email, password = 'UTEQ2026') {
   let navegado = false;
   for (let intento = 0; intento < 3 && !navegado; intento++) {
     try {
-      await page.goto('/pages/login.html', { waitUntil: 'domcontentloaded' });
+      await page.goto(BASE_URL + '/pages/login.html', { waitUntil: 'domcontentloaded' });
       navegado = true;
     } catch (e) {
       if (!/ERR_ABORTED|interrupted by another navigation/.test(String(e && e.message))) throw e;
@@ -36,4 +40,12 @@ async function api(page, method, path, body) {
   }, { method, path, body });
 }
 
-module.exports = { login, api };
+/**
+ * Navega a una ruta relativa usando BASE_URL absoluta.
+ * Usar en vez de page.goto('/...') para no depender del baseURL del config.
+ */
+async function go(page, path, options) {
+  return page.goto(BASE_URL + path, options);
+}
+
+module.exports = { login, api, go, BASE_URL };

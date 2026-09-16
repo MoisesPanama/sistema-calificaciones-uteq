@@ -1,6 +1,6 @@
 // Auth: login de los 5 roles + error + guard sin sesion.
 const { test, expect } = require('@playwright/test');
-const { login } = require('./helpers.cjs');
+const { go, login } = require('./helpers.cjs');
 
 const USERS = [
   ['admin@uteq.edu.ec', 'administrador'],
@@ -17,7 +17,7 @@ for (const [email, rol] of USERS) {
 }
 
 test('password incorrecta muestra error y no redirige', async ({ page }) => {
-  await page.goto('/pages/login.html');
+  await go(page, '/pages/login.html');
   await page.locator('#email').fill('admin@uteq.edu.ec');
   await page.locator('#password').fill('CLAVE-MALA');
   await page.locator('#form-login button[type="submit"]').click();
@@ -26,6 +26,6 @@ test('password incorrecta muestra error y no redirige', async ({ page }) => {
 });
 
 test('sin sesion redirige al login', async ({ page }) => {
-  await page.goto('/pages/auditoria.html');
+  await go(page, '/pages/auditoria.html');
   await expect(page).toHaveURL(/login\.html/, { timeout: 15000 });
 });

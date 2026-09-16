@@ -1,10 +1,10 @@
 // Consulta por bloques + asignaciones (admin).
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 test('bloques llevan a nomina paginada y al detalle', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/consulta.html');
+  await go(page, '/pages/consulta.html');
   await expect(page.locator('.cat-card').first()).toBeVisible({ timeout: 15000 });
   const nBloques = await page.locator('.cat-card').count();
   expect(nBloques).toBeGreaterThanOrEqual(2);
@@ -31,7 +31,7 @@ test('profesor solo ve sus bloques', async ({ page }) => {
 
 test('asignar desde catalogos responde ok o 409 justificado', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/catalogos.html');
+  await go(page, '/pages/catalogos.html');
   await page.locator('#tab-btn-asig').click();
   await expect(page.locator('#lista-asig')).toBeVisible({ timeout: 15000 });
   await page.locator('#asg-guardar').click();

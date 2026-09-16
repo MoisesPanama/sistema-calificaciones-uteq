@@ -1,13 +1,13 @@
 // Demo admin visible: estudiante desde 0 + materia nueva + matricula.
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 const tag = Date.now().toString(36);
 let idEst = null;
 
 test('1. admin crea un estudiante desde cero', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/estudiante-form.html');
+  await go(page, '/pages/estudiante-form.html');
   await page.locator('#cedula').fill('20' + String(Date.now()).slice(-8));
   await page.locator('#nombre1').fill('Demo');
   await page.locator('#nombre2').fill(tag);
@@ -34,7 +34,7 @@ test('1. admin crea un estudiante desde cero', async ({ page }) => {
 
 test('2. admin crea una materia nueva', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/materias.html');
+  await go(page, '/pages/materias.html');
   await page.locator('#btn-modal').click();
   await page.locator('#nombre').fill('DemoMat ' + tag);
   await page.locator('#descripcion').fill('Materia de demostracion');
@@ -44,7 +44,7 @@ test('2. admin crea una materia nueva', async ({ page }) => {
 
 test('3. admin matricula al nuevo estudiante', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/matriculas.html');
+  await go(page, '/pages/matriculas.html');
   await expect(page.locator('#sel-estudiante option').nth(1)).toBeAttached({ timeout: 15000 });
   await page.locator('#sel-estudiante').selectOption(String(idEst));
   const nCursos = await page.locator('#sel-curso option').count();

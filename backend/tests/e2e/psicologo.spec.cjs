@@ -1,10 +1,10 @@
 // Psicologo: resumen global + tabla paginada de 10.
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 test('rendimiento muestra resumen, alertas y maximo 10 filas', async ({ page }) => {
   await login(page, 'maria.torres@uteq.edu.ec');
-  await page.goto('/pages/psicologo.html');
+  await go(page, '/pages/psicologo.html');
   await expect(page.locator('h1')).toContainText('Rendimiento');
   await expect(page.locator('#resumen')).toBeVisible({ timeout: 15000 });
   const resumenCards = page.locator('#resumen .card');

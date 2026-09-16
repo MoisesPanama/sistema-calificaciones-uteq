@@ -1,6 +1,6 @@
 // Rol estudiante: solo sus notas, sin reportes.
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 let tag = '';
 
@@ -23,13 +23,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('sidebar sin Reportes', async ({ page }) => {
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   await expect(page.locator('.sidebar-nav')).toContainText('Consultar Notas', { timeout: 15000 });
   await expect(page.locator('.sidebar-nav')).not.toContainText('Reportes');
 });
 
 test('consulta muestra lo propio sin elegir a nadie', async ({ page }) => {
-  await page.goto('/pages/consulta.html');
+  await go(page, '/pages/consulta.html');
   await expect(page.locator('#vista-detalle')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#vista-bloques')).toBeHidden();
 });
@@ -48,7 +48,7 @@ test('sin notas ve tarjetas Sin calificar, no error', async ({ page }) => {
     id_periodo: per.data.periodoActivo.id_periodo, id_curso: null
   });
   await login(page, crea.data.email);
-  await page.goto('/pages/consulta.html');
+  await go(page, '/pages/consulta.html');
   await expect(page.locator('#vista-detalle')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#resultado')).toContainText('Sin calificar');
   await expect(page.locator('#resultado .alert-error')).toHaveCount(0);
@@ -81,7 +81,7 @@ test('sin botones de regreso a bloques/nomina', async ({ page }) => {
     id_periodo: per.data.periodoActivo.id_periodo, id_curso: null
   });
   await login(page, crea.data.email);
-  await page.goto('/pages/consulta.html');
+  await go(page, '/pages/consulta.html');
   await expect(page.locator('#vista-detalle')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#btn-grupos')).toBeHidden();
   await expect(page.locator('#btn-nomina')).toBeHidden();

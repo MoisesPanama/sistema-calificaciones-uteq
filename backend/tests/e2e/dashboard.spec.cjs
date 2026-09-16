@@ -1,10 +1,10 @@
 // Dashboard por rol + combobox de representantes.
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 test('admin ve movimientos y respaldos', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   await expect(page.locator('#metricas .card').first()).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#bloques')).toContainText('Últimos movimientos');
   await expect(page.locator('#bloques')).toContainText('Respaldos');
@@ -12,26 +12,26 @@ test('admin ve movimientos y respaldos', async ({ page }) => {
 
 test('profesora ve sus materias y ultimas notas', async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   await expect(page.locator('#bloques')).toContainText('Mis materias', { timeout: 15000 });
   await expect(page.locator('#bloques')).toContainText('Mis últimas notas');
 });
 
 test('representante ve promedios de sus hijos', async ({ page }) => {
   await login(page, 'fernando.castillo@uteq.edu.ec');
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   await expect(page.locator('#bloques')).toContainText('Promedios del periodo', { timeout: 15000 });
 });
 
 test('psicologa ve rendimiento', async ({ page }) => {
   await login(page, 'maria.torres@uteq.edu.ec');
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   await expect(page.locator('#bloques')).toContainText('Rendimiento del periodo', { timeout: 15000 });
 });
 
 test('crear estudiante con representante nuevo inline', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/estudiante-form.html');
+  await go(page, '/pages/estudiante-form.html');
   const tag = Date.now().toString(36);
   await page.locator('#cedula').fill('19' + String(Date.now()).slice(-8));
 await page.locator('#nombre1').fill('PWEst');

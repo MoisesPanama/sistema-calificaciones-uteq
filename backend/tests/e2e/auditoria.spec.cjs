@@ -1,10 +1,10 @@
 // Auditoria (admin): resumen en bloques + detalle + filtros.
 const { test, expect } = require('@playwright/test');
-const { login } = require('./helpers.cjs');
+const { go, login } = require('./helpers.cjs');
 
 test.beforeEach(async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/auditoria.html');
+  await go(page, '/pages/auditoria.html');
   await expect(page.locator('h1')).toContainText(/Auditor[ií]a/);
 });
 

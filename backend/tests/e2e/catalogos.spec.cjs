@@ -1,10 +1,10 @@
 // Catalogos (admin): CRUD cursos/ciclos/parciales/tipos + reglas.
 const { test, expect } = require('@playwright/test');
-const { login, api } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 test.beforeEach(async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/catalogos.html');
+  await go(page, '/pages/catalogos.html');
   await expect(page.locator('h1')).toContainText('Catálogos');
 });
 
@@ -58,7 +58,7 @@ test('tipo con notas no se puede borrar (409)', async ({ page }) => {
 
 test('profesor no ve Catalogos en el sidebar', async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
-  await page.goto('/pages/dashboard.html');
+  await go(page, '/pages/dashboard.html');
   // Esperar render real del menu (si no, la asercion negativa es al vacio).
   await expect(page.locator('.sidebar-nav')).toContainText('Registrar Nota', { timeout: 15000 });
   await expect(page.locator('.sidebar-nav')).not.toContainText('Catalogos');
@@ -66,7 +66,7 @@ test('profesor no ve Catalogos en el sidebar', async ({ page }) => {
 
 test('cada pestana conserva su periodo', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  await page.goto('/pages/catalogos.html');
+  await go(page, '/pages/catalogos.html');
   await expect(page.locator('#tab-cursos')).toBeVisible({ timeout: 15000 });
   const per = await api(page, 'GET', '/periodos/');
   const ids = (per.data.periodos || []).map(p => String(p.id_periodo));
