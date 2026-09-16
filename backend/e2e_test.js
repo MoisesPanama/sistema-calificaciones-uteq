@@ -357,6 +357,61 @@ const loginAs = async (email) => {
       `${filas.length} filas`);
   }
 
+  console.log('\n=== 15. ACTIVIDADES (INSUMOS) + PROMEDIOS AUTOMATICOS ===');
+  await loginAs('elena.romero@uteq.edu.ec');
+  const tiposAct = await get('/actividades/tipos');
+  log('Tipos de actividad', tiposAct.status === 200 && (tiposAct.body.tipos || []).length >= 5,
+    `${(tiposAct.body.tipos || []).length} tipos`);
+  const ctx15 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const mat15 = (ctx15.body.materias || [])[0];
+  const tag15 = Date.now().toString(36);
+  let idAct15 = null;
+  if (mat15) {
+    const creaAct = await post('/actividades', {
+      id_periodo: String(idPeriodo), id_materia: mat15.id_materia,
+      id_parcial: parcial ? parcial.id_parcial : null,
+      id_ciclo: ciclo ? ciclo.id_ciclo : null,
+      id_tipo_evaluacion: 4, nombre: 'Tarea API ' + tag15
+    });
+    idAct15 = creaAct.body.actividad?.id_actividad || null;
+    log('Crear actividad', creaAct.status === 201 && !!idAct15,
+      creaAct.body.actividad?.nombre || creaAct.body.error);
+    const dupAct = await post('/actividades', {
+      id_periodo: String(idPeriodo), id_materia: mat15.id_materia,
+      id_parcial: parcial ? parcial.id_parcial : null,
+      id_ciclo: ciclo ? ciclo.id_ciclo : null,
+      id_tipo_evaluacion: 4, nombre: 'Tarea API ' + tag15
+    });
+    log('Duplicada -> 409', dupAct.status === 409, dupAct.body.error || '');
+    const listaAct = await get(`/actividades?id_periodo=${idPeriodo}&id_materia=${mat15.id_materia}`);
+    log('Listar con stats', listaAct.status === 200 && (listaAct.body.actividades || []).some(a => a.id_actividad === idAct15),
+      `${(listaAct.body.actividades || []).length} actividades`);
+  }
+  if (mat15 && idAct15) {
+    const ctxA = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${mat15.id_materia}`);
+    const est15 = (ctxA.body.estudiantes || [])[0];
+    const notaAct = await post('/calificaciones/lote', {
+      id_periodo: String(idPeriodo), id_materia: mat15.id_materia,
+      id_parcial: parcial ? parcial.id_parcial : null,
+      id_ciclo: ciclo ? ciclo.id_ciclo : null,
+      id_actividad: idAct15,
+      notas: { [est15.id_estudiante]: { act: '8.75' } }
+    });
+    log('Calificar por actividad', notaAct.status === 200 && notaAct.body.ok,
+      notaAct.body.mensaje || notaAct.body.error);
+    const prom = await get(`/actividades/${idAct15}/promedios`);
+    const fila = (prom.body.estudiantes || []).find(e => String(e.id_estudiante) === String(est15.id_estudiante));
+    log('Promedios automaticos', prom.status === 200 && fila && Number(fila.n_formativas) >= 1 && fila.promedio_parcial != null,
+      `form=${fila?.n_formativas} parc=${fila?.promedio_parcial}`);
+    const borraConNotas = await del(`/actividades/${idAct15}`);
+    log('Borrar con notas -> 409', borraConNotas.status === 409, borraConNotas.body.error || '');
+  }
+  const otraMat = await post('/actividades', {
+    id_periodo: String(idPeriodo), id_materia: 999999,
+    id_tipo_evaluacion: 4, nombre: 'Tarea ajena ' + tag15
+  });
+  log('Materia no asignada -> 403', otraMat.status === 403, otraMat.body.error || '');
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

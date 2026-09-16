@@ -45,7 +45,7 @@ router.get('/tipos', requireAuth, async (req, res) => {
             `SELECT id_tipo_evaluacion, nombre, categoria, es_examen
              FROM tipos_evaluacion
              WHERE id_tipo_evaluacion = ANY($1)
-             ORDER BY categoria DESC, nombre`,
+             ORDER BY CASE WHEN categoria = 'formativa' THEN 0 ELSE 1 END, nombre`,
             [TIPOS_ACTIVIDAD]
         );
         res.json({ tipos: r.rows });
@@ -327,7 +327,7 @@ router.get('/:id/promedios', requireAuth, async (req, res) => {
                         THEN 1 END)::int AS n_sumativas,
                     ROUND(AVG(CASE WHEN te.categoria = 'sumativa' AND NOT te.es_examen
                         THEN c.valor END), 2) AS avg_sumativas,
-                    fn_promedio_parcial(e.id_estudiante, $1, $2, ${exprParcial}) AS promedio_parcial
+                    fn_promedio_parcial(e.id_estudiante, $2, $1, ${exprParcial}) AS promedio_parcial
              FROM matriculas m
              JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
              LEFT JOIN calificaciones c
