@@ -29,6 +29,28 @@ El script es re-ejecutable: si la BD ya existe, la conserva.
 > (Terminal → Run Task…). Si `psql` pide password de superusuario, es solo la
 > primera vez (para crear rol/BD).
 
+### Alternativa: stack Docker (Windows y Linux)
+
+Si prefieres no instalar PostgreSQL local, usa los scripts con Docker
+(los datos quedan en un volumen; `down` los conserva, `down -Volumes` los borra):
+
+```powershell
+# Windows (primera vez compila la imagen; luego sin -Build)
+powershell -ExecutionPolicy Bypass -File .\up.ps1 -Build
+powershell -ExecutionPolicy Bypass -File .\down.ps1
+```
+
+```bash
+# Linux
+./up.sh --build
+./down.sh
+```
+
+Levanta BD + API con migraciones `01..26` y seeds aplicados
+automáticamente si la BD está vacía, en `http://localhost:3001`
+(`APP_PORT`/`DB_PORT` configurables por entorno). Usa
+`docker-compose.yml` + `backend/Dockerfile` (incluidos).
+
 ## Integrantes del equipo
 
 - Moises Panama — Backend, base de datos, interfaces de gestión
