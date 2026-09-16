@@ -223,6 +223,21 @@ Esta escala se validó en el CP-09 (reportes) y se mostraba en la consulta del r
 
 El conjunto de datos de prueba está compuesto por **110 estudiantes** (10 del seed inicial `06_more_data.sql` más 100 sintéticos generados por la migración `19_datos_sinteticos.sql`) a los que se suman los registros que los propios casos de prueba crean y limpian (la corrida de evidencias mostró hasta 139 estudiantes y 124 filas de nómina al momento de la captura). El **periodo activo** es el id 1 ("2026-2027 · Primer Quimestre"), con ciclos "Quimestre 1" y parciales "Parcial 1". Se dispone además de 5 bloques materia+paralelo y de un representante con 15 hijos, datos utilizados por los casos automatizados.
 
+
+## 1.7 Flujo general del sistema
+
+El recorrido principal, en el orden en que las operaciones se relacionan entre módulos, es el siguiente:
+
+1. El usuario inicia sesión (`login.html`); el sistema valida sus credenciales y muestra únicamente los módulos permitidos según su rol.
+2. Desde el Dashboard, cada rol ve sus indicadores: el administrador (estudiantes, materias, notas, movimientos, respaldos), la profesora (sus materias y últimas notas), el representante (promedios de sus hijos) y la psicóloga (rendimiento y alertas).
+3. El administrador gestiona Estudiantes (registro, búsqueda, paginación) y Matrículas por periodo y curso.
+4. El administrador o la profesora gestionan Catálogos (cursos, ciclos, parciales, tipos) y asignaciones profesor-materia-periodo.
+5. La profesora crea **actividades** (insumos: lecciones, tareas, talleres) en su materia y registra las notas por actividad; cada guardado recalcula automáticamente los promedios.
+6. El representante y el estudiante consultan las notas (desglose por materia, promedio general y escala cualitativa), cada uno restringido a lo propio.
+7. El administrador genera **Reportes** de promedios por periodo y curso, y revisa la **Auditoría** (quién cambió qué y cuándo).
+8. La psicóloga revisa el **Rendimiento** académico con alertas de bajo desempeño para el acompañamiento.
+9. El administrador genera y restaura **Respaldos** de la base de datos (`pg_dump`) como mecanismo de recuperación.
+
 ---# 2. Metodología y plan de pruebas
 
 ## 2.1 Enfoque y fases
@@ -461,9 +476,9 @@ Estas personas permitieron derivar historias de usuario reales y definir **crite
 
 ## 4.1 Formato
 
-Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], para [beneficio]"**, acompañadas de criterios de aceptación verificables. Cada historia tiene un código **HU-XX** que se usa como referencia en los casos de prueba manuales (CP), automatizados (AUT) y de aceptación (UAT).
+Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], para [beneficio]"**, acompañadas de criterios de aceptación verificables. Cada historia tiene un código **HU-XX** y una prioridad **MoSCoW** (**Must have**: flujo académico indispensable; **Should have**: importante pero no bloqueante) que se usa como referencia en los casos de prueba manuales (CP), automatizados (AUT) y de aceptación (UAT).
 
-## 4.2 HU-01 — Iniciar sesión (administrador)
+## 4.2 HU-01 — Iniciar sesión (administrador) **(Must have)**
 
 **Como** administrador, **quiero** iniciar sesión con mi correo y contraseña, **para** acceder a la gestión del sistema.
 
@@ -474,7 +489,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-01, CP-02, CP-14; AUT-01, AUT-02, AUT-09; UAT-01; 5 logins por rol en la suite API.
 
-## 4.3 HU-02 — Gestión de estudiantes
+## 4.3 HU-02 — Gestión de estudiantes **(Must have)**
 
 **Como** administrador, **quiero** registrar, listar y buscar estudiantes, **para** mantener el registro de matrícula actualizado.
 
@@ -485,7 +500,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-03, CP-04; AUT-03, AUT-04; UAT-02; checks de paginación de la suite API (139 estudiantes).
 
-## 4.4 HU-03 — Registro de calificaciones (profesor)
+## 4.4 HU-03 — Registro de calificaciones (profesor) **(Must have)**
 
 **Como** profesor, **quiero** registrar las notas de mis estudiantes en las materias que tengo asignadas, **para** que el promedio se calcule automáticamente.
 
@@ -498,7 +513,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-05, CP-06, CP-07; AUT-05; checks de calificaciones de la suite API (lote con parcial/ciclo, parcial inválido → 400).
 
-## 4.5 HU-04 — Consulta de calificaciones por estudiante
+## 4.5 HU-04 — Consulta de calificaciones por estudiante **(Must have)**
 
 **Como** representante, **quiero** consultar las notas y promedios de mis hijos, **para** dar seguimiento a su rendimiento académico.
 
@@ -509,7 +524,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-08; AUT-06; UAT-04; checks del dashboard de representante (15 hijos con promedios) y del desglose por materia.
 
-## 4.6 HU-05 — Reportes de promedios por periodo
+## 4.6 HU-05 — Reportes de promedios por periodo **(Should have)**
 
 **Como** representante y administrador, **quiero** ver el reporte de promedios del periodo, **para** conocer el desempeño general del curso.
 
@@ -520,7 +535,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-09; UAT-05; checks de paginación de la suite API (reportes con 124 filas y filtro sin-curso).
 
-## 4.7 HU-06 — Auditar cambios (administrador)
+## 4.7 HU-06 — Auditar cambios (administrador) **(Should have)**
 
 **Como** administrador, **quiero** consultar el historial de cambios, **para** garantizar la integridad y trazabilidad de la información.
 
@@ -532,7 +547,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-10, CP-11; AUT-03, AUT-07; UAT-06; checks de auditoría de la suite API (total 855 registros en la corrida, usuario de la app, resumen por categorías, filtros y 403 para Elena).
 
-## 4.8 HU-07 — Activación de un único periodo académico
+## 4.8 HU-07 — Activación de un único periodo académico **(Should have)**
 
 **Como** administrador, **quiero** activar un periodo académico y que exista solo uno activo, **para** que todas las operaciones operen sobre el periodo correcto.
 
@@ -542,7 +557,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-12; revisión estática del índice parcial y del trigger; chequeo del periodo activo id=1 en la suite API.
 
-## 4.9 HU-08 — Respaldo de la base de datos
+## 4.9 HU-08 — Respaldo de la base de datos **(Should have)**
 
 **Como** administrador, **quiero** crear y programar respaldos de la base de datos, **para** prevenir la pérdida de información.
 
@@ -553,7 +568,7 @@ Las historias usan el formato estándar **"Como [rol], quiero [funcionalidad], p
 
 **Evidencia de cumplimiento:** CP-11 (restricción), AUT-07; checks de respaldos de la suite API (respaldo manual nombrado y historial paginado de 5 filas).
 
-## 4.10 HU-09 — Rendimiento académico (psicóloga)
+## 4.10 HU-09 — Rendimiento académico (psicóloga) **(Should have)**
 
 **Como** psicóloga, **quiero** ver el rendimiento académico y las alertas de bajo desempeño, **para** identificar a los estudiantes que requieren acompañamiento.
 
@@ -655,7 +670,7 @@ HTTP: 409
 
 ![Figura 8. Búsqueda de estudiante por cédula (`playwright-04-buscar-estudiante.png`).](evidencias/playwright-04-buscar-estudiante.png)
 
-## 5.6 CP-05 — Registro de calificaciones en rango válido (guardado masivo)
+## 5.6 CP-05 ★ — Registro de calificaciones en rango válido (guardado masivo)
 
 | Campo | Detalle |
 |---|---|
@@ -689,7 +704,7 @@ POST /api/calificaciones/ {"id_estudiante":1,"id_materia":3,"id_periodo":1,"id_t
 HTTP: 400
 ```
 
-## 5.8 CP-07 — Profesor bloqueado para materia no asignada
+## 5.8 CP-07 ★ — Profesor bloqueado para materia no asignada
 
 | Campo | Detalle |
 |---|---|
@@ -723,7 +738,7 @@ HTTP: 403
 
 ![Figura 10. Consulta de calificaciones del representante (`playwright-06-representante-consulta.png`).](evidencias/playwright-06-representante-consulta.png)
 
-## 5.10 CP-09 — Reporte de promedios por periodo
+## 5.10 CP-09 ★ — Reporte de promedios por periodo
 
 | Campo | Detalle |
 |---|---|
@@ -868,6 +883,8 @@ Además de los casos funcionales, se ejecutaron pruebas complementarias que refu
 
 | Total | PASS | FAIL | Evidencias |
 |---|---|---|---|
+Los casos marcados con ★ (CP-05, CP-07 y CP-09) son los seleccionados para la demostración en vivo: cubren tres módulos distintos y combinan flujo positivo, negativo y cálculo.
+
 | 14 | 14 | 0 | 9 capturas Playwright + `pruebas_api_manuales.txt` + suites del repositorio (66 API + 35 UI) |
 
 ---# 6. Automatización de pruebas (API y UI)
@@ -1115,6 +1132,50 @@ Al recrear la base de datos desde el esquema del repositorio actualizado (instal
 | UI (Playwright) | 35 | 35 | 0 | Login, calificaciones, catálogos, consulta, dashboard, estudiante, psicóloga, auditoría |
 | **Total** | **101** | **101** | **0** | — |
 
+
+
+**Tiempos de ejecución por test UI (Playwright, corrida 2026-09-16, 35/35 PASS).**
+
+| Spec | Test | Tiempo |
+|---|---|---|
+|auditoria|resumen muestra bloques y entrar al detalle funciona|3.5s|
+|auditoria|filtro por fecha y categoria|4.5s|
+|auth|login administrador llega al dashboard|2.4s|
+|auth|login profesor llega al dashboard|2.1s|
+|auth|login representante llega al dashboard|2.4s|
+|auth|login psicologo llega al dashboard|2.1s|
+|auth|password incorrecta muestra error y no redirige|2.3s|
+|auth|sin sesion redirige al login|1.4s|
+|calificaciones|crear actividad, calificar y guardar la nota|4.7s|
+|catalogos|crear y borrar curso|3.9s|
+|catalogos|ciclo avisa si pesos no suman y valida formativa+examen=1|3.0s|
+|catalogos|tipo con notas no se puede borrar (409)|2.9s|
+|catalogos|profesor no ve Catalogos en el sidebar|3.7s|
+|catalogos|cada pestana conserva su periodo|3.7s|
+|consulta|bloques llevan a nomina paginada y al detalle|3.7s|
+|consulta|profesor solo ve sus bloques|2.4s|
+|consulta|asignar desde catalogos responde ok o 409 justificado|5.3s|
+|dashboard|admin ve movimientos y respaldos|2.9s|
+|dashboard|profesora ve sus materias y ultimas notas|2.5s|
+|dashboard|representante ve promedios de sus hijos|3.2s|
+|dashboard|psicologa ve rendimiento|2.0s|
+|dashboard|crear estudiante con representante nuevo inline|7.0s|
+|demo-admin|1. admin crea un estudiante desde cero|8.4s|
+|demo-admin|2. admin crea una materia nueva|3.8s|
+|demo-admin|3. admin matricula al nuevo estudiante|3.7s|
+|estudiante|sidebar sin Reportes|3.3s|
+|estudiante|consulta muestra lo propio sin elegir a nadie|3.5s|
+|estudiante|sin notas ve tarjetas Sin calificar, no error|6.0s|
+|estudiante|API reportes 403 y consulta ajena devuelve lo propio|4.7s|
+|estudiante|sin botones de regreso a bloques/nomina|7.1s|
+|flujos|respaldo manual aparece en lista e historial|4.1s|
+|flujos|estudiantes pagina y muestra controles compartidos|2.6s|
+|flujos|representante ve desglose por materia|2.7s|
+|psicologo|rendimiento muestra resumen, alertas y maximo 10 filas|2.7s|
+|psicologo|admin no puede ver rendimiento (403 API)|2.1s|
+| **Total** | **35 tests** | **≈ 126 s (≈ 2 min)** |
+
+La suite API (`e2e_test.js`, 74/74) corre en ≈ 18 s en el mismo entorno.
 
 ## 6.6 Análisis de resultados por módulo
 
@@ -1370,6 +1431,21 @@ Perfil de los participantes: 33% representantes, 33% docentes, 17% psicóloga y 
 4. El equipo consolidó las observaciones en el registro de la Beta (Capítulo 9).
 
 ---
+
+
+## 8.6 Tabla de tareas de la Beta
+
+| # | Historia | Tarea (instrucción al participante) |
+|---|---|---|
+| T1 | HU-01 | Inicia sesión con el usuario y la contraseña entregados, según tu rol. |
+| T2 | HU-02 | Registra un estudiante nuevo y luego búscalo por cédula. |
+| T3 | HU-03 | Crea una actividad (p. ej. "Lección 1") en tu materia y registra notas a 3 estudiantes. |
+| T4 | HU-04 | Como representante, revisa las notas y el promedio de tu hijo. |
+| T5 | HU-05 | Abre Reportes, selecciona el periodo activo y verifica el orden por promedio. |
+| T6 | HU-06 | Abre Auditoría y confirma que aparece tu último cambio con tu usuario. |
+| T7 | HU-08 | Genera un respaldo manual y verifica que aparece en el historial. |
+| T8 | HU-09 | Abre el panel de psicóloga y revisa el resumen y una alerta. |
+| T9 | HU-01 | Cierra sesión y confirma que el sistema pide credenciales de nuevo. |
 
 # 9. Registro de observaciones de la Beta
 
@@ -1823,5 +1899,18 @@ cd backend && npm run test:e2e   # -> 35 passed
 5. Ejecutar las suites en el orden: API (`npm test`) y UI (`npm run test:e2e`).
 
 *Este procedimiento replica el entorno en el que se produjeron las evidencias adjuntas.*
+
+
+## Anexo H — Enlace a recursos
+
+| Recurso | Ubicación |
+|---|---|
+| Repositorio (código, BD, docs) | `https://github.com/MoisesPanama/sistema-calificaciones-uteq` |
+| Informe técnico (MD/PDF/DOCX) | `docs/vyv/INFORME_TECNICO_VYV.{md,pdf,docx}` |
+| Evidencias de ejecución | `docs/vyv/evidencias/` (salidas API/UI, capturas, gráficos) |
+| Presentación | `docs/vyv/09_presentacion.md` + `presentacion/` |
+| Suite API | `backend/e2e_test.js` (`npm test` desde `backend/`) |
+| Suite UI | `backend/tests/e2e/` (`npm run test:e2e` desde `backend/`) |
+| Levantamiento Docker | `./up.sh` / `.\up.ps1` (bajada: `./down.sh` / `.\down.ps1`) |
 
 *Fin del documento técnico de Verificación y Validación de Software.*
