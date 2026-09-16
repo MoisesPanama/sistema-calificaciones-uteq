@@ -1,9 +1,13 @@
 // Calificaciones por actividades: crear, calificar y guardar.
 const { test, expect } = require('@playwright/test');
-const { go, login } = require('./helpers.cjs');
+const { go, login, api } = require('./helpers.cjs');
 
 test.beforeEach(async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
+  // Precondicion: backend con migracion 22 (si falla aqui, falta
+  // aplicar database/22_actividades.sql en la BD bajo prueba).
+  const pre = await api(page, 'GET', '/actividades/tipos');
+  expect(pre.status, 'Falta migracion 22 en la BD: tabla actividades').toBe(200);
   await go(page, '/pages/calificaciones.html');
   await expect(page.locator('h1')).toContainText('Registrar Calificaciones');
 });
