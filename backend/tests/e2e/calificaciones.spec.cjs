@@ -111,3 +111,37 @@ test('flujo de entregas en la planilla', async ({ page }) => {
   await fila.locator('[data-entrega]').first().click();
   await expect(fila).toContainText('Aceptada', { timeout: 10000 });
 });
+
+test('fecha limite anterior se rechaza y ausente registra 0', async ({ page }) => {
+  const tag = Date.now().toString(36);
+  const selMat = page.locator('#sel-materia');
+  await expect(selMat).toBeVisible({ timeout: 10000 });
+  await selMat.selectOption({ index: 1 });
+  const selCiclo = page.locator('#sel-ciclo');
+  await expect(selCiclo.locator('option').nth(1)).toBeAttached({ timeout: 10000 });
+  await selCiclo.selectOption({ index: 1 });
+  const selParcial = page.locator('#sel-parcial');
+  await expect(selParcial.locator('option').nth(1)).toBeAttached({ timeout: 10000 });
+  await selParcial.selectOption({ index: 1 });
+
+  await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
+  await page.locator('#card-nueva').click();
+  await page.locator('#act-nombre').fill('Limite PW ' + tag);
+  await page.locator('#act-tipo').selectOption({ index: 0 });
+  await page.locator('#act-fecha').fill('2026-10-10');
+  await page.locator('#act-limite').fill('2026-10-01');
+  await page.locator('#act-guardar').click();
+  await expect(page.locator('#act-error')).toContainText('limite', { timeout: 10000 });
+
+  await page.locator('#act-limite').fill('2026-10-20');
+  await page.locator('#act-guardar').click();
+  const card = page.locator('.act-card', { hasText: 'Limite PW ' + tag });
+  await expect(card).toContainText('límite 2026-10-20', { timeout: 15000 });
+
+  await card.locator('[data-calificar]').click();
+  await expect(page.locator('#tabla table')).toBeVisible({ timeout: 15000 });
+  await page.locator('[data-ausente]').first().click();
+  await expect(page.locator('#ok')).toBeVisible({ timeout: 15000 });
+  const primerInput = page.locator('input[data-est]').first();
+  await expect(primerInput).toHaveValue('0', { timeout: 15000 });
+});

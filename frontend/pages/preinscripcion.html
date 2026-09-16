@@ -5,13 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preinscripción - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
-  <style>
-    .wizard-pasos { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
-    .wizard-pasos span { flex: 1; text-align: center; font-size: 0.78rem; font-weight: 700; padding: 0.45rem; border-radius: 8px; background: #eef2f7; color: #6b7280; }
-    .wizard-pasos span.activo { background: #1e3a8a; color: white; }
-    .wizard-panel { display: none; }
-    .wizard-panel.activo { display: block; }
-  </style>
 </head>
 <body class="login-body">
   <div class="login-box" style="max-width:560px;">
@@ -45,6 +38,16 @@
         <input type="text" id="rep_telefono">
         <label for="rep_email">Email</label>
         <input type="email" id="rep-email" placeholder="avisa el resultado">
+        <label for="rep_parentesco">Parentesco con el aspirante</label>
+        <select id="rep_parentesco" required>
+          <option value="">-- Selecciona --</option>
+          <option value="padre">Padre</option>
+          <option value="madre">Madre</option>
+          <option value="representante legal">Representante legal</option>
+          <option value="otro familiar">Otro familiar</option>
+        </select>
+        <label for="rep_documento">Documento del acudiente (cédula)</label>
+        <input type="text" id="rep_documento" required>
         <div class="form-actions">
           <button class="btn-secondary" id="ant2">Atrás</button>
           <button class="btn-primary" id="sig2">Siguiente</button>
@@ -55,8 +58,8 @@
         <select id="sel-periodo"></select>
         <label for="sel-curso">Curso (opcional)</label>
         <select id="sel-curso"><option value="">-- Sin preferencia --</option></select>
-        <label for="documento">Documento PDF (opcional)</label>
-        <input type="file" id="documento" accept=".pdf">
+        <label for="documento">Documento PDF (obligatorio)</label>
+        <input type="file" id="documento" accept=".pdf" required>
         <div class="form-actions">
           <button class="btn-secondary" id="ant3">Atrás</button>
           <button class="btn-primary" id="enviar">Enviar solicitud</button>
@@ -100,10 +103,12 @@
         irPaso(2);
       };
       document.getElementById('ant2').onclick = () => irPaso(1);
-      document.getElementById('sig2').onclick = () => {
-        if (!req('rep_nombres', 'nombres del acudiente') || !req('rep_apellidos', 'apellidos del acudiente')) return;
-        irPaso(3);
-      };
+        document.getElementById('sig2').onclick = () => {
+          if (!req('rep_nombres', 'nombres del acudiente') || !req('rep_apellidos', 'apellidos del acudiente')) return;
+          if (!document.getElementById('rep_parentesco').value) { showError('Falta: parentesco del acudiente.'); return; }
+          if (!req('rep_documento', 'documento del acudiente')) return;
+          irPaso(3);
+        };
       document.getElementById('ant3').onclick = () => irPaso(2);
       document.getElementById('enviar').onclick = async () => {
         try {
@@ -112,6 +117,8 @@
             fd.append(k, document.getElementById(k).value));
           fd.append('rep_telefono', document.getElementById('rep_telefono').value);
           fd.append('rep_email', document.getElementById('rep-email').value);
+          fd.append('rep_parentesco', document.getElementById('rep_parentesco').value);
+          fd.append('rep_documento', document.getElementById('rep_documento').value);
           fd.append('id_periodo', document.getElementById('sel-periodo').value);
           fd.append('id_curso', document.getElementById('sel-curso').value);
           const f = document.getElementById('documento').files[0];

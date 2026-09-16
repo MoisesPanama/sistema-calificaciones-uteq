@@ -68,6 +68,7 @@ router.get('/', requireAuth, async (req, res) => {
 
         const r = await pool.query(
             `SELECT a.id_actividad, a.nombre, a.descripcion, a.fecha_actividad,
+                    a.fecha_limite,
                     a.id_tipo_evaluacion, te.nombre AS tipo_nombre,
                     te.categoria AS tipo_categoria, te.es_examen,
                     a.id_ciclo, a.id_parcial, a.id_curso, a.estado,
@@ -92,13 +93,17 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
     const {
         id_materia, id_periodo, id_ciclo, id_parcial, id_curso,
-        id_tipo_evaluacion, nombre, descripcion, fecha_actividad
+        id_tipo_evaluacion, nombre, descripcion, fecha_actividad, fecha_limite
     } = req.body || {};
     const errores = [];
     if (!id_materia) errores.push('Debe seleccionar una materia.');
     if (!id_periodo) errores.push('Falta el periodo.');
     if (!id_tipo_evaluacion) errores.push('Debe elegir el tipo de actividad (tarea, leccion, taller...).');
     if (!nombre || !String(nombre).trim()) errores.push('La actividad necesita un nombre (p. ej. "Leccion escrita 1").');
+    const fechaEmision = fecha_actividad || new Date().toISOString().slice(0, 10);
+    if (fecha_limite && String(fecha_limite) < String(fechaEmision)) {
+        errores.push('La fecha limite no puede ser anterior a la fecha de la actividad.');
+    }
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });
 
     if (!(await materiaPermitida(req.session.usuario, id_periodo, id_materia))) {
@@ -141,14 +146,15 @@ router.post('/', requireAuth, async (req, res) => {
         const r = await client.query(
             `INSERT INTO actividades
                  (id_materia, id_periodo, id_ciclo, id_parcial, id_curso,
-                  id_tipo_evaluacion, nombre, descripcion, fecha_actividad, creado_por)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                  id_tipo_evaluacion, nombre, descripcion, fecha_actividad, fecha_limite, creado_por)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
              RETURNING id_actividad, nombre`,
             [
                 id_materia, id_periodo, idCiclo, idParcial, numCurso,
                 id_tipo_evaluacion, String(nombre).trim(),
                 descripcion ? String(descripcion).trim() : null,
-                fecha_actividad || new Date().toISOString().slice(0, 10),
+                fechaEmision,
+                fecha_limite || null,
                 req.session.usuario.id_usuario
             ]
         );
@@ -170,10 +176,10 @@ router.post('/', requireAuth, async (req, res) => {
 // PUT /api/actividades/:id -> editar datos basicos
 // Bloqueado si esta cerrada (reabrir primero, solo admin).
 router.put('/:id', requireAuth, async (req, res) => {
-    const { nombre, descripcion, fecha_actividad } = req.body || {};
+    const { nombre, descripcion, fecha_actividad, fecha_limite } = req.body || {};
     try {
         const r = await pool.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado, fecha_actividad FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
@@ -188,14 +194,20 @@ router.put('/:id', requireAuth, async (req, res) => {
         if (!(await materiaPermitida(req.session.usuario, act.id_periodo, act.id_materia))) {
             return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo.' });
         }
+        const nuevaEmision = fecha_actividad || act.fecha_actividad;
+        if (fecha_limite && String(fecha_limite) < String(nuevaEmision).slice(0, 10)) {
+            return res.status(400).json({ error: 'La fecha limite no puede ser anterior a la fecha de la actividad.' });
+        }
         await pool.query(
             `UPDATE actividades SET nombre = COALESCE($1, nombre),
-             descripcion = $2, fecha_actividad = COALESCE($3, fecha_actividad)
-             WHERE id_actividad = $4`,
+             descripcion = $2, fecha_actividad = COALESCE($3, fecha_actividad),
+             fecha_limite = $4
+             WHERE id_actividad = $5`,
             [
                 nombre ? String(nombre).trim() : null,
                 descripcion !== undefined ? (descripcion ? String(descripcion).trim() : null) : undefined,
                 fecha_actividad || null,
+                fecha_limite !== undefined ? (fecha_limite || null) : undefined,
                 req.params.id
             ]
         );

@@ -20,15 +20,8 @@
     .act-nueva:hover { border-color: var(--primary); color: var(--primary); }
     .seccion-titulo { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; }
     .seccion-titulo h2 { font-size: 1.1rem; color: var(--primary); }
-    .badge-formativa { background-color: var(--info-bg); color: var(--info-text); }
-    .badge-sumativa { background-color: var(--warning-bg); color: var(--warning-dark); }
-    .badge-examen { background-color: var(--danger-bg); color: var(--danger-dark); }
     #vista-calificar { margin-top: 1rem; }
     .resumen-table td:nth-child(n+2), .resumen-table th:nth-child(n+2) { text-align: center; }
-    .prom-pill { display: inline-block; min-width: 3em; padding: 0.15rem 0.5rem; border-radius: 6px;
-      background: var(--border-light); font-weight: 700; }
-    .prom-bajo { background: var(--danger-bg); color: var(--danger-dark); }
-    .prom-ok { background: var(--success-bg); color: var(--success-dark); }
   </style>
 </head>
 <body>
@@ -108,6 +101,8 @@
       <select id="act-tipo" style="width:100%;margin:0.3rem 0 0.8rem 0;"></select>
       <label for="act-fecha">Fecha</label>
       <input type="date" id="act-fecha" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
+      <label for="act-limite">Fecha límite de entrega (opcional)</label>
+      <input type="date" id="act-limite" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
       <label for="act-desc">Descripción (opcional)</label>
       <input type="text" id="act-desc" placeholder="Tema o indicaciones breves" style="width:100%;margin:0.3rem 0 0.8rem 0;padding:0.65rem 0.8rem;border:1px solid var(--input-border);border-radius:8px;">
       <div class="form-actions">
@@ -295,7 +290,7 @@
           return `
           <div class="act-card">
             <h3>${esc(a.nombre)}</h3>
-            <div>${badgeTipo(a)} ${badgeEstado(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}</span></div>
+            <div>${badgeTipo(a)} ${badgeEstado(a)} <span class="act-meta">${esc(a.tipo_nombre)} · ${esc(a.fecha_actividad ? String(a.fecha_actividad).slice(0, 10) : '')}${a.fecha_limite ? ' · límite ' + esc(String(a.fecha_limite).slice(0, 10)) : ''}</span></div>
             <div class="act-stats">
               <div><strong>${a.n_calificados}</strong><span class="act-meta">calificados</span></div>
               <div><strong>${a.promedio == null ? '—' : a.promedio}</strong><span class="act-meta">promedio</span></div>
@@ -337,6 +332,7 @@
       document.getElementById('act-nombre').value = '';
       document.getElementById('act-desc').value = '';
       document.getElementById('act-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('act-limite').value = '';
       document.getElementById('modal-actividad').classList.add('activo');
     }
 
@@ -352,7 +348,8 @@
           id_tipo_evaluacion: document.getElementById('act-tipo').value,
           nombre: document.getElementById('act-nombre').value,
           descripcion: document.getElementById('act-desc').value,
-          fecha_actividad: document.getElementById('act-fecha').value
+          fecha_actividad: document.getElementById('act-fecha').value,
+          fecha_limite: document.getElementById('act-limite').value || null
         });
         document.getElementById('modal-actividad').classList.remove('activo');
         showOk(r.mensaje);
@@ -394,12 +391,20 @@
             <td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
               data-est="${e.id_estudiante}" data-original="${e.nota == null ? '' : esc(e.nota)}" value="${e.nota == null ? '' : esc(e.nota)}"></td>
             <td>${badgeEntrega(e)}</td>
-            <td><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button></td></tr>`).join('') +
+            <td style="white-space:nowrap;"><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button>
+              <button class="btn-secondary btn-sm" data-ausente="${e.id_estudiante}" title="Ausente: registra 0">Aus.</button></td></tr>`).join('') +
           `</tbody></table></div>
           <div class="form-actions"><button class="btn-secondary" id="btn-guardar">Guardar todas</button></div>`;
         document.getElementById('btn-guardar').onclick = guardarTodas;
         document.querySelectorAll('[data-guardar-est]').forEach(btn => {
           btn.onclick = () => guardarEstudiante(btn.dataset.guardarEst);
+        });
+        document.querySelectorAll('[data-ausente]').forEach(btn => {
+          btn.onclick = () => {
+            const inp = document.querySelector(`input[data-est="${btn.dataset.ausente}"]`);
+            if (inp) { inp.value = '0'; inp.dispatchEvent(new Event('input')); }
+            guardarEstudiante(btn.dataset.ausente);
+          };
         });
         document.querySelectorAll('[data-entrega]').forEach(btn => {
           btn.onclick = () => moverEntrega(btn.dataset.entrega, btn.dataset.accion);

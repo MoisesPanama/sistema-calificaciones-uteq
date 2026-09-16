@@ -60,6 +60,9 @@ router.post('/', (req, res) => {
             if (!b.fecha_nacimiento) errores.push('Fecha de nacimiento obligatoria.');
             if (!b.rep_nombres || !String(b.rep_nombres).trim()) errores.push('Nombres del acudiente obligatorios.');
             if (!b.rep_apellidos || !String(b.rep_apellidos).trim()) errores.push('Apellidos del acudiente obligatorios.');
+            if (!b.rep_parentesco || !String(b.rep_parentesco).trim()) errores.push('Parentesco del acudiente obligatorio.');
+            if (!b.rep_documento || !String(b.rep_documento).trim()) errores.push('Documento del acudiente obligatorio.');
+            if (!req.file) errores.push('El documento PDF es obligatorio.');
             if (errores.length > 0) {
                 if (req.file) fs.unlink(req.file.path, () => {});
                 return res.status(400).json({ error: errores.join(' '), errores });
@@ -91,16 +94,19 @@ router.post('/', (req, res) => {
                 `INSERT INTO solicitudes_matricula
                      (nombres, apellidos, cedula, fecha_nacimiento,
                       rep_nombres, rep_apellidos, rep_telefono, rep_email,
+                      rep_parentesco, rep_documento,
                       id_periodo, id_curso,
                       documento_nombre, documento_ruta, documento_mime, documento_tamano)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
                  RETURNING id_solicitud`,
                 [String(b.nombres).trim(), String(b.apellidos).trim(), String(b.cedula).trim(), b.fecha_nacimiento,
                  String(b.rep_nombres).trim(), String(b.rep_apellidos).trim(),
-                 b.rep_telefono || null, b.rep_email || null, idPeriodo, b.id_curso || null,
-                 req.file ? req.file.originalname.slice(0, 255) : null,
-                 req.file ? path.join('solicitudes', path.basename(req.file.path)) : null,
-                 req.file ? req.file.mimetype : null, req.file ? req.file.size : null]
+                 b.rep_telefono || null, b.rep_email || null,
+                 String(b.rep_parentesco).trim(), String(b.rep_documento).trim(),
+                 idPeriodo, b.id_curso || null,
+                 req.file.originalname.slice(0, 255),
+                 path.join('solicitudes', path.basename(req.file.path)),
+                 req.file.mimetype, req.file.size]
             );
             res.status(201).json({ ok: true, mensaje: 'Solicitud recibida. El colegio la revisara.', id_solicitud: r.rows[0].id_solicitud });
         } catch (error) {
@@ -114,13 +120,24 @@ router.post('/', (req, res) => {
     });
 });
 
-// GET /api/preinscripciones?estado=&page= (admin)
+// GET /api/preinscripciones?estado=&q=&page= (admin)
+// q busca por nombres, apellidos o cedula (aspirante o acudiente).
 router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
         const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 15, minimo: 5 });
         const estado = req.query.estado || '';
-        const where = estado ? 'WHERE s.estado = $1' : '';
-        const params = estado ? [estado] : [];
+        const q = String(req.query.q || '').trim();
+        const conds = [];
+        const params = [];
+        if (estado) {
+            params.push(estado);
+            conds.push(`s.estado = $${params.length}`);
+        }
+        if (q) {
+            params.push(`%${q}%`);
+            conds.push(`(s.nombres ILIKE $${params.length} OR s.apellidos ILIKE $${params.length} OR s.cedula ILIKE $${params.length} OR s.rep_nombres ILIKE $${params.length} OR s.rep_apellidos ILIKE $${params.length})`);
+        }
+        const where = conds.length > 0 ? 'WHERE ' + conds.join(' AND ') : '';
         const countResult = await pool.query(`SELECT COUNT(*) AS total FROM solicitudes_matricula s ${where}`, params);
         const r = await pool.query(
             `SELECT s.*, p.nombre AS periodo_nombre, c.nombre AS curso_nombre, c.paralelo
@@ -167,8 +184,8 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
         }
         if (!idRep) {
             const rRep = await client.query(
-                'INSERT INTO representantes (nombres, apellidos, telefono, email) VALUES ($1, $2, $3, $4) RETURNING id_representante',
-                [sol.rep_nombres, sol.rep_apellidos, sol.rep_telefono, sol.rep_email]
+                'INSERT INTO representantes (nombres, apellidos, telefono, email, parentesco, cedula) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_representante',
+                [sol.rep_nombres, sol.rep_apellidos, sol.rep_telefono, sol.rep_email, sol.rep_parentesco, sol.rep_documento]
             );
             idRep = rRep.rows[0].id_representante;
         }
