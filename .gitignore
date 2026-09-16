@@ -30,3 +30,5 @@ server_err.txt
 cookies.txt
 temp_*.json
 backend/backups-test/
+# Subidas locales (S3): nunca se commitean archivos de usuarios
+backend/uploads/

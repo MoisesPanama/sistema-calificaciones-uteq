@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planilla - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .planilla-celda { height: 2rem; min-width: 3.2rem; }
+    @media print {
+      .sidebar, .topbar, .no-print { display: none !important; }
+      .topbar-wrapper { margin-left: 0 !important; }
+      .main-content { padding: 0; }
+      body { background: white; }
+      table { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Planilla de Notas (para el aula)</h1>
+    <p style="font-size:0.85rem;color:#6b7280;">Genera la lista con celdas vacías para calificar sin internet e ingresarla después.</p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="form-box no-print">
+      <label for="sel-mat">Materia</label>
+      <select id="sel-mat"><option value="">-- Selecciona --</option></select>
+      <label for="sel-cur">Curso</label>
+      <select id="sel-cur"><option value="">-- Todos --</option></select>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-ver">Generar</button>
+        <button class="btn-secondary" id="btn-imprimir" style="display:none;">Imprimir</button>
+      </div>
+    </div>
+    <div id="planilla"></div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    let ctxPeriodo = '';
+
+    async function cargarBase() {
+      const d = await apiGet('/calificaciones/contexto');
+      ctxPeriodo = d.idPeriodo;
+      document.getElementById('sel-mat').innerHTML = '<option value="">-- Selecciona --</option>' +
+        (d.materias || []).map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
+      document.getElementById('sel-cur').innerHTML = '<option value="">-- Todos --</option>' +
+        (d.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+      return d;
+    }
+
+    async function generar(ctx) {
+      const idMat = document.getElementById('sel-mat').value;
+      const idCur = document.getElementById('sel-cur').value;
+      if (!idMat) { showError('Selecciona una materia.'); return; }
+      let url = `/calificaciones/contexto?id_periodo=${encodeURIComponent(ctxPeriodo)}&id_materia=${idMat}&page=1&limit=100`;
+      if (idCur) url += `&id_curso=${encodeURIComponent(idCur)}`;
+      const d = await apiGet(url);
+      const tipos = d.tiposEvaluacion || [];
+      const nombreMat = (ctx.materias.find(m => String(m.id_materia) === idMat) || {}).nombre || '';
+      const nombreCur = idCur
+        ? ((ctx.cursos.find(c => String(c.id_curso) === idCur) || {}).nombre || '') + ' ' + ((ctx.cursos.find(c => String(c.id_curso) === idCur) || {}).paralelo || '')
+        : 'Todos';
+      document.getElementById('planilla').innerHTML = `
+        <h2 style="font-size:1.05rem;color:#1e3a8a;margin-bottom:0.3rem;">${esc(nombreMat)} — ${esc(nombreCur.trim())}</h2>
+        <p style="font-size:0.85rem;color:#6b7280;margin-bottom:0.8rem;">${esc(d.periodoNombre || '')} · ${d.estudiantes.length} estudiante(s)</p>
+        <div class="table-responsive"><table><thead><tr><th>N.º</th><th>Estudiante</th>` +
+        tipos.map(t => `<th>${esc(t.nombre)}</th>`).join('') + `</tr></thead><tbody>` +
+        d.estudiantes.map((e, i) => `<tr><td>${i + 1}</td><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>` +
+          tipos.map(() => `<td class="planilla-celda"></td>`).join('') + `</tr>`).join('') +
+        '</tbody></table></div>';
+      document.getElementById('btn-imprimir').style.display = 'inline-block';
+    }
+
+    (async () => {
+      if (!await initPage()) return;
+      try {
+        const ctx = await cargarBase();
+        document.getElementById('btn-ver').onclick = () => generar(ctx).catch(showError);
+        document.getElementById('btn-imprimir').onclick = () => window.print();
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

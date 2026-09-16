@@ -43,6 +43,8 @@
       <button id="tab-btn-ciclos">Ciclos y Parciales</button>
       <button id="tab-btn-tipos">Tipos de Evaluación</button>
       <button id="tab-btn-asig">Asignaciones</button>
+      <button id="tab-btn-actas">Actas</button>
+      <button id="tab-btn-docs">Documentos</button>
     </div>
 
     <!-- ============ CURSOS ============ -->
@@ -184,6 +186,58 @@
       </div>
     </section>
 
+    <!-- ============ ACTAS ============ -->
+    <section id="tab-actas" class="tab-panel">
+      <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1rem;max-width:720px;">
+        Un acta <strong>validada</strong> congela su contexto: mientras exista,
+        no se pueden registrar ni editar notas ahi. Sirve para cerrar un
+        parcial, un ciclo o una materia completa del periodo.
+      </p>
+      <div class="form-box">
+        <label for="act-periodo">Periodo</label>
+        <select id="act-periodo"></select>
+      </div>
+      <div class="grid-2">
+        <div id="lista-actas"></div>
+        <div class="card">
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Nueva acta</h2>
+          <label for="act-mat" style="font-size:0.82rem;font-weight:600;">Materia</label>
+          <select id="act-mat" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
+          <label for="act-cur" style="font-size:0.82rem;font-weight:600;">Curso (vacío = toda la materia)</label>
+          <select id="act-cur" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"><option value="">-- Toda --</option></select>
+          <label for="act-cic" style="font-size:0.82rem;font-weight:600;">Ciclo (vacío = todos)</label>
+          <select id="act-cic" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"><option value="">-- Todos --</option></select>
+          <label for="act-par" style="font-size:0.82rem;font-weight:600;">Parcial (vacío = todos)</label>
+          <select id="act-par" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Todos --</option></select>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" id="act-guardar">Crear acta</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TIPOS DE DOCUMENTO ============ -->
+    <section id="tab-docs" class="tab-panel">
+      <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1rem;max-width:720px;">
+        Tipos de documentos de matrícula que el colegio pide (registro civil,
+        vacunas, fotos...). Cada estudiante entrega un archivo por tipo.
+      </p>
+      <div class="grid-2">
+        <div id="lista-tdoc"></div>
+        <div class="card">
+          <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Nuevo tipo</h2>
+          <label for="tdoc-nombre" style="font-size:0.82rem;font-weight:600;">Nombre</label>
+          <input type="text" id="tdoc-nombre" placeholder="Registro civil" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="tdoc-desc" style="font-size:0.82rem;font-weight:600;">Descripción</label>
+          <input type="text" id="tdoc-desc" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label style="font-size:0.85rem;display:block;margin-bottom:0.8rem;"><input type="checkbox" id="tdoc-oblig"> Obligatorio</label>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" id="tdoc-guardar">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     </main>
   </div>
 </div>
@@ -204,7 +258,7 @@
     let cicloSel = '';
 
     function tabs() {
-      const defs = [['cursos'], ['ciclos'], ['tipos'], ['asig']];
+      const defs = [['cursos'], ['ciclos'], ['tipos'], ['asig'], ['actas'], ['docs']];
       defs.forEach(([n]) => {
         document.getElementById('tab-btn-' + n).onclick = () => {
           defs.forEach(([m]) => {
@@ -434,6 +488,68 @@
       div.innerHTML = adv ? `<div class="advertencia">${esc(adv)}</div>` : '';
     }
 
+    // ---------- ACTAS ----------
+    async function cargarOpcionesActas() {
+      const [opt, cic] = await Promise.all([
+        apiGet('/asignaciones/opciones?id_periodo=' + encodeURIComponent(periodoDe('act'))),
+        apiGet('/ciclos/?id_periodo=' + encodeURIComponent(periodoDe('act')))
+      ]);
+      document.getElementById('act-mat').innerHTML =
+        (opt.materias || []).map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
+      document.getElementById('act-cur').innerHTML = '<option value="">-- Toda --</option>' +
+        (opt.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+      document.getElementById('act-cic').innerHTML = '<option value="">-- Todos --</option>' +
+        (cic.ciclos || []).map(c => `<option value="${c.id_ciclo}">${esc(c.nombre)}</option>`).join('');
+      await cargarParcialesActas();
+    }
+
+    async function cargarParcialesActas() {
+      const idCiclo = document.getElementById('act-cic').value;
+      const sel = document.getElementById('act-par');
+      sel.innerHTML = '<option value="">-- Todos --</option>';
+      if (!idCiclo) return;
+      try {
+        const d = await apiGet('/parciales/?id_ciclo=' + encodeURIComponent(idCiclo));
+        sel.innerHTML = '<option value="">-- Todos --</option>' +
+          (d.parciales || []).map(p => `<option value="${p.id_parcial}">${esc(p.nombre)}</option>`).join('');
+      } catch (err) { showError(err.message); }
+    }
+
+    async function cargarActas() {
+      const d = await apiGet('/actas/?id_periodo=' + encodeURIComponent(periodoDe('act')));
+      const div = document.getElementById('lista-actas');
+      if (!d.actas || d.actas.length === 0) { div.innerHTML = '<p>No hay actas en este periodo.</p>'; return; }
+      div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+        <th>Materia</th><th>Alcance</th><th>Notas</th><th>Estado</th><th></th></tr></thead><tbody>` +
+        d.actas.map(a => {
+          const alcance = [
+            a.curso ? `${a.curso} ${a.paralelo || ''}` : null,
+            a.ciclo, a.parcial
+          ].filter(Boolean).join(' · ') || 'Toda la materia';
+          const botones = a.estado === 'validada'
+            ? '<span class="badge badge-success">validada</span>'
+            : `<button class="btn-primary btn-sm" data-validar-acta="${a.id_acta}">Validar</button>
+               <button class="btn-secondary btn-sm btn-danger-text" data-eliminar-acta="${a.id_acta}">Eliminar</button>`;
+          return `<tr><td>${esc(a.materia)}</td><td>${esc(alcance)}</td><td>${a.n_notas}</td>
+            <td>${botones}</td>
+            <td class="td-actions">${a.validada_por_nombre ? esc(a.validada_por_nombre) : ''}</td></tr>`;
+        }).join('') + '</tbody></table></div>';
+      div.querySelectorAll('[data-validar-acta]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Validar el acta? Se congelaran las notas de ese contexto.')) return;
+        try {
+          const r = await apiPost(`/actas/${b.dataset.validarActa}/validar`, {});
+          showOk(r.mensaje); await cargarActas();
+        } catch (err) { showError(err.message); }
+      });
+      div.querySelectorAll('[data-eliminar-acta]').forEach(b => b.onclick = async () => {
+        if (!confirm('¿Eliminar el acta en borrador?')) return;
+        try {
+          const r = await apiDelete(`/actas/${b.dataset.eliminarActa}`);
+          showOk(r.mensaje); await cargarActas();
+        } catch (err) { showError(err.message); }
+      });
+    }
+
     (async () => {
       if (!await initPage({ adminOnly: true })) return;
       tabs();
@@ -443,10 +559,12 @@
         document.getElementById('cur-periodo').innerHTML = opts;
         document.getElementById('cic-periodo').innerHTML = opts;
         document.getElementById('asg-periodo').innerHTML = opts;
+        document.getElementById('act-periodo').innerHTML = opts;
         periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
         document.getElementById('cur-periodo').value = periodoId;
         document.getElementById('cic-periodo').value = periodoId;
         document.getElementById('asg-periodo').value = periodoId;
+        document.getElementById('act-periodo').value = periodoId;
 
         const tut = await apiGet('/cursos/tutores');
         document.getElementById('cur-tutor').innerHTML = '<option value="">-- Sin tutor --</option>' +
@@ -458,8 +576,14 @@
         await cargarTipos();
         await cargarOpcionesAsg();
         await cargarAsignaciones();
+        await cargarOpcionesActas();
+        await cargarActas();
 
         document.getElementById('cur-periodo').onchange = () => { cargarCursos().catch(showError); };
+        document.getElementById('act-periodo').onchange = () => {
+          cargarOpcionesActas().then(cargarActas).catch(showError);
+        };
+        document.getElementById('act-cic').onchange = () => { cargarParcialesActas().catch(showError); };
         document.getElementById('asg-periodo').onchange = () => {
           cargarOpcionesAsg().then(cargarAsignaciones).catch(showError);
         };
@@ -554,6 +678,55 @@
             await cargarAsignaciones();
           } catch (err) { showError(err.message); }
         };
+
+        document.getElementById('act-guardar').onclick = async () => {
+          try {
+            const r = await apiPost('/actas/', {
+              id_periodo: periodoDe('act'),
+              id_materia: document.getElementById('act-mat').value,
+              id_curso: document.getElementById('act-cur').value || null,
+              id_ciclo: document.getElementById('act-cic').value || null,
+              id_parcial: document.getElementById('act-par').value || null
+            });
+            showOk('Acta creada en borrador. Valídala para congelar.');
+            await cargarActas();
+          } catch (err) { showError(err.message); }
+        };
+
+        async function cargarTDocs() {
+          const d = await apiGet('/documentos/tipos');
+          const div = document.getElementById('lista-tdoc');
+          if (!d.tipos || d.tipos.length === 0) { div.innerHTML = '<p>No hay tipos definidos.</p>'; return; }
+          div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+            <th>Nombre</th><th>Obligatorio</th><th></th></tr></thead><tbody>` +
+            d.tipos.map(t => `<tr><td>${esc(t.nombre)}</td>
+              <td>${t.obligatorio ? 'Sí' : 'No'}</td>
+              <td class="td-actions"><button class="btn-secondary btn-sm btn-danger-text" data-del-tdoc="${t.id_tipo_documento}">Eliminar</button></td>
+            </tr>`).join('') + '</tbody></table></div>';
+          div.querySelectorAll('[data-del-tdoc]').forEach(b => b.onclick = async () => {
+            if (!confirm('¿Eliminar este tipo de documento?')) return;
+            try {
+              await apiDelete(`/documentos/tipos/${b.dataset.delTdoc}`);
+              showOk('Tipo eliminado.');
+              await cargarTDocs();
+            } catch (err) { showError(err.message); }
+          });
+        }
+
+        document.getElementById('tdoc-guardar').onclick = async () => {
+          try {
+            await apiPost('/documentos/tipos', {
+              nombre: document.getElementById('tdoc-nombre').value,
+              descripcion: document.getElementById('tdoc-desc').value || null,
+              obligatorio: document.getElementById('tdoc-oblig').checked
+            });
+            document.getElementById('tdoc-nombre').value = '';
+            document.getElementById('tdoc-desc').value = '';
+            showOk('Tipo guardado.');
+            await cargarTDocs();
+          } catch (err) { showError(err.message); }
+        };
+        await cargarTDocs();
       } catch (err) { showError(err.message); }
     })();
   </script>

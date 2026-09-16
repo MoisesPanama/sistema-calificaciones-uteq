@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boletín - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .bol-encabezado { text-align: center; margin-bottom: 1.2rem; }
+    .bol-encabezado h2 { color: #1e3a8a; margin-bottom: 0.2rem; }
+    .bol-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.4rem 1.2rem; margin-bottom: 1.2rem; font-size: 0.9rem; }
+    .bol-obs { font-size: 0.82rem; color: #6b7280; margin-top: 0.3rem; }
+    .bol-firma { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; text-align: center; font-size: 0.85rem; }
+    .bol-firma div { border-top: 1px solid #374151; padding-top: 0.4rem; }
+    @media print {
+      .sidebar, .topbar, .no-print { display: none !important; }
+      .topbar-wrapper { margin-left: 0 !important; }
+      .main-content { padding: 0; }
+      body { background: white; }
+      .mat-card, .form-box, table { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Boletín de Calificaciones</h1>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div class="form-box no-print">
+      <label for="sel-periodo">Periodo</label>
+      <select id="sel-periodo"></select>
+      <label for="sel-est">Estudiante</label>
+      <select id="sel-est"><option value="">-- Selecciona --</option></select>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-ver">Ver boletín</button>
+        <button class="btn-secondary" id="btn-imprimir" style="display:none;">Imprimir</button>
+      </div>
+    </div>
+    <div id="boletin"></div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    async function cargarPeriodos() {
+      const per = await apiGet('/periodos/');
+      document.getElementById('sel-periodo').innerHTML =
+        (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
+      const id = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      document.getElementById('sel-periodo').value = id;
+      return id;
+    }
+
+    async function cargarEstudiantes(idPeriodo) {
+      // Reusa consulta (respeta rol: representante ve hijos, etc.)
+      const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(idPeriodo)}`);
+      const sel = document.getElementById('sel-est');
+      sel.innerHTML = '<option value="">-- Selecciona --</option>' +
+        (d.estudiantes || []).map(e => `<option value="${e.id_estudiante}">${esc(e.apellidos)} ${esc(e.nombres)}</option>`).join('');
+      return d;
+    }
+
+    async function verBoletin() {
+      const idPeriodo = document.getElementById('sel-periodo').value;
+      const idEst = document.getElementById('sel-est').value;
+      if (!idEst) { showError('Selecciona un estudiante.'); return; }
+      const d = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(idPeriodo)}&id_estudiante=${encodeURIComponent(idEst)}`);
+      const div = document.getElementById('boletin');
+      const nombreEst = (d.estudiantes || []).find(e => String(e.id_estudiante) === String(idEst));
+      let filas = '';
+      for (const m of (d.materias || [])) {
+        let faltasTxt = '—';
+        try {
+          const f = await apiGet(`/asistencias/?id_estudiante=${idEst}&id_materia=${m.id_materia}&id_periodo=${idPeriodo}`);
+          faltasTxt = `${f.resumen.total} (${f.resumen.justificadas} just.)`;
+        } catch (_) { /* sin datos */ }
+        const obs = (m.parciales || []).filter(p => p.observacion).map(p => `${esc(p.tipo)}: ${esc(p.observacion)}`).join('<br>');
+        filas += `<tr><td>${esc(m.nombre)}</td>
+          <td style="text-align:center;">${m.promedio != null ? esc(m.promedio) : 'S/C'}</td>
+          <td>${esc(m.escala)}</td>
+          <td style="text-align:center;">${faltasTxt}</td>
+          <td style="font-size:0.82rem;">${obs || '—'}</td></tr>`;
+      }
+      div.innerHTML = `
+        <div class="bol-encabezado">
+          <h2>Informe de aprendizaje — ${esc(d.periodoNombre || '')}</h2>
+          <p style="color:#6b7280;font-size:0.9rem;">Promedios con dos decimales, sin redondeo · Aprueba con 7.00</p>
+        </div>
+        <div class="bol-datos">
+          <div><strong>Estudiante:</strong> ${nombreEst ? esc(nombreEst.apellidos + ' ' + nombreEst.nombres) : '—'}</div>
+          <div><strong>Materias con notas:</strong> ${d.materiasConNotas} de ${d.materiasTotales}</div>
+          <div><strong>Promedio general:</strong> ${d.promedioGeneral != null ? esc(d.promedioGeneral) : '—'}</div>
+        </div>
+        <div class="table-responsive"><table><thead><tr>
+          <th>Asignatura</th><th>Promedio</th><th>Escala</th><th>Faltas</th><th>Observaciones</th>
+        </tr></thead><tbody>${filas}</tbody></table></div>
+        <div class="bol-firma"><div>Docente tutor</div><div>Representante</div></div>`;
+      document.getElementById('btn-imprimir').style.display = 'inline-block';
+    }
+
+    (async () => {
+      if (!await initPage()) return;
+      try {
+        const idPeriodo = await cargarPeriodos();
+        await cargarEstudiantes(idPeriodo);
+        document.getElementById('sel-periodo').onchange = async (e) => {
+          await apiPost('/auth/periodo-seleccionado', { id_periodo: Number(e.target.value) });
+          await cargarEstudiantes(e.target.value).catch(showError);
+        };
+        document.getElementById('btn-ver').onclick = () => verBoletin().catch(showError);
+        document.getElementById('btn-imprimir').onclick = () => window.print();
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

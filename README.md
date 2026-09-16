@@ -167,6 +167,12 @@ psql -U postgres -d calificaciones_uteq -f database/17_indices_rendimiento.sql
 psql -U postgres -d calificaciones_uteq -f database/18_representantes.sql
 psql -U postgres -d calificaciones_uteq -f database/19_datos_sinteticos.sql
 psql -U postgres -d calificaciones_uteq -f database/20_unique_asignaciones_por_curso.sql
+psql -U postgres -d calificaciones_uteq -f database/21_rol_estudiante_y_matriculas.sql
+psql -U postgres -d calificaciones_uteq -f database/22_actividades.sql
+psql -U postgres -d calificaciones_uteq -f database/23_cierre_notas.sql
+psql -U postgres -d calificaciones_uteq -f database/24_entregas.sql
+psql -U postgres -d calificaciones_uteq -f database/25_adjuntos.sql
+psql -U postgres -d calificaciones_uteq -f database/26_fallas_observaciones.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -304,6 +310,23 @@ sistema-calificaciones-uteq/
 | GET/POST | `/api/asignaciones/` | Asignaciones del periodo / asignar materia＋curso a profesor (solo admin) |
 | GET | `/api/asignaciones/opciones` | Profesores, materias y cursos para el formulario |
 | DELETE | `/api/asignaciones/:id` | Quitar asignación (solo admin) |
+| GET/POST | `/api/actas/` | Actas del periodo / crear borrador (solo admin) |
+| POST | `/api/actas/:id/validar` | Congelar contexto (solo admin) |
+| DELETE | `/api/actas/:id` | Eliminar solo en borrador (solo admin) |
+| POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
+| GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |
+| POST | `/api/entregas/:id/enviar` | Marcar enviada (propio, docente o admin) |
+| POST | `/api/entregas/:id/revisar` | aceptada/rechazada/cambios (docente o admin) |
+| GET/POST | `/api/adjuntos/por-actividad/:id` | Material de la actividad / subir PDF-imagen (docente o admin) |
+| GET/DELETE | `/api/adjuntos/:id` + `/descargar` | Descargar (con auth) / quitar |
+| GET/POST | `/api/documentos/tipos` | Tipos de documento (admin escribe) |
+| PUT/DELETE | `/api/documentos/tipos/:id` | Editar / borrar sin uso (admin) |
+| GET/POST | `/api/documentos/por-estudiante/:id` | Checklist + subir (reemplaza vigente) |
+| GET/DELETE | `/api/documentos/:id` + `/descargar` | Descargar (con auth) / quitar |
+| GET/POST | `/api/asistencias/` | Faltas por estudiante/materia/periodo / registrar |
+| DELETE | `/api/asistencias/:id` | Quitar falta |
+| Páginas | `boletin.html` | Boletín imprimible por estudiante (con fallas y observaciones) |
+| Páginas | `planilla.html` | Planilla en blanco para el aula (docente/admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

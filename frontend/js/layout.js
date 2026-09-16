@@ -48,7 +48,9 @@ async function renderLayout(usuario, periodoSeleccionado) {
   const navCalificaciones = [
     { href: 'calificaciones.html',  icon: '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>', label: 'Registrar Nota' },
     { href: 'consulta.html',        icon: '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>', label: 'Consultar Notas' },
-    { href: 'reportes.html',        icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>', label: 'Reportes' },
+    { href: 'reportes.html',        icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM9 17H7v-7h2v10zm4 0h-2V7h2v10zm4 0h-2V7h2v10zm4 0h-2V7h2v10zm4 0h-2V7h2v10z"/>', label: 'Reportes' },
+    { href: 'boletin.html',         icon: '<path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7H7v-2h6v2zm0 4H7v-2h6v2z"/>', label: 'Boletín' },
+    { href: 'planilla.html',        icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2V7h2v10z"/>', label: 'Planilla' },
   ];
 
   const navAdmin = [
@@ -71,10 +73,10 @@ async function renderLayout(usuario, periodoSeleccionado) {
   } else if (esProfesor) {
     navItems2 = navCalificaciones;
   } else if (esRepresentante) {
-    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html');
+    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html' || n.href === 'boletin.html');
   } else if (esEstudiante) {
     // Estudiante: SOLO sus notas (sin reportes ni nominas ajenas).
-    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html');
+    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'boletin.html');
   } else if (esPsicologo) {
     navItems2 = [];
   }
