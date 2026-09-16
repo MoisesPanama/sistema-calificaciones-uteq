@@ -170,6 +170,7 @@ psql -U postgres -d calificaciones_uteq -f database/20_unique_asignaciones_por_c
 psql -U postgres -d calificaciones_uteq -f database/21_rol_estudiante_y_matriculas.sql
 psql -U postgres -d calificaciones_uteq -f database/22_actividades.sql
 psql -U postgres -d calificaciones_uteq -f database/23_cierre_notas.sql
+psql -U postgres -d calificaciones_uteq -f database/24_entregas.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -311,6 +312,9 @@ sistema-calificaciones-uteq/
 | POST | `/api/actas/:id/validar` | Congelar contexto (solo admin) |
 | DELETE | `/api/actas/:id` | Eliminar solo en borrador (solo admin) |
 | POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
+| GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |
+| POST | `/api/entregas/:id/enviar` | Marcar enviada (propio, docente o admin) |
+| POST | `/api/entregas/:id/revisar` | aceptada/rechazada/cambios (docente o admin) |
 | GET | `/api/respaldos/` | Lista archivos + estado del programado (solo admin) |
 | POST | `/api/respaldos/manual` | Crea respaldo ahora (solo admin) |
 | POST | `/api/respaldos/programar` | Activa/desactiva cron diario `{hora, minutos, activo}` (solo admin) |

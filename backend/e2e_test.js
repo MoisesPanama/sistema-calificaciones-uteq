@@ -495,6 +495,53 @@ const loginAs = async (email) => {
     log('Borrar validada -> 404', borraVal.status === 404, '');
   }
 
+  console.log('\n=== 17. ENTREGAS CON ESTADOS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const tag17 = Date.now().toString(36);
+  const creaEst17 = await post('/estudiantes/', {
+    cedula: '19' + String(Date.now()).slice(-8),
+    nombres: 'Ewe Entrega', apellidos: 'Flujo Uno',
+    fecha_nacimiento: '2011-05-06', id_representante: 1
+  });
+  const idEst17 = creaEst17.body.id_estudiante;
+  const emailEst17 = creaEst17.body.email;
+  await post('/matriculas/', { id_estudiante: idEst17, id_periodo: idPeriodo, id_curso: null });
+  await loginAs('elena.romero@uteq.edu.ec');
+  const ctx17 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
+  const mat17 = (ctx17.body.materias || [])[0];
+  const creaAct17 = await post('/actividades', {
+    id_periodo: String(idPeriodo), id_materia: mat17.id_materia,
+    id_tipo_evaluacion: 4, nombre: 'Entrega E2E ' + tag17
+  });
+  const idAct17 = creaAct17.body.actividad?.id_actividad;
+  log('Crear actividad entregas', creaAct17.status === 201 && !!idAct17, '');
+  const pub17 = await post(`/actividades/${idAct17}/estado`, { estado: 'publicada' });
+  log('Publicar genera pendientes', pub17.status === 200 && (pub17.body.pendientes || 0) > 0,
+    `${pub17.body.pendientes} pendientes`);
+  // La entrega del estudiante nuevo debe existir en pendiente.
+  const todas17 = await get(`/entregas/por-actividad/${idAct17}`);
+  const entPropia = (todas17.body.entregas || []).find(e => String(e.id_estudiante) === String(idEst17));
+  log('Pendiente del nuevo', !!entPropia && entPropia.estado === 'pendiente', '');
+  if (!entPropia) {
+    log('Estudiante envia la suya', false, 'sin entrega propia para el nuevo');
+  } else {
+  await loginAs(emailEst17);
+  const envPropio = await post(`/entregas/${entPropia.id_entrega}/enviar`, {});
+  log('Estudiante envia la suya', envPropio.status === 200, envPropio.body.error || '');
+  const otra17 = (todas17.body.entregas || []).find(e => String(e.id_estudiante) !== String(idEst17));
+  if (otra17) {
+    const envAjena = await post(`/entregas/${otra17.id_entrega}/enviar`, {});
+    log('Estudiante no envia ajena -> 403', envAjena.status === 403, '');
+  }
+  await loginAs('elena.romero@uteq.edu.ec');
+  const rev17 = await post(`/entregas/${entPropia.id_entrega}/revisar`, { estado: 'aceptada', observacion: 'Bien' });
+  log('Docente acepta', rev17.status === 200, rev17.body.error || '');
+  const reenv = await post(`/entregas/${entPropia.id_entrega}/enviar`, {});
+  log('Reenviar aceptada -> 409', reenv.status === 409, '');
+  const borraAct17 = await del(`/actividades/${idAct17}`);
+  log('Borrar con entregas en curso -> 409', borraAct17.status === 409, '');
+  }
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;

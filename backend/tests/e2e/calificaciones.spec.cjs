@@ -65,3 +65,27 @@ test('publicar y cerrar actividad desde sus tarjetas', async ({ page }) => {
   await expect(card).toContainText('Cerrada', { timeout: 10000 });
   await expect(card.locator('[data-estado]')).toContainText('Reabrir');
 });
+
+test('flujo de entregas en la planilla', async ({ page }) => {
+  const tag = Date.now().toString(36);
+  const selMat = page.locator('#sel-materia');
+  await expect(selMat).toBeVisible({ timeout: 10000 });
+  await selMat.selectOption({ index: 1 });
+  await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
+  await page.locator('#card-nueva').click();
+  await page.locator('#act-nombre').fill('Entrega PW ' + tag);
+  await page.locator('#act-tipo').selectOption({ index: 0 });
+  await page.locator('#act-guardar').click();
+  const card = page.locator('.act-card', { hasText: 'Entrega PW ' + tag });
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await card.locator('[data-estado]').click();
+  await expect(card).toContainText('Publicada', { timeout: 10000 });
+  await card.locator('[data-calificar]').click();
+  await expect(page.locator('#tabla table')).toBeVisible({ timeout: 15000 });
+  const fila = page.locator('#tabla tbody tr').first();
+  await expect(fila).toContainText('Pendiente');
+  await fila.locator('[data-entrega]').click();
+  await expect(fila).toContainText('Enviada', { timeout: 10000 });
+  await fila.locator('[data-entrega]').first().click();
+  await expect(fila).toContainText('Aceptada', { timeout: 10000 });
+});

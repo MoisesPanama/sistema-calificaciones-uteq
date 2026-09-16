@@ -246,6 +246,16 @@ router.delete('/:id', requireAuth, async (req, res) => {
                 error: `La actividad ya tiene ${rNotas.rows[0].total} nota(s) registrada(s): no se puede borrar.`
             });
         }
+        const rEnt = await pool.query(
+            `SELECT COUNT(*)::int AS total FROM entregas
+             WHERE id_actividad = $1 AND estado <> 'pendiente'`,
+            [req.params.id]
+        );
+        if (rEnt.rows[0].total > 0) {
+            return res.status(409).json({
+                error: 'La actividad ya tiene entregas en curso: no se puede borrar.'
+            });
+        }
         await pool.query('DELETE FROM actividades WHERE id_actividad = $1', [req.params.id]);
         res.json({ ok: true, mensaje: 'Actividad eliminada.' });
     } catch (error) {
@@ -302,7 +312,7 @@ router.post('/:id/estado', requireAuth, async (req, res) => {
         await client.query('BEGIN');
         await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
         const r = await client.query(
-            'SELECT id_actividad, id_materia, id_periodo, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
+            'SELECT id_actividad, id_materia, id_periodo, id_curso, creado_por, estado FROM actividades WHERE id_actividad = $1 AND activo = TRUE',
             [req.params.id]
         );
         if (r.rows.length === 0) {
@@ -328,8 +338,35 @@ router.post('/:id/estado', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'Solo el administrador puede reabrir una actividad cerrada.' });
         }
         await client.query('UPDATE actividades SET estado = $1 WHERE id_actividad = $2', [estado, req.params.id]);
+        let pendientes = 0;
+        if (estado === 'publicada') {
+            // Al publicar se generan las entregas pendientes de la
+            // nomina visible (idempotente por UNIQUE).
+            try {
+                const vis = await cursosVisibles({ ...act, estado }, req.session.usuario);
+                const paramsR = [act.id_periodo];
+                let filtroR = '';
+                if (vis.fijo) {
+                    paramsR.push(vis.fijo);
+                    filtroR = ` AND (m.id_curso = $${paramsR.length} OR m.id_curso IS NULL)`;
+                } else if (vis.ids && vis.ids.length > 0) {
+                    paramsR.push(vis.ids);
+                    filtroR = ` AND (m.id_curso = ANY($${paramsR.length}) OR m.id_curso IS NULL)`;
+                }
+                const rIns = await client.query(
+                    `INSERT INTO entregas (id_actividad, id_estudiante)
+                     SELECT $1, m.id_estudiante FROM matriculas m
+                     WHERE m.id_periodo = $${paramsR.length + 1}${filtroR}
+                     ON CONFLICT DO NOTHING`,
+                    [req.params.id, ...paramsR]
+                );
+                pendientes = rIns.rowCount;
+            } catch (e) {
+                console.error('No se pudieron generar entregas:', e.message);
+            }
+        }
         await client.query('COMMIT');
-        res.json({ ok: true, mensaje: `Actividad ${estado}.` });
+        res.json({ ok: true, mensaje: `Actividad ${estado}.`, pendientes });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         console.error('Error al cambiar estado:', error.message);
@@ -434,11 +471,14 @@ router.get('/:id/notas', requireAuth, async (req, res) => {
         }
         params.push(act.id_actividad);
         const r = await pool.query(
-            `SELECT e.id_estudiante, e.nombres, e.apellidos, c.valor AS nota
+            `SELECT e.id_estudiante, e.nombres, e.apellidos, c.valor AS nota,
+                    en.id_entrega, en.estado AS entrega_estado
              FROM matriculas m
              JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
              LEFT JOIN calificaciones c
                ON c.id_actividad = $${params.length} AND c.id_estudiante = e.id_estudiante
+             LEFT JOIN entregas en
+               ON en.id_actividad = $${params.length} AND en.id_estudiante = e.id_estudiante
              WHERE m.id_periodo = $1${filtroCurso}
              ORDER BY e.apellidos, e.nombres`,
             params

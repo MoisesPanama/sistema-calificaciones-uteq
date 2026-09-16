@@ -139,6 +139,42 @@
       return '<span class="badge badge-formativa">Formativa</span>';
     }
 
+    function badgeEntrega(e) {
+      if (!e.id_entrega) return '<span style="color:#9ca3af;font-size:0.82rem;">—</span>';
+      const mapa = {
+        pendiente: ['badge-warning', 'Pendiente'],
+        enviada: ['badge-info', 'Enviada'],
+        aceptada: ['badge-success', 'Aceptada'],
+        rechazada: ['badge-danger', 'Rechazada'],
+        cambios: ['badge-warning', 'Cambios']
+      };
+      const [cls, txt] = mapa[e.entrega_estado] || ['badge-info', e.entrega_estado];
+      let btns = '';
+      if (e.entrega_estado === 'pendiente') {
+        btns = `<button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="enviar">Recibida</button>`;
+      } else if (e.entrega_estado === 'enviada') {
+        btns = `<button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="aceptada">Aceptar</button>
+                <button class="btn-secondary btn-sm" data-entrega="${e.id_entrega}" data-accion="cambios">Pedir cambios</button>
+                <button class="btn-secondary btn-sm btn-danger-text" data-entrega="${e.id_entrega}" data-accion="rechazada">Rechazar</button>`;
+      }
+      return `<span class="badge ${cls}">${txt}</span><br>${btns}`;
+    }
+
+    async function moverEntrega(idEntrega, accion) {
+      try {
+        let r;
+        if (accion === 'enviar') {
+          r = await apiPost(`/entregas/${idEntrega}/enviar`, {});
+        } else {
+          const obs = (accion === 'aceptada') ? null : prompt('Observación para el estudiante (opcional):');
+          if (obs === null && accion !== 'aceptada') return;
+          r = await apiPost(`/entregas/${idEntrega}/revisar`, { estado: accion, observacion: obs });
+        }
+        showOk(r.mensaje);
+        await abrirCalificar(actividadActual.id_actividad);
+      } catch (err) { showError(err.message); }
+    }
+
     function badgeEstado(a) {
       const mapa = { borrador: 'badge-warning', publicada: 'badge-success', cerrada: 'badge-danger' };
       const txt = { borrador: 'Borrador', publicada: 'Publicada', cerrada: 'Cerrada' };
@@ -317,16 +353,20 @@
         }
         document.getElementById('tabla').innerHTML =
           `<p>Se cargaron <strong>${est.length}</strong> estudiantes. Escriba las notas y guarde por estudiante o todas de una vez:</p>
-          <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th><th>Nota (0–10)</th><th></th></tr></thead><tbody>` +
+          <div style="overflow-x:auto"><table><thead><tr><th>Estudiante</th><th>Nota (0–10)</th><th>Entrega</th><th></th></tr></thead><tbody>` +
           est.map(e => `<tr><td>${esc(e.apellidos)} ${esc(e.nombres)}</td>
             <td><input type="number" min="0" max="10" step="0.01" style="width:5.5em" placeholder="—"
               data-est="${e.id_estudiante}" data-original="${e.nota == null ? '' : esc(e.nota)}" value="${e.nota == null ? '' : esc(e.nota)}"></td>
+            <td>${badgeEntrega(e)}</td>
             <td><button class="btn-primary btn-sm" data-guardar-est="${e.id_estudiante}">Guardar</button></td></tr>`).join('') +
           `</tbody></table></div>
           <div class="form-actions"><button class="btn-secondary" id="btn-guardar">Guardar todas</button></div>`;
         document.getElementById('btn-guardar').onclick = guardarTodas;
         document.querySelectorAll('[data-guardar-est]').forEach(btn => {
           btn.onclick = () => guardarEstudiante(btn.dataset.guardarEst);
+        });
+        document.querySelectorAll('[data-entrega]').forEach(btn => {
+          btn.onclick = () => moverEntrega(btn.dataset.entrega, btn.dataset.accion);
         });
         document.querySelectorAll('input[data-est]').forEach(inp => {
           inp.addEventListener('input', () => {
