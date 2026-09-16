@@ -92,7 +92,7 @@ Esquema `colegio`, normalizado (1FN–3FN), con las siguientes tablas:
 `roles`, `usuarios`, `representantes`, `estudiantes`, `profesores`,
 `materias`, `periodos_academicos`, `matriculas`,
 `profesor_materia_periodo`, `tipos_evaluacion`, `calificaciones`,
-`auditoria`, `sesiones`.
+`auditoria`, `sesiones`, `solicitudes_matricula`, `supletorios`.
 
 ### Funciones y procedimientos
 
@@ -195,6 +195,10 @@ psql -U postgres -d calificaciones_uteq -f database/23_cierre_notas.sql
 psql -U postgres -d calificaciones_uteq -f database/24_entregas.sql
 psql -U postgres -d calificaciones_uteq -f database/25_adjuntos.sql
 psql -U postgres -d calificaciones_uteq -f database/26_fallas_observaciones.sql
+psql -U postgres -d calificaciones_uteq -f database/27_tipos_reales.sql
+psql -U postgres -d calificaciones_uteq -f database/28_preinscripciones.sql
+psql -U postgres -d calificaciones_uteq -f database/29_supletorios.sql
+psql -U postgres -d calificaciones_uteq -f database/30_cierre_recuperacion.sql
 ```
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
@@ -335,6 +339,11 @@ sistema-calificaciones-uteq/
 | GET/POST | `/api/actas/` | Actas del periodo / crear borrador (solo admin) |
 | POST | `/api/actas/:id/validar` | Congelar contexto (solo admin) |
 | DELETE | `/api/actas/:id` | Eliminar solo en borrador (solo admin) |
+| GET | `/api/supletorios/?id_periodo=&id_materia=&id_curso=` | Nómina con promedio anual + elegibilidad <7 + instancias + estado final (docente asignado o admin) |
+| POST | `/api/supletorios/` | Registrar nota (`instancia`: supletorio/remedial/gracia en orden; <7 verificado en servidor) |
+| PUT | `/api/supletorios/:id` | Editar nota (solo registrado, no validado) |
+| POST | `/api/supletorios/:id/validar` | Congelar acta y cerrar estado de la materia (solo admin) |
+| DELETE | `/api/supletorios/:id` | Eliminar solo en registrado (admin o quien lo creó) |
 | POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
 | GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |
 | POST | `/api/entregas/:id/enviar` | Marcar enviada (propio, docente o admin) |
@@ -385,6 +394,8 @@ sistema-calificaciones-uteq/
 7. Consulta de calificaciones por estudiante
 8. Reporte de promedios por periodo
 9. Panel de auditoría (solo administrador)
+10. Preinscripción pública + bandeja de aprobación (solo admin)
+11. Supletorio: ciclo supletorio → remedial → gracia + cierre de estado (docente/admin, valida admin)
 
 ## Notas de diseño
 

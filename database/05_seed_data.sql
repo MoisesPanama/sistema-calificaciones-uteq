@@ -43,7 +43,11 @@ INSERT INTO materias (nombre, descripcion) VALUES
 INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin) VALUES
     ('2026-2027 Primer Quimestre', '2026-09-01', '2027-01-31');
 
--- Tipos de evaluacion (los pesos deben sumar 1.00)
+-- Tipos de evaluacion legacy (contenedores historicos: el parcial
+-- es un PROMEDIO calculado, nunca una nota digitada). La 08 crea
+-- los insumos reales (Tarea, Leccion, Taller Grupal, Proyecto,
+-- Examen Quimestral, Diagnostica) y la 27 marca estos Parcial
+-- como es_legacy (ocultos de la UI, historial conservado).
 INSERT INTO tipos_evaluacion (nombre, peso) VALUES
     ('Parcial 1', 0.30),
     ('Parcial 2', 0.30),

@@ -5,17 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Matriculas - Sistema de Calificaciones</title>
   <link rel="stylesheet" href="../css/style.css">
-  <style>
-    .mat-form-card {
-      background: white; border-radius: 12px; padding: 1.2rem 1.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1.5rem;
-    }
-    .mat-form-card h3 { font-size: 1rem; color: #1e3a8a; margin-bottom: 1rem; }
-    .mat-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
-    .mat-form-grid select { padding: 0.5rem 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.88rem; }
-    .mat-count { font-size: 0.82rem; color: #6b7280; margin-bottom: 0.5rem; }
-    @media (max-width: 768px) { .mat-form-grid { grid-template-columns: 1fr; } }
-  </style>
 </head>
 <body>
   <div class="layout">
@@ -25,6 +14,7 @@
     <main class="main-content">
     <h1>Matriculas</h1>
     <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
 
     <div class="form-box">
       <label for="sel-periodo">Periodo</label>
@@ -44,6 +34,15 @@
         </div>
         <button class="btn-primary btn-sm" id="btn-matricular">Matricular</button>
       </div>
+    </div>
+
+    <div class="mat-form-card" id="bandeja-sol">
+      <h3>Solicitudes de preinscripción pendientes <span id="sol-count" class="badge"></span></h3>
+      <div class="search-bar">
+        <input type="text" id="busqueda-sol" placeholder="Buscar por cédula, aspirante o acudiente...">
+        <button class="btn-secondary btn-sm" id="btn-buscar-sol">Buscar</button>
+      </div>
+      <div id="lista-sol"></div>
     </div>
 
     <div class="search-bar">
@@ -83,6 +82,47 @@
       const selCur = document.getElementById('sel-curso');
       selCur.innerHTML = '<option value="">Sin curso</option>' +
         (d.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+    }
+
+    async function cargarSolicitudes() {
+      try {
+        const q = (document.getElementById('busqueda-sol').value || '').trim();
+        let url = '/preinscripciones/?estado=pendiente&page=1&limit=20';
+        if (q) url += `&q=${encodeURIComponent(q)}`;
+        const d = await apiGet(url);
+        const arr = d.datos || [];
+        document.getElementById('sol-count').textContent = d.paginacion?.total || 0;
+        const div = document.getElementById('lista-sol');
+        if (arr.length === 0) { div.innerHTML = '<p style="font-size:0.85rem;color:#6b7280;">Sin solicitudes pendientes.</p>'; return; }
+        div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+          <th>Aspirante</th><th>Cédula</th><th>Acudiente</th><th>Parentesco</th><th>Curso</th><th></th></tr></thead><tbody>` +
+          arr.map(s => `<tr><td>${esc(s.nombres)} ${esc(s.apellidos)}</td><td>${esc(s.cedula)}</td>
+            <td>${esc(s.rep_nombres)} ${esc(s.rep_apellidos)}${s.rep_documento ? '<br><span style="font-size:0.78rem;color:#6b7280;">Doc: ' + esc(s.rep_documento) + '</span>' : ''}</td>
+            <td>${esc(s.rep_parentesco || '—')}</td>
+            <td>${s.curso_nombre ? esc(s.curso_nombre) + ' ' + esc(s.paralelo || '') : '—'}</td>
+            <td class="td-actions" style="display:flex;gap:0.4rem;">
+              <button class="btn-primary btn-sm" data-aprobar="${s.id_solicitud}">Aprobar</button>
+              <button class="btn-secondary btn-sm btn-danger-text" data-rechazar="${s.id_solicitud}">Rechazar</button>
+            </td></tr>`).join('') + '</tbody></table></div>';
+        div.querySelectorAll('[data-aprobar]').forEach(b => b.onclick = async () => {
+          if (!confirm('¿Aprobar y matricular? Se crearán representante, usuario y matrícula.')) return;
+          try {
+            const r = await apiPost(`/preinscripciones/${b.dataset.aprobar}/aprobar`, {});
+            showOk(`${r.mensaje} Usuario: ${r.email} / UTEQ2026`);
+            await cargarSolicitudes();
+            await cargarLista(1);
+          } catch (err) { showError(err.message); }
+        });
+        div.querySelectorAll('[data-rechazar]').forEach(b => b.onclick = async () => {
+          const motivoRaw = prompt('Motivo del rechazo (opcional):');
+          if (motivoRaw === null) return;
+          try {
+            await apiPost(`/preinscripciones/${b.dataset.rechazar}/rechazar`, { motivo: motivoRaw });
+            showOk('Solicitud rechazada.');
+            await cargarSolicitudes();
+          } catch (err) { showError(err.message); }
+        });
+      } catch (err) { showError(err.message); }
     }
 
     async function cargarLista(p) {
@@ -131,13 +171,15 @@
       if (!await initPage({ adminOnly: true })) return;
       try {
         await cargarPeriodos();
-        await Promise.all([cargarOpciones(), cargarLista(1)]);
+        await Promise.all([cargarOpciones(), cargarLista(1), cargarSolicitudes()]);
         document.getElementById('sel-periodo').onchange = async () => {
           periodoId = document.getElementById('sel-periodo').value;
           await Promise.all([cargarOpciones(), cargarLista(1)]);
         };
         document.getElementById('btn-buscar').onclick = () => cargarLista(1).catch(showError);
         document.getElementById('busqueda').onkeydown = (e) => { if (e.key === 'Enter') cargarLista(1).catch(showError); };
+        document.getElementById('btn-buscar-sol').onclick = () => cargarSolicitudes().catch(showError);
+        document.getElementById('busqueda-sol').onkeydown = (e) => { if (e.key === 'Enter') cargarSolicitudes().catch(showError); };
         document.getElementById('btn-matricular').onclick = async () => {
           const idEst = document.getElementById('sel-estudiante').value;
           const idCur = document.getElementById('sel-curso').value;

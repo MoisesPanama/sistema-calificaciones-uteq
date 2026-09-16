@@ -516,6 +516,81 @@ select {
 }
 .toast-close:hover { color: white; }
 
+/* ===================== M5: PILLS DE ESTADO ===================== */
+/* Mismo azul; una sola clase .pill para supletorio, actas,
+   actividades y preinscripciones (antes cada pagina tenia la suya). */
+.pill {
+    display: inline-block; padding: 0.22rem 0.65rem; border-radius: var(--radius-pill);
+    font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.pill-ok { background-color: var(--success-bg); color: var(--success-dark); }
+.pill-warn { background-color: var(--warning-bg); color: var(--warning-dark); }
+.pill-info { background-color: var(--info-bg); color: var(--info-text); }
+.pill-danger { background-color: var(--danger-bg); color: var(--danger-dark); }
+.pill-muted { background-color: var(--border-light); color: var(--text-muted); }
+/* Alias legacy (calificaciones.html usaba prom-pill): mismo sistema. */
+.prom-pill {
+    display: inline-block; min-width: 3em; padding: 0.15rem 0.5rem; border-radius: 6px;
+    background: var(--border-light); font-weight: 700; text-align: center;
+}
+.prom-bajo { background: var(--danger-bg); color: var(--danger-dark); }
+.prom-ok { background: var(--success-bg); color: var(--success-dark); }
+.badge-formativa { background-color: var(--info-bg); color: var(--info-text); }
+.badge-sumativa { background-color: var(--warning-bg); color: var(--warning-dark); }
+.badge-examen { background-color: var(--danger-bg); color: var(--danger-dark); }
+
+/* ===================== M5: TABLAS STICKY ===================== */
+/* Cabecera fija + primera columna fija (nominas largas:
+   supletorio, calificar, consulta). La tabla base sigue igual. */
+.table-sticky-wrap { max-height: 60vh; overflow: auto; border-radius: var(--radius); box-shadow: var(--shadow); }
+.table-sticky-wrap table { margin-top: 0; box-shadow: none; border-radius: 0; }
+table.table-sticky thead th { position: sticky; top: 0; z-index: 3; }
+table.table-sticky tbody th:first-child,
+table.table-sticky tbody td:first-child,
+table.table-sticky thead th:first-child {
+    position: sticky; left: 0; z-index: 2;
+}
+table.table-sticky thead th:first-child { z-index: 4; }
+table.table-sticky tbody td:first-child { background: var(--card-bg); font-weight: 600; }
+table.table-sticky thead th:first-child { background: var(--primary-dark); }
+table.table-sticky tbody tr:hover td:first-child { background-color: #f8fafc; }
+
+/* ===================== M5: WIZARD POR PASOS ===================== */
+/* Antes inline en preinscripcion.html; ahora global para reusar. */
+.wizard-pasos { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
+.wizard-pasos span {
+    flex: 1; text-align: center; font-size: 0.78rem; font-weight: 700;
+    padding: 0.45rem; border-radius: 8px; background: #eef2f7; color: #6b7280;
+}
+.wizard-pasos span.activo { background: var(--primary); color: white; }
+.wizard-pasos span.completo { background: var(--success-bg); color: var(--success-dark); }
+.wizard-panel { display: none; text-align: left; }
+.wizard-panel.activo { display: block; }
+.wizard-panel label { display: block; margin-top: 1rem; font-size: 0.85rem; font-weight: 600; color: var(--label); }
+.wizard-panel input, .wizard-panel select {
+    width: 100%; margin-top: 0.3rem; padding: 0.7rem 0.9rem;
+    border: 1px solid var(--input-border); border-radius: var(--radius-sm);
+    font-size: 0.95rem; font-family: var(--font); box-sizing: border-box;
+}
+.wizard-panel input:focus, .wizard-panel select:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-focus);
+}
+.wizard-panel .form-actions { display: flex; gap: 0.7rem; margin-top: 1.2rem; }
+.wizard-panel .form-actions .btn-primary { flex: 1; }
+
+/* ===================== M5: TARJETAS DE FORMULARIO ===================== */
+/* Antes inline en matriculas.html (.mat-form-card). */
+.mat-form-card {
+    background: var(--card-bg); border-radius: var(--radius); padding: 1.2rem 1.5rem;
+    box-shadow: var(--shadow); margin-bottom: 1.5rem; border: 1px solid var(--border);
+}
+.mat-form-card h3 { font-size: 1rem; color: var(--primary); margin-bottom: 1rem; }
+.mat-form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
+.mat-form-grid select { padding: 0.5rem 0.7rem; border: 1px solid var(--input-border); border-radius: 6px; font-size: 0.88rem; }
+.mat-count { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+@media (max-width: 768px) { .mat-form-grid { grid-template-columns: 1fr; } }
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }

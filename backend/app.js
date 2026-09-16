@@ -58,6 +58,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/estudiantes', require('./routes/estudiantes'));
+app.use('/api/preinscripciones', require('./routes/preinscripciones'));
 app.use('/api/representantes', require('./routes/representantes'));
 app.use('/api/materias', require('./routes/materias'));
 app.use('/api/periodos', require('./routes/periodos'));
@@ -68,6 +69,7 @@ app.use('/api/asistencias', require('./routes/asistencias'));
 app.use('/api/adjuntos', require('./routes/adjuntos'));
 app.use('/api/documentos', require('./routes/documentos'));
 app.use('/api/actas', require('./routes/actas'));
+app.use('/api/supletorios', require('./routes/supletorios'));
 app.use('/api/consulta', require('./routes/consulta'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/auditoria', require('./routes/auditoria'));

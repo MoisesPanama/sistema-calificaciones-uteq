@@ -149,7 +149,9 @@
             <option value="diagnostica">Diagnóstica (no promedia)</option>
           </select>
           <label style="font-size:0.85rem;display:block;margin-bottom:0.4rem;"><input type="checkbox" id="tip-examen"> Es examen de ciclo</label>
-          <label style="font-size:0.85rem;display:block;margin-bottom:0.8rem;"><input type="checkbox" id="tip-cuenta" checked> Cuenta para el promedio</label>
+          <label style="font-size:0.85rem;display:block;margin-bottom:0.4rem;"><input type="checkbox" id="tip-cuenta" checked> Cuenta para el promedio</label>
+          <label for="tip-orden" style="font-size:0.82rem;font-weight:600;">Orden (examen al final: 80+)</label>
+          <input type="number" id="tip-orden" min="1" max="99" step="1" placeholder="Vacío = automático" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;">
           <div style="display:flex;gap:0.5rem;">
             <button class="btn-primary" id="tip-guardar">Guardar</button>
             <button class="btn-secondary" id="tip-cancelar" style="display:none;">Cancelar</button>
@@ -414,8 +416,8 @@
       const div = document.getElementById('lista-tipos');
       if (!d.tiposEvaluacion || d.tiposEvaluacion.length === 0) { div.innerHTML = '<p>No hay tipos registrados.</p>'; return; }
       div.innerHTML = `<div class="table-responsive"><table><thead><tr>
-        <th>Nombre</th><th>Peso</th><th>Categoría</th><th>Examen</th><th>Promedia</th><th></th></tr></thead><tbody>` +
-        d.tiposEvaluacion.map(t => `<tr><td>${esc(t.nombre)}</td><td>${esc(t.peso)}</td>
+        <th>Orden</th><th>Nombre</th><th>Peso</th><th>Categoría</th><th>Examen</th><th>Promedia</th><th></th></tr></thead><tbody>` +
+        d.tiposEvaluacion.map(t => `<tr><td>${esc(t.orden)}</td><td>${esc(t.nombre)}${t.es_legacy ? ' <span class="badge">legacy</span>' : ''}</td><td>${esc(t.peso)}</td>
           <td>${esc(t.categoria || '')}</td><td>${t.es_examen ? 'Sí' : 'No'}</td>
           <td>${t.cuenta_para_promedio ? 'Sí' : 'No'}</td>${botonesEditarEliminar(t.id_tipo_evaluacion, 'tip')}</tr>`).join('') +
         '</tbody></table></div>';
@@ -427,6 +429,7 @@
         document.getElementById('tip-categoria').value = t.categoria || 'formativa';
         document.getElementById('tip-examen').checked = !!t.es_examen;
         document.getElementById('tip-cuenta').checked = t.cuenta_para_promedio !== false;
+        document.getElementById('tip-orden').value = t.orden ?? '';
         document.getElementById('tip-form-titulo').textContent = 'Editar tipo';
         document.getElementById('tip-cancelar').style.display = 'inline-block';
       });
@@ -446,6 +449,7 @@
       document.getElementById('tip-categoria').value = 'formativa';
       document.getElementById('tip-examen').checked = false;
       document.getElementById('tip-cuenta').checked = true;
+      document.getElementById('tip-orden').value = '';
       document.getElementById('tip-form-titulo').textContent = 'Nuevo tipo';
       document.getElementById('tip-cancelar').style.display = 'none';
     }
@@ -657,7 +661,8 @@
             peso: Number(document.getElementById('tip-peso').value),
             categoria: document.getElementById('tip-categoria').value,
             es_examen: document.getElementById('tip-examen').checked,
-            cuenta_para_promedio: document.getElementById('tip-cuenta').checked
+            cuenta_para_promedio: document.getElementById('tip-cuenta').checked,
+            orden: document.getElementById('tip-orden').value === '' ? null : Number(document.getElementById('tip-orden').value)
           };
           try {
             const r = id ? await apiPut('/tipos/' + id, body) : await apiPost('/tipos/', body);

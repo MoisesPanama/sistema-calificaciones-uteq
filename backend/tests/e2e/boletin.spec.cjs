@@ -23,6 +23,13 @@ test('planilla en blanco para el aula', async ({ page }) => {
   const celdas = await page.locator('#planilla td.planilla-celda').count();
   expect(celdas).toBeGreaterThan(0);
   await expect(page.locator('#btn-imprimir')).toBeVisible();
+  // Orden real: formativas primero, examen al ultimo, sin Parcial 1/2.
+  const headers = await page.locator('#planilla table thead th').allTextContents();
+  const nombres = headers.slice(2).map(h => h.trim());
+  expect(nombres.length).toBeGreaterThan(0);
+  expect(nombres.some(n => /^parcial \d/i.test(n))).toBe(false);
+  // Examen al ultimo (puede haber Examen Final + Quimestral al cierre).
+  expect(/examen/i.test(nombres[nombres.length - 1])).toBe(true);
 });
 
 test('estudiante ve su boletin propio', async ({ page }) => {
