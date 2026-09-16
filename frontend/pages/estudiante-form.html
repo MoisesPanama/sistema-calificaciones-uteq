@@ -86,6 +86,21 @@
         <a href="estudiantes.html" class="btn-danger btn-secondary">Cancelar</a>
       </div>
     </form>
+    <div class="card" id="card-docs" style="display:none;margin-top:1.2rem;">
+      <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Documentos de matrícula</h2>
+      <div id="lista-docs"></div>
+      <div style="display:flex;gap:0.6rem;align-items:flex-end;flex-wrap:wrap;margin-top:0.8rem;">
+        <div style="flex:1;min-width:160px;">
+          <label for="doc-tipo" style="font-size:0.82rem;font-weight:600;">Tipo</label>
+          <select id="doc-tipo" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;"></select>
+        </div>
+        <div style="flex:2;min-width:180px;">
+          <label for="doc-archivo" style="font-size:0.82rem;font-weight:600;">Archivo (PDF o imagen)</label>
+          <input type="file" id="doc-archivo" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp">
+        </div>
+        <button type="button" class="btn-secondary btn-sm" id="doc-subir">Subir</button>
+      </div>
+    </div>
     </main>
   </div>
 </div>
@@ -238,7 +253,65 @@
           } catch (_) {}
         }
         document.getElementById('activo').checked = !!estudiante.activo;
+        document.getElementById('card-docs').style.display = 'block';
+        await cargarDocs();
       }
+
+      async function cargarDocs() {
+        const div = document.getElementById('lista-docs');
+        try {
+          const [docs, tipos] = await Promise.all([
+            apiGet('/documentos/por-estudiante/' + id),
+            apiGet('/documentos/tipos')
+          ]);
+          document.getElementById('doc-tipo').innerHTML =
+            (tipos.tipos || []).map(t => `<option value="${t.id_tipo_documento}">${esc(t.nombre)}${t.obligatorio ? ' *' : ''}</option>`).join('');
+          const arr = docs.documentos || [];
+          div.innerHTML = arr.length === 0
+            ? '<p style="font-size:0.85rem;color:#6b7280;">Sin documentos. Los marcados * son obligatorios.</p>'
+            : arr.map(x => `<div style="display:flex;gap:0.6rem;align-items:center;font-size:0.87rem;padding:0.35rem 0;border-bottom:1px solid #f3f4f6;">
+                <strong>${esc(x.nombre)}${x.obligatorio ? ' *' : ''}</strong>
+                ${x.id_documento
+                  ? `<span style="color:#6b7280;">${esc(x.nombre_original)}</span>
+                     <button class="btn-secondary btn-sm" data-desc-doc="${x.id_documento}">Descargar</button>
+                     <button class="btn-secondary btn-sm btn-danger-text" data-del-doc="${x.id_documento}">Quitar</button>`
+                  : '<span style="color:#b45309;">pendiente</span>'}
+              </div>`).join('');
+          div.querySelectorAll('[data-desc-doc]').forEach(b => b.onclick = () => {
+            window.open(`/api/documentos/${b.dataset.descDoc}/descargar`, '_blank');
+          });
+          div.querySelectorAll('[data-del-doc]').forEach(b => b.onclick = async () => {
+            if (!confirm('¿Quitar este documento?')) return;
+            try {
+              await apiDelete(`/documentos/${b.dataset.delDoc}`);
+              await cargarDocs();
+            } catch (err) { showError(err.message); }
+          });
+        } catch (err) {
+          div.innerHTML = '<p style="font-size:0.85rem;color:#6b7280;">Documentos no disponibles.</p>';
+        }
+      }
+
+      const btnSubirDoc = document.getElementById('doc-subir');
+      if (btnSubirDoc) btnSubirDoc.onclick = async () => {
+        const input = document.getElementById('doc-archivo');
+        const idTipo = document.getElementById('doc-tipo').value;
+        if (!idTipo) { showError('Elige el tipo de documento.'); return; }
+        if (!input.files || input.files.length === 0) { showError('Elige un archivo PDF o imagen.'); return; }
+        try {
+          const fd = new FormData();
+          fd.append('archivo', input.files[0]);
+          fd.append('id_tipo_documento', idTipo);
+          const res = await fetch(`/api/documentos/por-estudiante/${id}`, {
+            method: 'POST', credentials: 'include', body: fd
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+          showOk(data.mensaje);
+          input.value = '';
+          await cargarDocs();
+        } catch (err) { showError(err.message); }
+      };
       document.getElementById('form-est').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!document.getElementById('id_representante').value) {

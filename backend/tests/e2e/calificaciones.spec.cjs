@@ -66,6 +66,28 @@ test('publicar y cerrar actividad desde sus tarjetas', async ({ page }) => {
   await expect(card.locator('[data-estado]')).toContainText('Reabrir');
 });
 
+test('adjuntar y quitar material en calificar', async ({ page }) => {
+  const tag = Date.now().toString(36);
+  const selMat = page.locator('#sel-materia');
+  await expect(selMat).toBeVisible({ timeout: 10000 });
+  await selMat.selectOption({ index: 1 });
+  await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
+  await page.locator('#card-nueva').click();
+  await page.locator('#act-nombre').fill('Adjunto PW ' + tag);
+  await page.locator('#act-tipo').selectOption({ index: 0 });
+  await page.locator('#act-guardar').click();
+  const card = page.locator('.act-card', { hasText: 'Adjunto PW ' + tag });
+  await expect(card).toBeVisible({ timeout: 15000 });
+  await card.locator('[data-calificar]').click();
+  await expect(page.locator('#tabla table')).toBeVisible({ timeout: 15000 });
+  await page.locator('#input-adjuntos').setInputFiles('tests/fixtures/muestra.pdf');
+  await page.locator('#btn-subir-adj').click();
+  await expect(page.locator('#lista-adjuntos')).toContainText('muestra.pdf', { timeout: 15000 });
+  page.on('dialog', d => d.accept());
+  await page.locator('#lista-adjuntos [data-del-adj]').click();
+  await expect(page.locator('#lista-adjuntos')).toContainText('Sin material adjunto', { timeout: 15000 });
+});
+
 test('flujo de entregas en la planilla', async ({ page }) => {
   const tag = Date.now().toString(36);
   const selMat = page.locator('#sel-materia');

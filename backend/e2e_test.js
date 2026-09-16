@@ -542,6 +542,76 @@ const loginAs = async (email) => {
   log('Borrar con entregas en curso -> 409', borraAct17.status === 409, '');
   }
 
+  console.log('\n=== 18. ARCHIVOS: ADJUNTOS + DOCUMENTOS ===');
+  await loginAs('admin@uteq.edu.ec');
+  const fs = require('fs');
+  const pathLib = require('path');
+  const pdfPath = pathLib.join(__dirname, 'tests', 'fixtures', 'muestra.pdf');
+  const pdfBuf = fs.readFileSync(pdfPath);
+
+  async function subirMultipart(url, fields, fileField, fileName, mime, buf) {
+    const bnd = '----e2e' + Date.now().toString(36);
+    const partes = [];
+    for (const [k, v] of Object.entries(fields)) {
+      partes.push(Buffer.from(`--${bnd}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
+    }
+    partes.push(Buffer.from(
+      `--${bnd}\r\nContent-Disposition: form-data; name="${fileField}"; filename="${fileName}"\r\nContent-Type: ${mime}\r\n\r\n`));
+    partes.push(buf);
+    partes.push(Buffer.from(`\r\n--${bnd}--\r\n`));
+    const cuerpo = Buffer.concat(partes);
+    return new Promise((resolve, reject) => {
+      const cookieStr = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+      const opts = {
+        hostname: 'localhost', port: 3000, path: '/api' + url, method: 'POST',
+        headers: { 'Content-Type': `multipart/form-data; boundary=${bnd}`, 'Content-Length': cuerpo.length, 'Cookie': cookieStr }
+      };
+      const req = http.request(opts, res => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => {
+          let json; try { json = JSON.parse(data); } catch { json = data; }
+          resolve({ status: res.statusCode, body: json });
+        });
+      });
+      req.on('error', reject);
+      req.write(cuerpo);
+      req.end();
+    });
+  }
+
+  // Tipos de documento (admin).
+  const tag18 = Date.now().toString(36);
+  const creaTipoDoc = await post('/documentos/tipos', { nombre: 'E2E Doc ' + tag18, obligatorio: true });
+  log('Crear tipo documento', creaTipoDoc.status === 201 && !!creaTipoDoc.body.id_tipo_documento, creaTipoDoc.body.error || '');
+  const idTipo18 = creaTipoDoc.body.id_tipo_documento;
+  const dupTipoDoc = await post('/documentos/tipos', { nombre: 'E2E Doc ' + tag18 });
+  log('Tipo duplicado -> 409', dupTipoDoc.status === 409, '');
+  // Subir PDF valido al estudiante 1.
+  const upOk = await subirMultipart('/documentos/por-estudiante/1', { id_tipo_documento: idTipo18 }, 'archivo', 'prueba.pdf', 'application/pdf', pdfBuf);
+  log('Subir PDF valido', upOk.status === 201, upOk.body.error || JSON.stringify(upOk.body).slice(0, 120));
+  // Rechazar ejecutable.
+  const upExe = await subirMultipart('/documentos/por-estudiante/1', { id_tipo_documento: idTipo18 }, 'archivo', 'virus.exe', 'application/x-msdownload', Buffer.from('MZ...'));
+  log('Rechazar .exe -> 400', upExe.status === 400, '');
+  // Descarga sin sesion -> 401.
+  const sinSesion = await new Promise((resolve) => {
+    const opts = { hostname: 'localhost', port: 3000, path: '/api/documentos/por-estudiante/1', method: 'GET' };
+    const req = http.request(opts, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    req.on('error', () => resolve(0));
+    req.end();
+  });
+  log('Sin sesion -> 401', sinSesion === 401, '');
+  // Listar y borrar el documento.
+  const listaDocs = await get('/documentos/por-estudiante/1');
+  const doc18 = (listaDocs.body.documentos || []).find(d => d.id_tipo_documento === idTipo18 && d.id_documento);
+  log('Listar con vigente', listaDocs.status === 200 && !!doc18, '');
+  if (doc18) {
+    const borraDoc = await del(`/documentos/${doc18.id_documento}`);
+    log('Borrar documento', borraDoc.status === 200, borraDoc.body.error || '');
+  }
+  const borraTipoDoc = await del(`/documentos/tipos/${idTipo18}`);
+  log('Borrar tipo sin uso', borraTipoDoc.status === 200, borraTipoDoc.body.error || '');
+
   // --- Summary ---
   const passed = results.filter(r => r.ok).length;
   const failed = results.filter(r => !r.ok).length;
