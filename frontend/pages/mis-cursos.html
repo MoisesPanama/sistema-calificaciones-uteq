@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis cursos - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Mis cursos</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p style="font-size:0.88rem;color:#6b7280;margin-bottom:1.2rem;max-width:720px;">
+      Tus paralelos asignados en el periodo: cada bloque es una materia en un
+      curso con sus estudiantes. Un mismo docente puede llevar varios cursos
+      y materias (lo define el administrador en Catálogos → Asignaciones).
+    </p>
+    <div class="cat-grid" id="grupos"></div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    (async () => {
+      if (!await initPage()) return;
+      try {
+        const per = await apiGet('/periodos/');
+        const idPeriodo = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+        document.getElementById('info-periodo').innerHTML =
+          `Periodo seleccionado: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
+        const d = await apiGet('/consulta/grupos?id_periodo=' + encodeURIComponent(idPeriodo));
+        const div = document.getElementById('grupos');
+        if (!d.grupos || d.grupos.length === 0) {
+          div.innerHTML = '<p>No tienes cursos asignados en este periodo. Pide al administrador que te asigne materias.</p>';
+          return;
+        }
+        div.innerHTML = d.grupos.map(g => `
+          <div class="cat-card">
+            <h3>${esc(g.materia)}</h3>
+            <div class="total">${esc(g.curso || 'General')}${g.paralelo ? ' ' + esc(g.paralelo) : ''}</div>
+            <div class="meta">${g.n_estudiantes} estudiante(s)</div>
+            <div style="margin-top:0.7rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <a class="btn-primary btn-sm" href="calificaciones.html">Calificar</a>
+              <a class="btn-secondary btn-sm" href="consulta.html">Ver notas</a>
+            </div>
+          </div>`).join('');
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>
