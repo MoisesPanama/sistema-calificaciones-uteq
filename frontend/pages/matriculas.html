@@ -61,7 +61,7 @@
       const per = await apiGet('/periodos/');
       const sel = document.getElementById('sel-periodo');
       sel.innerHTML = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
-      periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      periodoId = await periodoPagina(per);
       sel.value = periodoId;
     }
 

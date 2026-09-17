@@ -6,13 +6,13 @@ const { getPeriodoActivo, getEstudianteId, periodoDe } = require('../helpers/con
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 // GET /api/matriculas/mia — estado de matricula del estudiante
-// (o hijos del representante) en el periodo + si la ventana
-// esta abierta. 403 para el resto de roles.
+// en el periodo + si la ventana esta abierta.
+// M12: SOLO estudiante (el representante solo consulta notas).
 router.get('/mia', requireAuth, async (req, res) => {
     try {
         const rol = req.session.usuario.nombre_rol;
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = await periodoDe(req);
+        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
         if (!idPeriodo) return res.json({ matriculas: [], matricula_abierta: false });
         const rAbierta = await pool.query('SELECT fn_matricula_abierta($1) AS abierta', [idPeriodo]);
 
@@ -20,20 +20,8 @@ router.get('/mia', requireAuth, async (req, res) => {
         if (rol === 'estudiante') {
             const propio = await getEstudianteId(pool, req.session.usuario.id_usuario);
             if (propio) idsEst = [propio];
-        } else if (rol === 'representante') {
-            const rRep = await pool.query(
-                'SELECT id_representante FROM representantes WHERE id_usuario = $1',
-                [req.session.usuario.id_usuario]
-            );
-            if (rRep.rows.length > 0) {
-                const rHijos = await pool.query(
-                    'SELECT id_estudiante FROM estudiantes WHERE id_representante = $1',
-                    [rRep.rows[0].id_representante]
-                );
-                idsEst = rHijos.rows.map((h) => h.id_estudiante);
-            }
         } else {
-            return res.status(403).json({ error: 'Solo estudiante o representante.' });
+            return res.status(403).json({ error: 'Solo estudiante.' });
         }
         if (idsEst.length === 0) {
             return res.json({ matriculas: [], matricula_abierta: !!rAbierta.rows[0]?.abierta });

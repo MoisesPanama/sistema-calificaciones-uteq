@@ -112,7 +112,7 @@
 
     <!-- Nivel 1: bloques Materia + Paralelo -->
     <div id="vista-bloques">
-      <h2 style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Elige materia y paralelo</h2>
+      <h2 id="bloques-titulo" style="font-size:1rem;color:#1e3a8a;margin-bottom:0.8rem;">Elige materia y paralelo</h2>
       <div class="cat-grid" id="grupos"></div>
     </div>
 
@@ -145,6 +145,7 @@
     let periodoId = '';
     let grupo = null;
     let gruposCache = [];
+    let hijoActual = null;
     let rolActual = '';
     let detalleCtx = null;
 
@@ -219,18 +220,42 @@
       const per = await apiGet('/periodos/');
       const sel = document.getElementById('sel-periodo');
       sel.innerHTML = (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
-      periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      periodoId = await periodoPagina(per);
       sel.value = periodoId;
       const nombre = (per.periodos || []).find(p => String(p.id_periodo) === periodoId)?.nombre || per.periodoActivo?.nombre || '—';
       document.getElementById('info-periodo').innerHTML = `Periodo seleccionado: <strong>${esc(nombre)}</strong>`;
     }
 
     async function cargarGrupos() {
-      const d = await apiGet('/consulta/grupos?id_periodo=' + encodeURIComponent(periodoId));
+      const div = document.getElementById('grupos');
+      // M12: el representante primero elige HIJO (solo lo suyo).
+      if (rolActual === 'representante' && !hijoActual) {
+        const h = await apiGet(`/consulta/?id_periodo=${encodeURIComponent(periodoId)}`);
+        document.getElementById('info-periodo').innerHTML =
+          `Periodo seleccionado: <strong>${esc(h.periodoNombre || '—')}</strong>`;
+        document.getElementById('bloques-titulo').textContent = 'Elige hijo';
+        const hijos = h.estudiantes || [];
+        if (hijos.length === 0) { div.innerHTML = '<p>No tienes hijos matriculados en este periodo.</p>'; return; }
+        div.innerHTML = hijos.map(e => `
+          <div class="cat-card" data-hijo="${e.id_estudiante}">
+            <h3>${esc(e.apellidos)} ${esc(e.nombres)}</h3>
+            <div class="total">${e.curso_nombre ? esc(e.curso_nombre) + ' ' + esc(e.paralelo || '') : 'Sin curso'}</div>
+            <div class="meta">Ver sus materias</div>
+          </div>`).join('');
+        div.querySelectorAll('[data-hijo]').forEach(el => {
+          el.onclick = () => { hijoActual = el.dataset.hijo; cargarGrupos().catch(showError); };
+        });
+        mostrar(1);
+        return;
+      }
+      let url = '/consulta/grupos?id_periodo=' + encodeURIComponent(periodoId);
+      if (hijoActual) url += '&id_estudiante=' + encodeURIComponent(hijoActual);
+      const d = await apiGet(url);
       gruposCache = d.grupos || [];
       document.getElementById('info-periodo').innerHTML =
         `Periodo seleccionado: <strong>${esc(d.periodoNombre || '—')}</strong>`;
-      const div = document.getElementById('grupos');
+      document.getElementById('bloques-titulo').textContent =
+        (rolActual === 'representante') ? 'Elige materia y paralelo de tu hijo' : 'Elige materia y paralelo';
       if (!d.grupos || d.grupos.length === 0) {
         div.innerHTML = '<p>No hay grupos (materia＋paralelo) asignados en este periodo.</p>';
         return;
@@ -257,8 +282,9 @@
     }
 
     async function cargarNomina() {
-      const url = `/consulta/grupo?id_periodo=${encodeURIComponent(periodoId)}` +
+      let url = `/consulta/grupo?id_periodo=${encodeURIComponent(periodoId)}` +
         `&id_materia=${grupo.id_materia}&id_curso=${grupo.id_curso || ''}&page=${nomPage}&limit=10`;
+      if (hijoActual) url += `&id_estudiante=${encodeURIComponent(hijoActual)}`;
       const d = await apiGet(url);
       const div = document.getElementById('nomina');
       if (!d.datos || d.datos.length === 0) {
@@ -505,7 +531,11 @@
         document.getElementById('btn-miscursos-g').style.display = 'none';
         document.getElementById('btn-miscursos-d').style.display = 'none';
       }
-      document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
+      document.getElementById('btn-grupos').onclick = () => {
+        // Representante: vuelve a sus hijos, no a todos los grupos.
+        if (rolActual === 'representante') hijoActual = null;
+        cargarGrupos().catch(showError);
+      };
       document.getElementById('btn-nomina').onclick = () => mostrar(2);
       try {
         await cargarPeriodos();

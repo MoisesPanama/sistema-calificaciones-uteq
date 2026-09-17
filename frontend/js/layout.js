@@ -1,7 +1,17 @@
 // Sidebar + topbar compartido + guard de sesion para todas las paginas (menos login).
 
-async function getSessionUser() {
+// Periodo por defecto de las paginas (M12): la SESION manda
+// (viene del header); el activo es solo fallback. Asi cambiar
+// de periodo refleja sus registros en todas las paginas.
+async function periodoPagina(per) {
   try {
+    const me = await apiGet('/auth/me');
+    if (me && me.periodoSeleccionado) return String(me.periodoSeleccionado);
+  } catch (_) { /* sigue al activo */ }
+  return String((per && (per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo)) || '');
+}
+
+async function getSessionUser() {  try {
     const { usuario, periodoSeleccionado } = await apiGet('/auth/me');
     renderLayout(usuario, periodoSeleccionado);
     return usuario;
@@ -82,7 +92,8 @@ async function renderLayout(usuario, periodoSeleccionado) {
       n.href === 'mis-cursos.html' || n.href === 'reportes.html' ||
       n.href === 'boletin.html' || n.href === 'planilla.html' || n.href === 'supletorio.html');
   } else if (esRepresentante) {
-    navItems2 = [...navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html' || n.href === 'boletin.html'), ...navMatricula];
+    // M12: SOLO consulta de sus hijos (ni reportes, ni boletin, ni matricula).
+    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html');
   } else if (esEstudiante) {
     // Estudiante: SOLO sus notas (sin reportes ni nominas ajenas) + su matricula.
     navItems2 = [...navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'boletin.html'), ...navMatricula];

@@ -575,7 +575,7 @@
         document.getElementById('cic-periodo').innerHTML = opts;
         document.getElementById('asg-periodo').innerHTML = opts;
         document.getElementById('act-periodo').innerHTML = opts;
-        periodoId = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+        periodoId = await periodoPagina(per);
         document.getElementById('cur-periodo').value = periodoId;
         document.getElementById('cic-periodo').value = periodoId;
         document.getElementById('asg-periodo').value = periodoId;

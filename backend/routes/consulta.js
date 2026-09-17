@@ -216,10 +216,12 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/consulta/grupos?id_periodo= — bloques Materia＋Paralelo
-// del periodo con conteo de estudiantes. Profesor: solo sus
-// asignaciones. Estudiante: solo sus materias. El resto ve todos
-// (el detalle filtra por rol).
+// GET /api/consulta/grupos?id_periodo=&id_estudiante= — bloques
+// Materia＋Paralelo del periodo con conteo de estudiantes.
+// Profesor: solo sus asignaciones. Estudiante: solo sus materias.
+// Representante: SOLO grupos con al menos un hijo (nada ajeno);
+// con ?id_estudiante= filtra a ese hijo (validado propio).
+// Admin: todo; con ?id_estudiante= filtra a ese alumno.
 router.get('/grupos', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -227,21 +229,79 @@ router.get('/grupos', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
         const idPeriodo = await periodoDe(req);
+        const idAlumno = req.query.id_estudiante || '';
         const params = [idPeriodo];
         let filtroExtra = '';
+        const sinGrupos = () => res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
+        // ?id_estudiante= con ownership segun rol.
+        async function idsValidados() {
+            if (!idAlumno) return null;
+            const rol = req.session.usuario.nombre_rol;
+            if (rol === 'representante') {
+                const r = await pool.query(
+                    `SELECT 1 FROM estudiantes e
+                     JOIN representantes r ON r.id_representante = e.id_representante
+                     WHERE e.id_estudiante = $1 AND r.id_usuario = $2`,
+                    [idAlumno, req.session.usuario.id_usuario]
+                );
+                if (r.rows.length === 0) return false;
+                return [idAlumno];
+            }
+            if (rol === 'estudiante') {
+                const propio = await getEstudianteId(pool, req.session.usuario.id_usuario);
+                if (String(propio || '') !== String(idAlumno)) return false;
+                return [idAlumno];
+            }
+            return [idAlumno];
+        }
         if (!esAdmin(req.session.usuario)) {
             if (req.session.usuario.nombre_rol === 'profesor') {
                 const idProfesor = await getProfesorId(pool, req.session.usuario.id_usuario);
-                if (!idProfesor) return res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
+                if (!idProfesor) return sinGrupos();
                 params.push(idProfesor);
                 filtroExtra = ` AND pmp.id_profesor = $${params.length}`;
             } else if (req.session.usuario.nombre_rol === 'estudiante') {
                 const idPropio = await getEstudianteId(pool, req.session.usuario.id_usuario);
-                if (!idPropio) return res.json({ idPeriodo: String(idPeriodo), periodoNombre: periodoActivo.nombre, grupos: [] });
+                if (!idPropio) return sinGrupos();
                 params.push(idPropio);
                 filtroExtra = ` AND EXISTS (
                     SELECT 1 FROM matriculas m2
                     WHERE m2.id_periodo = pmp.id_periodo AND m2.id_estudiante = $${params.length}
+                      AND (pmp.id_curso IS NULL OR m2.id_curso IS NULL OR m2.id_curso = pmp.id_curso)
+                )`;
+            } else if (req.session.usuario.nombre_rol === 'representante') {
+                // M12: solo grupos donde haya al menos un hijo.
+                const rH = await pool.query(
+                    `SELECT e.id_estudiante FROM estudiantes e
+                     JOIN representantes r ON r.id_representante = e.id_representante
+                     WHERE r.id_usuario = $1`,
+                    [req.session.usuario.id_usuario]
+                );
+                let idsHijos = rH.rows.map((h) => h.id_estudiante);
+                if (idAlumno) {
+                    if (!idsHijos.some((h) => String(h) === String(idAlumno))) {
+                        return res.status(403).json({ error: 'Solo puedes ver a tus representados.' });
+                    }
+                    idsHijos = [idAlumno];
+                }
+                if (idsHijos.length === 0) return sinGrupos();
+                params.push(idsHijos);
+                filtroExtra = ` AND EXISTS (
+                    SELECT 1 FROM matriculas m2
+                    WHERE m2.id_periodo = pmp.id_periodo AND m2.id_estudiante = ANY($${params.length})
+                      AND (pmp.id_curso IS NULL OR m2.id_curso IS NULL OR m2.id_curso = pmp.id_curso)
+                )`;
+            }
+        } else if (idAlumno) {
+            const validados = await idsValidados();
+            if (validados === false) {
+                return res.status(403).json({ error: 'Sin acceso a ese estudiante.' });
+            }
+            if (validados) {
+                params.push(validados);
+                filtroExtra = ` AND EXISTS (
+                    SELECT 1 FROM matriculas m2
+                    WHERE m2.id_periodo = pmp.id_periodo AND m2.id_estudiante = ANY($${params.length})
                       AND (pmp.id_curso IS NULL OR m2.id_curso IS NULL OR m2.id_curso = pmp.id_curso)
                 )`;
             }
@@ -275,9 +335,10 @@ router.get('/grupos', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/consulta/grupo?id_materia=&id_periodo=&id_curso=&page=
+// GET /api/consulta/grupo?id_materia=&id_periodo=&id_curso=&id_estudiante=&page=
 // Nomina paginada (10) del bloque. Profesor: solo sus grupos.
-// Representante: solo sus hijos. Estudiante: solo el mismo.
+// Representante: solo sus hijos (con ?id_estudiante= validado propio).
+// Estudiante: solo el mismo.
 router.get('/grupo', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
@@ -287,7 +348,28 @@ router.get('/grupo', requireAuth, async (req, res) => {
         const idPeriodo = await periodoDe(req);
         const idMateria = req.query.id_materia || '';
         const idCurso = req.query.id_curso || '';
+        const idAlumno = req.query.id_estudiante || '';
         if (!idMateria) return res.status(400).json({ error: 'Falta id_materia.' });
+        // ?id_estudiante= con ownership segun rol (M12).
+        if (idAlumno) {
+            const rol = req.session.usuario.nombre_rol;
+            if (rol === 'representante') {
+                const ok = await pool.query(
+                    `SELECT 1 FROM estudiantes e
+                     JOIN representantes r ON r.id_representante = e.id_representante
+                     WHERE e.id_estudiante = $1 AND r.id_usuario = $2`,
+                    [idAlumno, req.session.usuario.id_usuario]
+                );
+                if (ok.rows.length === 0) {
+                    return res.status(403).json({ error: 'Solo puedes ver a tus representados.' });
+                }
+            } else if (rol === 'estudiante') {
+                const propio = await getEstudianteId(pool, req.session.usuario.id_usuario);
+                if (String(propio || '') !== String(idAlumno)) {
+                    return res.status(403).json({ error: 'Solo puedes ver tus propias notas.' });
+                }
+            }
+        }
 
         // El bloque debe existir como asignacion del periodo.
         const rAsg = await pool.query(
@@ -312,6 +394,10 @@ router.get('/grupo', requireAuth, async (req, res) => {
         if (idCurso !== '') {
             where += ` AND (mat.id_curso = $${params.length + 1} OR mat.id_curso IS NULL)`;
             params.push(idCurso);
+        }
+        if (idAlumno) {
+            where += ` AND e.id_estudiante = $${params.length + 1}`;
+            params.push(idAlumno);
         }
         if (req.session.usuario.nombre_rol === 'representante') {
             const rep = await pool.query(
@@ -393,11 +479,14 @@ router.get('/', requireAuth, async (req, res) => {
         const periodoSel = periodos.rows.find(p => String(p.id_periodo) === String(idPeriodo));
         const periodoNombre = periodoSel ? periodoSel.nombre : periodoActivo.nombre;
 
-        // Filtrar estudiantes segun rol
-        let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos
-                     FROM matriculas m
-                     JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
-                     WHERE m.id_periodo = $1`;
+        // Filtrar estudiantes segun rol (con curso para las
+        // tarjetas por hijo del representante - M12).
+        let sqlEst = `SELECT e.id_estudiante, e.nombres, e.apellidos,
+                             c.nombre AS curso_nombre, c.paralelo, c.nivel
+                      FROM matriculas m
+                      JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+                      LEFT JOIN cursos c ON c.id_curso = m.id_curso
+                      WHERE m.id_periodo = $1`;
         const paramsEst = [idPeriodo];
 
         // Representante: solo ver sus hijos
