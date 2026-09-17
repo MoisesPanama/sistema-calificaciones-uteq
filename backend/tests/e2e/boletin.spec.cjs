@@ -36,17 +36,23 @@ test('estudiante ve su boletin propio', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
   const t = Date.now().toString(36);
   const crea = await api(page, 'POST', '/estudiantes/', {
-    cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'PWBol ' + t, apellidos: 'Boletin Uno',
-    fecha_nacimiento: '2011-05-06', id_representante: 1
+    cedula: '1999999904',
+    nombres: 'Pebol Fijo', apellidos: 'Boletin Uno',
+    fecha_nacimiento: '2011-05-06', id_representante: 2
   });
-  expect(crea.status).toBe(201);
+  let idBol = crea.data.id_estudiante;
+  let emailBol = crea.data.email;
+  if (crea.status !== 201) {
+    const r = await api(page, 'GET', '/estudiantes/?q=1999999904');
+    idBol = r.data.datos[0].id_estudiante;
+    emailBol = 'pboletinu@uteq.edu.ec';
+  }
   const per = await api(page, 'GET', '/periodos/');
   await api(page, 'POST', '/matriculas/', {
-    id_estudiante: crea.data.id_estudiante,
+    id_estudiante: idBol,
     id_periodo: per.data.periodoActivo.id_periodo, id_curso: null
   });
-  await login(page, crea.data.email);
+  await login(page, emailBol);
   await page.goto('/pages/boletin.html');
   await expect(page.locator('#sel-est option').nth(1)).toBeAttached({ timeout: 15000 });
   // Solo el mismo en el select.

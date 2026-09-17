@@ -50,9 +50,14 @@ const get = (path) => makeRequest('GET', path);
 const post = (path, body) => makeRequest('POST', path, body);
 const put = (path, body) => makeRequest('PUT', path, body);
 const del = (path) => makeRequest('DELETE', path);
-const loginAs = async (email) => {
+// Claves rotadas por Playwright (M11, archivo compartido gitignored).
+let clavesE2E = {};
+try {
+  clavesE2E = JSON.parse(require('fs').readFileSync(__dirname + '/tests/claves-test.local.json', 'utf8'));
+} catch (_) { /* primera corrida */ }
+const loginAs = async (email, password) => {
   for (const k of Object.keys(cookies)) delete cookies[k];
-  return post('/auth/login', { email, password: 'UTEQ2026' });
+  return post('/auth/login', { email, password: password || clavesE2E[email] || 'UTEQ2026' });
 };
 
 (async () => {
@@ -327,18 +332,23 @@ const loginAs = async (email) => {
 
   console.log('\n=== 13. ROL ESTUDIANTE: SOLO LO SUYO, SIN REPORTES ===');
   await loginAs('admin@uteq.edu.ec');
-  const tag13 = Date.now().toString(36);
+  // Fijo reutilizable (cero crecimiento): 409 -> se busca el existente.
   const creaEst = await post('/estudiantes/', {
-    cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'Ewe Uno', apellidos: stamp + ' Dos',
-    fecha_nacimiento: '2011-05-06', id_representante: 1
+    cedula: '1999999913',
+    nombres: 'Ewe Fijo', apellidos: 'Trece Dos',
+    fecha_nacimiento: '2011-05-06', id_representante: 2
   });
-  log('Crear estudiante con usuario', creaEst.status === 201 && !!creaEst.body.email, creaEst.body.email || creaEst.body.error);
-  const emailEst = creaEst.body.email;
+  let idEst13 = creaEst.body.id_estudiante;
+  let emailEst = creaEst.body.email;
+  if (creaEst.status !== 201) {
+    const r = await get('/estudiantes/?q=1999999913');
+    idEst13 = r.body.datos[0].id_estudiante;
+    emailEst = 'etreced@uteq.edu.ec';
+  }
+  log('Crear estudiante con usuario', !!idEst13 && !!emailEst, emailEst || creaEst.body.error);
   // Matricularlo en periodo activo para que tenga algo que ver.
   const per13 = await get('/periodos/');
   const idPer13 = per13.body.periodoActivo?.id_periodo || per13.body.periodos?.[0]?.id_periodo;
-  const idEst13 = creaEst.body.id_estudiante;
   await post('/matriculas/', { id_estudiante: idEst13, id_periodo: idPer13, id_curso: null });
   await loginAs(emailEst);
   // Intenta ver a OTRO estudiante (id 1): debe devolver lo PROPIO.
@@ -356,15 +366,20 @@ const loginAs = async (email) => {
 
   console.log('\n=== 14. VISTA PROPIA SIN NOTAS + FILTRO SIN-CURSO ===');
   await loginAs('admin@uteq.edu.ec');
-  const tag14 = Date.now().toString(36);
   const creaSin = await post('/estudiantes/', {
-    cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'Ewe Nulo', apellidos: tag14 + ' Notas',
-    fecha_nacimiento: '2011-05-06', id_representante: 1
+    cedula: '1999999914',
+    nombres: 'Ewe Fijo', apellidos: 'Catorce Dos',
+    fecha_nacimiento: '2011-05-06', id_representante: 2
   });
-  const idSin = creaSin.body.id_estudiante;
+  let idSin = creaSin.body.id_estudiante;
+  let emailSin = creaSin.body.email;
+  if (creaSin.status !== 201) {
+    const r = await get('/estudiantes/?q=1999999914');
+    idSin = r.body.datos[0].id_estudiante;
+    emailSin = 'ecatorced@uteq.edu.ec';
+  }
   await post('/matriculas/', { id_estudiante: idSin, id_periodo: idPer13, id_curso: null });
-  await loginAs(creaSin.body.email);
+  await loginAs(emailSin);
   const propiaVacia = await get('/consulta/?id_periodo=' + idPer13);
   log('Sin notas ve tarjetas, no solo error',
     propiaVacia.status === 200 && (propiaVacia.body.materias || []).length > 0
@@ -525,12 +540,17 @@ const loginAs = async (email) => {
   await loginAs('admin@uteq.edu.ec');
   const tag17 = Date.now().toString(36);
   const creaEst17 = await post('/estudiantes/', {
-    cedula: '19' + String(Date.now()).slice(-8),
-    nombres: 'Ewe Entrega', apellidos: 'Flujo Uno',
-    fecha_nacimiento: '2011-05-06', id_representante: 1
+    cedula: '1999999917',
+    nombres: 'Ewe Fijo', apellidos: 'Diecisiete Dos',
+    fecha_nacimiento: '2011-05-06', id_representante: 2
   });
-  const idEst17 = creaEst17.body.id_estudiante;
-  const emailEst17 = creaEst17.body.email;
+  let idEst17 = creaEst17.body.id_estudiante;
+  let emailEst17 = creaEst17.body.email;
+  if (creaEst17.status !== 201) {
+    const r = await get('/estudiantes/?q=1999999917');
+    idEst17 = r.body.datos[0].id_estudiante;
+    emailEst17 = 'ediecisieted@uteq.edu.ec';
+  }
   await post('/matriculas/', { id_estudiante: idEst17, id_periodo: idPeriodo, id_curso: null });
   await loginAs('elena.romero@uteq.edu.ec');
   const ctx17 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);

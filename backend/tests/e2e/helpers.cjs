@@ -3,12 +3,19 @@
 // tests corren igual con --config o sin el (p. ej. desde la raiz o VSCode).
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
-// Claves rotadas por el flujo de clave temporal (M11): si un test
-// cambia la clave de un usuario, los siguientes logins la reutilizan.
-const claves = new Map();
+// Claves rotadas por el flujo de clave temporal (M11).
+// DETERMINISTA (sin archivos ni estado): la rotada se deriva del
+// email, asi cualquier corrida/proceso entra igual. Los usuarios
+// fijos de tests siempre terminan con su rotada; UTEQ2026 solo
+// sirve la primera vez (recien creado, antes de rotar).
+function claveRotada(email) {
+  let h = 7;
+  for (const c of String(email)) h = ((h * 31 + c.charCodeAt(0)) >>> 0);
+  return 'Nx' + h.toString(36) + '!Aa1';
+}
 
 async function login(page, email, password) {
-  password = password || claves.get(email) || 'UTEQ2026';
+  password = password || 'UTEQ2026';
   // Sin esto, el auto-redirect del login (si ya hay sesion)
   // saca a dashboard y los fill() esperan eternamente.
   await page.context().clearCookies();
@@ -24,25 +31,35 @@ async function login(page, email, password) {
       if (!/ERR_ABORTED|interrupted by another navigation/.test(String(e && e.message))) throw e;
     }
   }
-  await page.locator('#email').waitFor({ timeout: 15000 });
-  await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
-  await page.locator('#form-login button[type="submit"]').click();
-  // M11: usuarios nuevos (debe_cambiar_clave) caen a cambiar-clave:
-  // se completa ahi con una clave rotada y se sigue al dashboard.
-  await page.waitForFunction(
-    () => /dashboard\.html|cambiar-clave\.html/.test(location.href),
-    null, { timeout: 15000 }
-  );
+  async function intentar(cred) {
+    await page.locator('#email').waitFor({ timeout: 15000 });
+    await page.locator('#email').fill(email);
+    await page.locator('#password').fill(cred);
+    await page.locator('#form-login button[type="submit"]').click();
+    await page.waitForFunction(
+      () => !/\/pages\/login\.html$/.test(location.href) ||
+        ((document.getElementById('error') || {}).style || {}).display === 'block',
+      null, { timeout: 15000 }
+    );
+    return page.url();
+  }
+  await intentar(password);
   if (page.url().includes('cambiar-clave')) {
-    const nueva = 'Nx' + Date.now().toString(36) + '!Aa';
+    // Clave temporal: se rota a la determinista y se sigue.
+    const nueva = claveRotada(email);
     await page.locator('#actual').fill(password);
     await page.locator('#nueva').fill(nueva);
     await page.locator('#confirmacion').fill(nueva);
     await page.locator('#form-clave button[type="submit"]').click();
     await page.waitForURL('**/dashboard.html', { timeout: 15000 });
-    claves.set(email, nueva);
+    return;
   }
+  if (!page.url().includes('dashboard')) {
+    // La UTEQ2026 ya no vale (rotada en otra corrida): con la derivada.
+    await page.goto(BASE_URL + '/pages/login.html', { waitUntil: 'domcontentloaded' });
+    await intentar(claveRotada(email));
+  }
+  await page.waitForURL('**/dashboard.html', { timeout: 15000 });
 }
 
 async function api(page, method, path, body) {

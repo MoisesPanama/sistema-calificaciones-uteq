@@ -86,20 +86,40 @@ test('cada pestana conserva su periodo', async ({ page }) => {
 
 test('actas: crear borrador y eliminar desde la pestana', async ({ page }) => {
   const tag = Date.now().toString(36);
-  const mat = await api(page, 'POST', '/materias/', { nombre: 'Acta UI ' + tag });
-  expect(mat.status).toBe(201);
+  // Materia fija reutilizable (cero crecimiento entre corridas).
+  const NOMBRE_MAT = 'Acta UI Fija';
+  let idMat = null;
+  const mat0 = await api(page, 'POST', '/materias/', { nombre: NOMBRE_MAT });
+  if (mat0.status === 201) {
+    idMat = mat0.data.id_materia;
+  } else {
+    const lista = await api(page, 'GET', '/materias/');
+    idMat = (lista.data.materias || []).find((m) => m.nombre === NOMBRE_MAT)?.id_materia;
+  }
+  expect(idMat).toBeTruthy();
   await login(page, 'admin@uteq.edu.ec');
   await page.goto('/pages/catalogos.html');
   await page.locator('#tab-btn-actas').click();
   await expect(page.locator('#lista-actas')).toBeVisible({ timeout: 15000 });
-  await page.locator('#act-mat').selectOption(String(mat.data.id_materia));
+  await page.locator('#act-mat').selectOption(String(idMat));
   await page.locator('#act-guardar').click();
-  await expect(page.locator('#lista-actas')).toContainText('Acta UI ' + tag, { timeout: 15000 });
+  // Si quedo un borrador de una corrida interrumpida, se elimina y reintenta.
+  try {
+    await expect(page.locator('#lista-actas')).toContainText(NOMBRE_MAT, { timeout: 8000 });
+  } catch (_) {
+    const pre = await api(page, 'GET', '/actas/?id_periodo=1');
+    const vieja = (pre.data.actas || []).find((a) => a.id_materia === idMat && a.estado === 'borrador');
+    if (vieja) {
+      await api(page, 'DELETE', `/actas/${vieja.id_acta}`);
+      await page.locator('#act-guardar').click();
+      await expect(page.locator('#lista-actas')).toContainText(NOMBRE_MAT, { timeout: 15000 });
+    } else {
+      throw _;
+    }
+  }
   page.on('dialog', d => d.accept());
-  const fila = page.locator('#lista-actas tr', { hasText: 'Acta UI ' + tag });
+  const fila = page.locator('#lista-actas tr', { hasText: NOMBRE_MAT });
   await fila.locator('[data-eliminar-acta]').click();
-  await expect(page.locator('#lista-actas')).not.toContainText('Acta UI ' + tag, { timeout: 15000 });
-  // Nota: materias no tiene DELETE en la API (solo crear/editar);
-  // la materia de prueba queda huerfana sin referencias (sin notas
-  // ni asignaciones) con nombre unico por corrida.
+  await expect(page.locator('#lista-actas')).not.toContainText(NOMBRE_MAT, { timeout: 15000 });
+  void tag;
 });

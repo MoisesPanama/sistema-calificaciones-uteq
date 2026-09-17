@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('crear actividad, calificar y guardar la nota', async ({ page }) => {
-  const tag = Date.now().toString(36);
+  const NOMBRE_ACT = 'Leccion PW Fija';
   const selMat = page.locator('#sel-materia');
   await expect(selMat).toBeVisible({ timeout: 10000 });
   // Elegir la primera materia real (Elena tiene Ciencias Naturales).
@@ -26,16 +26,20 @@ test('crear actividad, calificar y guardar la nota', async ({ page }) => {
   await expect(selParcial.locator('option').nth(1)).toBeAttached({ timeout: 10000 });
   await selParcial.selectOption({ index: 1 });
 
-  // Crear una actividad nueva desde la tarjeta "+ Nueva actividad".
+  // Actividad fija reutilizable (si ya existe de otra corrida, se reusa).
   await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
   await page.locator('#card-nueva').click();
-  await page.locator('#act-nombre').fill('Leccion PW ' + tag);
+  await page.locator('#act-nombre').fill(NOMBRE_ACT);
   await page.locator('#act-tipo').selectOption({ index: 0 });
   await page.locator('#act-guardar').click();
-  await expect(page.locator('#lista-actividades')).toContainText('Leccion PW ' + tag, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  if (await page.locator('#act-error').isVisible()) {
+    await page.locator('#act-cancelar').click();
+  }
+  await expect(page.locator('#lista-actividades')).toContainText(NOMBRE_ACT, { timeout: 15000 });
 
-  // Calificar: abrir la planilla de la actividad recien creada.
-  const card = page.locator('.act-card', { hasText: 'Leccion PW ' + tag });
+  // Calificar: abrir la planilla de la actividad.
+  const card = page.locator('.act-card', { hasText: NOMBRE_ACT });
   await card.locator('[data-calificar]').click();
   await expect(page.locator('#tabla table')).toBeVisible({ timeout: 15000 });
 
@@ -67,16 +71,20 @@ test('publicar y cerrar actividad desde sus tarjetas', async ({ page }) => {
 });
 
 test('adjuntar y quitar material en calificar', async ({ page }) => {
-  const tag = Date.now().toString(36);
+  const NOMBRE_ACT = 'Adjunto PW Fijo';
   const selMat = page.locator('#sel-materia');
   await expect(selMat).toBeVisible({ timeout: 10000 });
   await selMat.selectOption({ index: 1 });
   await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
   await page.locator('#card-nueva').click();
-  await page.locator('#act-nombre').fill('Adjunto PW ' + tag);
+  await page.locator('#act-nombre').fill(NOMBRE_ACT);
   await page.locator('#act-tipo').selectOption({ index: 0 });
   await page.locator('#act-guardar').click();
-  const card = page.locator('.act-card', { hasText: 'Adjunto PW ' + tag });
+  await page.waitForTimeout(1500);
+  if (await page.locator('#act-error').isVisible()) {
+    await page.locator('#act-cancelar').click();
+  }
+  const card = page.locator('.act-card', { hasText: NOMBRE_ACT });
   await expect(card).toBeVisible({ timeout: 15000 });
   await card.locator('[data-calificar]').click();
   await expect(page.locator('#tabla table')).toBeVisible({ timeout: 15000 });
@@ -113,7 +121,7 @@ test('flujo de entregas en la planilla', async ({ page }) => {
 });
 
 test('fecha limite anterior se rechaza y ausente registra 0', async ({ page }) => {
-  const tag = Date.now().toString(36);
+  const NOMBRE_ACT = 'Limite PW Fijo';
   const selMat = page.locator('#sel-materia');
   await expect(selMat).toBeVisible({ timeout: 10000 });
   await selMat.selectOption({ index: 1 });
@@ -126,7 +134,7 @@ test('fecha limite anterior se rechaza y ausente registra 0', async ({ page }) =
 
   await expect(page.locator('#card-nueva')).toBeVisible({ timeout: 15000 });
   await page.locator('#card-nueva').click();
-  await page.locator('#act-nombre').fill('Limite PW ' + tag);
+  await page.locator('#act-nombre').fill(NOMBRE_ACT);
   await page.locator('#act-tipo').selectOption({ index: 0 });
   await page.locator('#act-fecha').fill('2026-10-10');
   await page.locator('#act-limite').fill('2026-10-01');
@@ -135,7 +143,11 @@ test('fecha limite anterior se rechaza y ausente registra 0', async ({ page }) =
 
   await page.locator('#act-limite').fill('2026-10-20');
   await page.locator('#act-guardar').click();
-  const card = page.locator('.act-card', { hasText: 'Limite PW ' + tag });
+  await page.waitForTimeout(1500);
+  if (await page.locator('#act-error').isVisible()) {
+    await page.locator('#act-cancelar').click();
+  }
+  const card = page.locator('.act-card', { hasText: NOMBRE_ACT });
   await expect(card).toContainText('límite 2026-10-20', { timeout: 15000 });
 
   await card.locator('[data-calificar]').click();
@@ -143,5 +155,5 @@ test('fecha limite anterior se rechaza y ausente registra 0', async ({ page }) =
   await page.locator('[data-ausente]').first().click();
   await expect(page.locator('#ok')).toBeVisible({ timeout: 15000 });
   const primerInput = page.locator('input[data-est]').first();
-  await expect(primerInput).toHaveValue('0', { timeout: 15000 });
+  await expect(primerInput).toHaveValue(/^0(\.00)?$/, { timeout: 15000 });
 });

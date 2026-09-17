@@ -1,24 +1,32 @@
 -- =========================================================
--- reseed_colegio_test.sql — M9: reseed LIMPIO solo para la BD
+-- reseed_colegio_test.sql — Reseed LIMPIO v2 solo para la BD
 -- de PRUEBAS (calificaciones_uteq_test). DESTRUCTIVO: borra
 -- todos los datos academicos. NO se ejecuta en docker-entrypoint
--- ni en init-db (instalaciones frescas usan 01..32 + seeds).
+-- ni en init-db (instalaciones frescas usan 01..34 + seeds).
 -- Uso:
 --   psql -h localhost -p 5433 -U postgres -d calificaciones_uteq_test \
 --     -v ON_ERROR_STOP=1 -f database/reseed_colegio_test.sql
 -- Despues:
 --   TEST_USER_IDS=1,4,5,6,7,8,9 npm run seed:test-users  (desde backend/)
 --
--- Deja: 1 admin, 1 psicologo, 3 profesores (2 con carga), 4
--- materias, 1 periodo activo con ventana abierta, Q1+Q2 con
--- parciales, 5 cursos (8vo A/B, 9no A/B, 10mo A) con nivel y
--- cupo, 62 estudiantes (15+12+14+10+11, con cupo libre) con
--- representantes, actividades publicadas y notas variadas
--- (1 de cada 6 bajo <7 para demo de supletorio), 2 solicitudes
--- pendientes en bandeja y 1 supletorio validado de muestra.
+-- Deja:
+--   * 3 periodos: 2024-2025 y 2025-2026 (inactivos, con muestra)
+--     + 2026-2027 Año Lectivo (activo, ventana abierta).
+--   * Usuarios fijos: 1 admin, 2 profes con carga (Elena,
+--     Andres) + Diana inerte, 1 psicologo, 1 representante con
+--     login (Fernando, 2 hijos), 1 alumno demo.
+--   * Actual: 5 cursos (8vo A/B, 9no A/B, 10mo A) con nivel y
+--     cupo; 62 estudiantes (15+12+14+10+11, con cupo libre).
+--   * Antiguos: 1 curso c/u con ~8 alumnos y notas (para ver
+--     registros viejos al cambiar de periodo) + 2 alumnos
+--     continuos (8vo->9no->10mo en los 3 periodos).
+--   * 4 materias reales, tipos 3..9, actividades publicadas,
+--     notas variadas (1 de cada 6 bajo <7), 2 solicitudes
+--     pendientes y 1 supletorio validado de muestra.
+--   * Nombres de persona reales y variados (cero tags de test).
 -- Ids estables para los tests: estudiante 1 con notas,
--- estudiante 1 con notas, representante 1 = fernando,
--- materia 1 = Matematicas, tipos 3..9 igual que antes.
+-- representante 1 = fernando, materia 1 = Matematicas,
+-- periodo activo = 1, tipos 3..9 igual que siempre.
 -- =========================================================
 
 SET search_path TO colegio;
@@ -60,7 +68,7 @@ INSERT INTO representantes (nombres, apellidos, telefono, email, parentesco, ced
 INSERT INTO representantes (nombres, apellidos, telefono, email, parentesco, cedula)
 SELECT n, a, '099' || lpad(s::text, 7, '0'), 'acudiente' || s || '@example.com',
        (ARRAY['madre', 'padre', 'representante legal', 'otro familiar'])[1 + ((s - 1) % 4)],
-       '12' || lpad(s::text, 8, '0')
+       '13' || lpad(s::text, 8, '0')
 FROM (
     SELECT unnest(ARRAY['Lucia', 'Carlos', 'Rosa', 'Miguel', 'Ana', 'Pedro', 'Carmen', 'Jose',
                         'Valeria', 'Diego', 'Paola', 'Jorge', 'Elena', 'Luis', 'Camila', 'Andres',
@@ -72,8 +80,7 @@ FROM (
 ) r;
 
 -- ---------------------------------------------------------
--- 2. Materias + tipos (ids estables: mat 1 = Matematicas,
---    tipos 3..9 igual que siempre, sin legacies)
+-- 2. Materias + tipos (ids estables, sin legacies)
 -- ---------------------------------------------------------
 INSERT INTO materias (id_materia, nombre, descripcion) VALUES
     (1, 'Matematicas', 'Algebra y geometria'),
@@ -94,43 +101,53 @@ INSERT INTO tipos_evaluacion
 SELECT setval('tipos_evaluacion_id_tipo_evaluacion_seq', 9);
 
 -- ---------------------------------------------------------
--- 3. Periodo activo con ventana de matricula ABIERTA
+-- 3. Tres periodos (solo el actual activo, con ventana abierta)
 -- ---------------------------------------------------------
 INSERT INTO periodos_academicos
-    (nombre, fecha_inicio, fecha_fin, activo, matricula_desde, matricula_hasta) VALUES
-    ('2026-2027 Año Lectivo', '2026-09-01', '2027-07-31', TRUE,
-     CURRENT_DATE - 30, CURRENT_DATE + 30);
+    (id_periodo, nombre, fecha_inicio, fecha_fin, activo, matricula_desde, matricula_hasta) VALUES
+    (1, '2026-2027 Año Lectivo', '2026-09-01', '2027-07-31', TRUE,
+     CURRENT_DATE - 30, CURRENT_DATE + 30),
+    (2, '2024-2025 Año Lectivo', '2024-09-01', '2025-07-31', FALSE, NULL, NULL),
+    (3, '2025-2026 Año Lectivo', '2025-09-01', '2026-07-31', FALSE, NULL, NULL);
+SELECT setval('periodos_academicos_id_periodo_seq', 3);
 
-INSERT INTO ciclos_evaluativos (id_periodo, nombre, tipo, orden, peso) VALUES
-    (1, 'Quimestre 1', 'quimestre', 1, 0.50),
-    (1, 'Quimestre 2', 'quimestre', 2, 0.50);
+INSERT INTO ciclos_evaluativos (id_periodo, nombre, tipo, orden, peso)
+SELECT p, 'Quimestre ' || q, 'quimestre', q, 0.50
+FROM (VALUES (1), (2), (3)) AS per(p)
+CROSS JOIN (VALUES (1), (2)) AS q(q);
 
 INSERT INTO parciales (id_ciclo, nombre, orden)
-SELECT 1, 'Parcial ' || s, s FROM generate_series(1, 3) s
-UNION ALL
-SELECT 2, 'Parcial ' || s, s FROM generate_series(1, 3) s;
+SELECT c.id_ciclo, 'Parcial ' || s, s
+FROM ciclos_evaluativos c
+CROSS JOIN generate_series(1, 3) s
+ORDER BY c.id_ciclo, s;
 
 -- ---------------------------------------------------------
--- 4. Cursos con nivel y cupo (ids estables 1..5)
+-- 4. Cursos: 5 actuales con nivel y cupo + 1 por antiguo
 -- ---------------------------------------------------------
 INSERT INTO cursos (id_curso, nombre, paralelo, id_periodo, nivel, cupo_max, id_tutor) VALUES
     (1, 'Octavo EGB', 'A', 1, 8, 20, 1),
     (2, 'Octavo EGB', 'B', 1, 8, 20, 1),
     (3, 'Noveno EGB', 'A', 1, 9, 20, 2),
     (4, 'Noveno EGB', 'B', 1, 9, 15, 2),
-    (5, 'Decimo EGB', 'A', 1, 10, 15, 2);
-SELECT setval('cursos_id_curso_seq', 5);
+    (5, 'Decimo EGB', 'A', 1, 10, 15, 2),
+    (6, 'Octavo EGB', 'A', 2, 8, 30, 1),
+    (7, 'Noveno EGB', 'A', 3, 9, 30, 2);
+SELECT setval('cursos_id_curso_seq', 7);
 
--- Asignaciones: elena = Matematicas (8vo A/B, 9no A) + CCNN (8vo A/B);
--- andres = Lengua (8vo A, 9no A, 10mo A) + Sociales (9no A).
+-- Asignaciones actuales: elena = Matematicas (8vo A/B, 9no A) +
+-- CCNN (8vo A/B); andres = Lengua (8vo A, 9no A, 10mo A) +
+-- Sociales (9no A). Antiguas para ver registros viejos.
 INSERT INTO profesor_materia_periodo (id_profesor, id_materia, id_periodo, id_curso) VALUES
     (1, 1, 1, 1), (1, 1, 1, 2), (1, 1, 1, 3),
     (1, 3, 1, 1), (1, 3, 1, 2),
     (2, 2, 1, 1), (2, 2, 1, 3), (2, 2, 1, 5),
-    (2, 4, 1, 3);
+    (2, 4, 1, 3),
+    (1, 1, 2, 6), (1, 3, 2, 6), (2, 2, 2, 6),
+    (2, 2, 3, 7), (2, 1, 3, 7), (1, 3, 3, 7);
 
 -- ---------------------------------------------------------
--- 5. Estudiantes (62: 15+12+14+10+11 por curso, con cupo libre)
+-- 5. Estudiantes actuales (62: 15+12+14+10+11) + matriculas
 -- ---------------------------------------------------------
 INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante)
 SELECT '10' || lpad(s::text, 8, '0'),
@@ -168,7 +185,49 @@ ON CONFLICT DO NOTHING;
 UPDATE estudiantes SET id_usuario = 9 WHERE id_estudiante = 6;
 
 -- ---------------------------------------------------------
--- 6. Actividades publicadas (Q1: 2 insumos x parcial + examen)
+-- 6. Periodos antiguos: muestra + 2 continuos (8vo->9no->10mo)
+-- ---------------------------------------------------------
+INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante)
+SELECT pref || lpad(s::text, 8, '0'), nom, ape1 || ' ' || ape2,
+       DATE '2011-06-10' + (((s * 53) % 300) * INTERVAL '1 day'),
+       2 + ((s - 1) % 19)
+FROM (
+    SELECT unnest(ARRAY['Emilio', 'Julieta', 'Renata', 'Cristobal', 'Bianca', 'Thiago', 'Aitana', 'Dylan',
+                        'Luciana', 'Gael', 'Micaela', 'Alan', 'Noa', 'Ian', 'Emma', 'Liam']) AS nom,
+           unnest(ARRAY['Reyes', 'Cruz', 'Ortiz', 'Chavez', 'Ramos', 'Flores', 'Gonzales', 'Herrera',
+                        'Medina', 'Aguilar', 'Vargas', 'Castillo', 'Silva', 'Rojas', 'Navarro', 'Paredes']) AS ape1,
+           unnest(ARRAY['Salazar', 'Mora', 'Vega', 'Campos', 'Rios', 'Soto', 'Paredes', 'Cordero',
+                        'Fuentes', 'Luna', 'Solis', 'Marin', 'Duarte', 'Pena', 'Osorio', 'Cardenas']) AS ape2,
+           generate_series(1, 16) AS s,
+           unnest(ARRAY['20', '20', '20', '20', '20', '20', '20', '20',
+                        '21', '21', '21', '21', '21', '21', '21', '21']) AS pref
+) r;
+
+-- Matriculas antiguas: 8 en 2024 (8vo), 8 en 2025 (9no).
+INSERT INTO matriculas (id_estudiante, id_periodo, id_curso)
+SELECT e.id_estudiante,
+       CASE WHEN e.cedula LIKE '20%' THEN 2 ELSE 3 END,
+       CASE WHEN e.cedula LIKE '20%' THEN 6 ELSE 7 END
+FROM estudiantes e
+WHERE e.cedula LIKE '20%' OR e.cedula LIKE '21%';
+
+-- Continuos: estudiantes 55 y 56 tambien cursaron 8vo-2024 y 9no-2025.
+INSERT INTO matriculas (id_estudiante, id_periodo, id_curso) VALUES
+    (55, 2, 6), (55, 3, 7),
+    (56, 2, 6), (56, 3, 7)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO matricula_materias (id_matricula, id_materia, estado)
+SELECT m.id_matricula, pmp.id_materia, 'sin_notas'
+FROM matriculas m
+JOIN profesor_materia_periodo pmp ON pmp.id_periodo = m.id_periodo
+    AND (pmp.id_curso IS NULL OR pmp.id_curso = m.id_curso OR m.id_curso IS NULL)
+WHERE m.id_periodo IN (2, 3)
+ON CONFLICT DO NOTHING;
+
+-- ---------------------------------------------------------
+-- 7. Actividades publicadas: actual (Q1: 2 x parcial + examen)
+--    y muestra antigua (1 tarea + 1 examen por materia)
 -- ---------------------------------------------------------
 INSERT INTO actividades
     (id_materia, id_periodo, id_ciclo, id_parcial, id_tipo_evaluacion, nombre, fecha_actividad, estado, creado_por)
@@ -183,9 +242,28 @@ INSERT INTO actividades
 SELECT id_materia, 1, 1, NULL, 8, 'Examen Quimestral Q1', CURRENT_DATE - 5, 'publicada', 1
 FROM (VALUES (1), (2), (3), (4)) AS mt(id_materia);
 
+-- Muestra antigua: Tarea P1 + Examen por materia y periodo.
+INSERT INTO actividades
+    (id_materia, id_periodo, id_ciclo, id_parcial, id_tipo_evaluacion, nombre, fecha_actividad, estado, creado_por)
+SELECT mt.id_materia, per.id_periodo, cyc.id_ciclo, par.id_parcial, 4,
+       'Tarea P1 (' || p.nombre || ')', p.fecha_inicio + 20, 'cerrada', 1
+FROM (VALUES (1), (2)) AS mt(id_materia)
+CROSS JOIN (VALUES (2), (3)) AS per(id_periodo)
+JOIN periodos_academicos p ON p.id_periodo = per.id_periodo
+JOIN ciclos_evaluativos cyc ON cyc.id_periodo = per.id_periodo AND cyc.orden = 1
+JOIN parciales par ON par.id_ciclo = cyc.id_ciclo AND par.orden = 1;
+
+INSERT INTO actividades
+    (id_materia, id_periodo, id_ciclo, id_parcial, id_tipo_evaluacion, nombre, fecha_actividad, estado, creado_por)
+SELECT mt.id_materia, per.id_periodo, cyc.id_ciclo, NULL, 8,
+       'Examen Q1 (' || p.nombre || ')', p.fecha_inicio + 100, 'cerrada', 1
+FROM (VALUES (1), (2)) AS mt(id_materia)
+CROSS JOIN (VALUES (2), (3)) AS per(id_periodo)
+JOIN periodos_academicos p ON p.id_periodo = per.id_periodo
+JOIN ciclos_evaluativos cyc ON cyc.id_periodo = per.id_periodo AND cyc.orden = 1;
+
 -- ---------------------------------------------------------
--- 7. Notas variadas (1 de cada 6 estudiantes queda <7 para
---    demo de supletorio; registrado por admin = bypass docente)
+-- 8. Notas: actual variadas (1/6 bajo <7) + antiguas 7.0-9.4
 -- ---------------------------------------------------------
 INSERT INTO calificaciones
     (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor,
@@ -200,11 +278,24 @@ CROSS JOIN actividades a
 JOIN matriculas m ON m.id_estudiante = e.id_estudiante AND m.id_periodo = 1
 JOIN profesor_materia_periodo pmp ON pmp.id_periodo = 1 AND pmp.id_materia = a.id_materia
     AND (pmp.id_curso IS NULL OR pmp.id_curso = m.id_curso OR m.id_curso IS NULL)
+WHERE a.id_periodo = 1
+ON CONFLICT DO NOTHING;
+
+INSERT INTO calificaciones
+    (id_estudiante, id_materia, id_periodo, id_tipo_evaluacion, valor,
+     registrado_por, id_parcial, id_ciclo, id_actividad)
+SELECT e.id_estudiante, a.id_materia, a.id_periodo, a.id_tipo_evaluacion,
+       ROUND(7.0 + ((e.id_estudiante * 5 + a.id_actividad * 7) % 25) / 10.0, 2),
+       1, a.id_parcial, a.id_ciclo, a.id_actividad
+FROM estudiantes e
+JOIN actividades a ON a.id_periodo IN (2, 3)
+JOIN matriculas m ON m.id_estudiante = e.id_estudiante AND m.id_periodo = a.id_periodo
+JOIN profesor_materia_periodo pmp ON pmp.id_periodo = a.id_periodo AND pmp.id_materia = a.id_materia
+    AND (pmp.id_curso IS NULL OR pmp.id_curso = m.id_curso OR m.id_curso IS NULL)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------
--- 8. Demo para revision: 2 solicitudes pendientes en bandeja
---    + 1 supletorio validado de muestra (est 6, <7 en Mat).
+-- 9. Demo para revision: 2 pendientes + 1 supletorio validado
 -- ---------------------------------------------------------
 INSERT INTO solicitudes_matricula
     (nombres, apellidos, cedula, fecha_nacimiento,

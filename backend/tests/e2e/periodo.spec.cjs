@@ -5,12 +5,19 @@ const { login, api } = require('./helpers.cjs');
 
 test('cambiar de periodo muestra sus registros y regresa', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  const tag = Date.now().toString(36);
+  // Sandbox fijo reutilizable (cero crecimiento entre corridas).
+  const NOMBRE_VIEJO = 'E2E Sandbox Viejo';
+  let idViejo = null;
   const np = await api(page, 'POST', '/periodos/', {
-    nombre: 'E2E Old ' + tag, fecha_inicio: '2020-09-01', fecha_fin: '2021-07-31'
+    nombre: NOMBRE_VIEJO, fecha_inicio: '2020-09-01', fecha_fin: '2021-07-31'
   });
-  expect(np.status).toBe(201);
-  const idViejo = np.data.id_periodo;
+  if (np.status === 201) {
+    idViejo = np.data.id_periodo;
+  } else {
+    const per = await api(page, 'GET', '/periodos/');
+    idViejo = (per.data.periodos || []).find((p) => p.nombre === NOMBRE_VIEJO)?.id_periodo;
+  }
+  expect(idViejo).toBeTruthy();
 
   await page.goto('/pages/dashboard.html');
   await expect(page.locator('#periodoNombre')).not.toContainText('Cargando', { timeout: 15000 });
@@ -20,9 +27,9 @@ test('cambiar de periodo muestra sus registros y regresa', async ({ page }) => {
 
   // Cambia al viejo desde el header (recarga la pagina).
   await page.locator('#btnPeriodo').click();
-  await page.locator('.header-periodo-item', { hasText: 'E2E Old ' + tag }).click();
+  await page.locator('.header-periodo-item', { hasText: NOMBRE_VIEJO }).click();
   await page.waitForLoadState('domcontentloaded');
-  await expect(page.locator('#periodoNombre')).toContainText('E2E Old ' + tag, { timeout: 15000 });
+  await expect(page.locator('#periodoNombre')).toContainText(NOMBRE_VIEJO, { timeout: 15000 });
 
   // Sin ?id_periodo: la sesion manda (vacio en el viejo).
   const gr = await api(page, 'GET', '/consulta/grupos');
