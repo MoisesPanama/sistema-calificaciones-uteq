@@ -165,10 +165,25 @@ async function renderLayout(usuario, periodoSeleccionado) {
     if (sp && dd && !sp.contains(e.target)) dd.classList.remove('activo');
   });
 
-  cargarPeriodos(periodoSeleccionado);
+  // Nombre unico a proposito: las paginas tienen su propia
+  // cargarPeriodos() global (llena su select) y la tapaba,
+  // dejando el header en "Cargando..." para siempre.
+  setTimeout(() => { cargarPeriodosHeader(periodoSeleccionado).catch(() => {}); }, 0);
+  // Red de seguridad: si algo vuelve a tapar el pintado, el
+  // barredor lo rescata (nunca "Cargando..." clavado).
+  setTimeout(() => {
+    try {
+      const nombreEl = document.getElementById('periodoNombre');
+      if (nombreEl && /cargando/i.test(nombreEl.textContent || '') && !window.__periodoHeaderOK) {
+        cargarPeriodosHeader(periodoSeleccionado).catch(() => {
+          nombreEl.textContent = 'Sin periodo (toca para reintentar)';
+        });
+      }
+    } catch (_) { /* no romper la pagina por el header */ }
+  }, 10000);
 }
 
-async function cargarPeriodos(seleccionado) {
+async function cargarPeriodosHeader(seleccionado) {
   const lista = document.getElementById('periodosLista');
   const nombreEl = document.getElementById('periodoNombre');
   if (!lista || !nombreEl) return;
@@ -188,6 +203,7 @@ async function cargarPeriodos(seleccionado) {
     const periodoActual = periodos.find(p => String(p.id_periodo) === String(idSeleccionado)) || activo;
     if (periodoActual) {
       nombreEl.textContent = periodoActual.nombre;
+      window.__periodoHeaderOK = true;
     } else {
       nombreEl.textContent = 'Sin periodo (toca para reintentar)';
     }
@@ -216,7 +232,7 @@ async function cargarPeriodos(seleccionado) {
     btn.dataset.retryM10 = '1';
     btn.addEventListener('click', () => {
       if (nombreEl.textContent.includes('reintentar') || !lista.querySelector('.header-periodo-item')) {
-        cargarPeriodos(seleccionado).catch(() => {});
+        cargarPeriodosHeader(seleccionado).catch(() => {});
       }
     });
   }
