@@ -10,7 +10,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, periodoDe } = require('../helpers/contexto');
 
 const TIPOS_CICLO = ['quimestre', 'trimestre', 'bimestre', 'semestre', 'otro'];
 
@@ -63,7 +63,7 @@ function pesosCiclo(body) {
 router.get('/', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ ciclos: [] });
         const r = await pool.query(
             `SELECT c.id_ciclo, c.nombre, c.tipo, c.orden, c.peso, c.id_periodo,

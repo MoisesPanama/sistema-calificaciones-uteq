@@ -47,8 +47,8 @@
             <div class="total">${esc(g.curso || 'General')}${g.paralelo ? ' ' + esc(g.paralelo) : ''}</div>
             <div class="meta">${g.n_estudiantes} estudiante(s)</div>
             <div style="margin-top:0.7rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-              <a class="btn-primary btn-sm" href="calificaciones.html">Calificar</a>
-              <a class="btn-secondary btn-sm" href="consulta.html">Ver notas</a>
+              <a class="btn-primary btn-sm" href="calificaciones.html?id_materia=${g.id_materia}&id_curso=${g.id_curso || ''}">Calificar</a>
+              <a class="btn-secondary btn-sm" href="consulta.html?modo=grupo&id_materia=${g.id_materia}&id_curso=${g.id_curso || ''}">Ver notas</a>
             </div>
           </div>`).join('');
       } catch (err) { showError(err.message); }

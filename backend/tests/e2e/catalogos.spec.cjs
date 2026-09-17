@@ -49,8 +49,9 @@ test('ciclo avisa si pesos no suman y valida formativa+examen=1', async ({ page 
 });
 
 test('tipo con notas no se puede borrar (409)', async ({ page }) => {
+  await login(page, 'admin@uteq.edu.ec');
   const tipos = await api(page, 'GET', '/tipos/');
-  const conNotas = tipos.data.tiposEvaluacion.find(t => t.nombre === 'Parcial 1');
+  const conNotas = tipos.data.tiposEvaluacion.find(t => t.nombre === 'Tarea');
   expect(conNotas).toBeTruthy();
   const r = await api(page, 'DELETE', `/tipos/${conNotas.id_tipo_evaluacion}`);
   expect(r.status).toBe(409);
@@ -60,7 +61,9 @@ test('profesor no ve Catalogos en el sidebar', async ({ page }) => {
   await login(page, 'elena.romero@uteq.edu.ec');
   await go(page, '/pages/dashboard.html');
   // Esperar render real del menu (si no, la asercion negativa es al vacio).
-  await expect(page.locator('.sidebar-nav')).toContainText('Registrar Nota', { timeout: 15000 });
+  await expect(page.locator('.sidebar-nav')).toContainText('Mis cursos', { timeout: 15000 });
+  await expect(page.locator('.sidebar-nav')).not.toContainText('Registrar Nota');
+  await expect(page.locator('.sidebar-nav')).not.toContainText('Consultar Notas');
   await expect(page.locator('.sidebar-nav')).not.toContainText('Catalogos');
 });
 

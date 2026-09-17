@@ -15,7 +15,8 @@ const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
 const {
     getPeriodoActivo,
     getMateriasPermitidas,
-    getCursosPermitidos
+    getCursosPermitidos,
+    periodoDe
 } = require('../helpers/contexto');
 const { tiposCalificables } = require('../helpers/tipos');
 
@@ -99,7 +100,7 @@ router.get('/contexto', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados. Cree y active uno primero.' });
         }
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || periodoActivo.id_periodo;
+        const idPeriodo = await periodoDe(req);
         const materias = await getMateriasPermitidas(pool, req.session.usuario, idPeriodo);
         const cursos = await getCursosPermitidos(pool, req.session.usuario, idPeriodo);
         const tiposRes = await pool.query(
@@ -220,14 +221,20 @@ function responderErrorNegocio(res, error, mensajeDefecto) {
 // Acepta id_actividad opcional: si viene, las notas se guardan
 // ligadas a esa actividad (el tipo/parcial/ciclo se heredan).
 router.post('/lote', requireAuth, async (req, res) => {
-    const { id_periodo, id_materia, notas, id_parcial, id_ciclo, id_actividad } = req.body || {};
+    const { id_periodo, id_materia, id_curso, notas, id_parcial, id_ciclo, id_actividad } = req.body || {};
 
     if (!id_periodo) return res.status(400).json({ error: 'Falta el periodo.' });
     if (!id_materia) return res.status(400).json({ error: 'Debe seleccionar una materia.' });
+    // M10: siempre un curso concreto (sin modo general).
+    if (!id_curso) return res.status(400).json({ error: 'Debe seleccionar un curso.' });
 
     const materiasPermitidas = await getMateriasPermitidas(pool, req.session.usuario, id_periodo);
     if (!materiasPermitidas.some((m) => String(m.id_materia) === String(id_materia))) {
         return res.status(403).json({ error: 'No tiene asignada esta materia en el periodo: no puede registrar estas notas.' });
+    }
+    const cursosPermitidos = await getCursosPermitidos(pool, req.session.usuario, id_periodo);
+    if (!cursosPermitidos.some((c) => String(c.id_curso) === String(id_curso))) {
+        return res.status(403).json({ error: 'No tiene asignado este curso en el periodo.' });
     }
 
     const entradas = extraerEntradas(notas);

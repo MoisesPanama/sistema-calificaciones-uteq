@@ -11,14 +11,15 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { getPeriodoActivo, getMateriasPermitidas } = require('../helpers/contexto');
+const { getPeriodoActivo, getMateriasPermitidas, periodoDe } = require('../helpers/contexto');
 
 router.get('/', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = periodoActivo ? periodoActivo.id_periodo : null;
+        // M10: respeta el periodo elegido en el header (?id_periodo o sesion).
+        const idPeriodo = await periodoDe(req);
         const rol = req.session.usuario.nombre_rol;
-        const out = { periodoActivo, rol };
+        const out = { periodoActivo, idPeriodo, rol };
 
         const [estudiantes, materias, periodos, calificaciones] = await Promise.all([
             pool.query('SELECT COUNT(*) AS n FROM estudiantes WHERE activo = TRUE'),

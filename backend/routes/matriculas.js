@@ -2,8 +2,59 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, getEstudianteId, periodoDe } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
+
+// GET /api/matriculas/mia — estado de matricula del estudiante
+// (o hijos del representante) en el periodo + si la ventana
+// esta abierta. 403 para el resto de roles.
+router.get('/mia', requireAuth, async (req, res) => {
+    try {
+        const rol = req.session.usuario.nombre_rol;
+        const periodoActivo = await getPeriodoActivo();
+        const idPeriodo = await periodoDe(req);
+        if (!idPeriodo) return res.json({ matriculas: [], matricula_abierta: false });
+        const rAbierta = await pool.query('SELECT fn_matricula_abierta($1) AS abierta', [idPeriodo]);
+
+        let idsEst = [];
+        if (rol === 'estudiante') {
+            const propio = await getEstudianteId(pool, req.session.usuario.id_usuario);
+            if (propio) idsEst = [propio];
+        } else if (rol === 'representante') {
+            const rRep = await pool.query(
+                'SELECT id_representante FROM representantes WHERE id_usuario = $1',
+                [req.session.usuario.id_usuario]
+            );
+            if (rRep.rows.length > 0) {
+                const rHijos = await pool.query(
+                    'SELECT id_estudiante FROM estudiantes WHERE id_representante = $1',
+                    [rRep.rows[0].id_representante]
+                );
+                idsEst = rHijos.rows.map((h) => h.id_estudiante);
+            }
+        } else {
+            return res.status(403).json({ error: 'Solo estudiante o representante.' });
+        }
+        if (idsEst.length === 0) {
+            return res.json({ matriculas: [], matricula_abierta: !!rAbierta.rows[0]?.abierta });
+        }
+        const r = await pool.query(
+            `SELECT m.id_matricula, m.id_estudiante, m.id_periodo, m.id_curso,
+                    e.nombres, e.apellidos, e.cedula,
+                    c.nombre AS curso_nombre, c.paralelo, c.nivel
+             FROM matriculas m
+             JOIN estudiantes e ON e.id_estudiante = m.id_estudiante
+             LEFT JOIN cursos c ON c.id_curso = m.id_curso
+             WHERE m.id_periodo = $1 AND m.id_estudiante = ANY($2)
+             ORDER BY e.apellidos, e.nombres`,
+            [idPeriodo, idsEst]
+        );
+        res.json({ matriculas: r.rows, matricula_abierta: !!rAbierta.rows[0]?.abierta });
+    } catch (error) {
+        console.error('Error en mi matricula:', error.message);
+        res.status(500).json({ error: 'No se pudo cargar tu matricula.' });
+    }
+});
 
 // GET /api/matriculas?id_periodo=&id_curso=&q=&page=&limit=
 router.get('/', requireAuth, async (req, res) => {

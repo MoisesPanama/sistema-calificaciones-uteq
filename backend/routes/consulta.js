@@ -7,7 +7,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { getPeriodoActivo, getProfesorId, getEstudianteId, esAdmin } = require('../helpers/contexto');
+const {
+    getPeriodoActivo,
+    getProfesorId,
+    getEstudianteId,
+    esAdmin,
+    periodoDe
+} = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 // Rol estudiante: SOLO ve sus propias notas. Devuelve su
@@ -69,7 +75,7 @@ router.get('/materia/:id_materia', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         let idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.params.id_materia;
         // Estudiante: ignora el parametro y usa el propio siempre.
@@ -220,7 +226,7 @@ router.get('/grupos', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         const params = [idPeriodo];
         let filtroExtra = '';
         if (!esAdmin(req.session.usuario)) {
@@ -242,7 +248,7 @@ router.get('/grupos', requireAuth, async (req, res) => {
         }
         const r = await pool.query(
             `SELECT m.id_materia, m.nombre AS materia,
-                    c.id_curso, c.nombre AS curso, c.paralelo,
+                    c.id_curso, c.nombre AS curso, c.paralelo, c.nivel,
                     COUNT(DISTINCT CASE
                         WHEN pmp.id_curso IS NULL OR mat.id_curso IS NULL OR mat.id_curso = pmp.id_curso
                         THEN mat.id_estudiante END)::int AS n_estudiantes
@@ -251,8 +257,8 @@ router.get('/grupos', requireAuth, async (req, res) => {
              LEFT JOIN cursos c ON c.id_curso = pmp.id_curso
              LEFT JOIN matriculas mat ON mat.id_periodo = pmp.id_periodo
              WHERE pmp.id_periodo = $1${filtroExtra}
-             GROUP BY m.id_materia, m.nombre, c.id_curso, c.nombre, c.paralelo
-             ORDER BY m.nombre, c.nombre NULLS FIRST, c.paralelo NULLS FIRST`,
+             GROUP BY m.id_materia, m.nombre, c.id_curso, c.nombre, c.paralelo, c.nivel
+             ORDER BY c.nivel NULLS LAST, c.nombre NULLS FIRST, c.paralelo NULLS FIRST, m.nombre`,
             params
         );
         const periodoSel = await pool.query(
@@ -278,7 +284,7 @@ router.get('/grupo', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         const idMateria = req.query.id_materia || '';
         const idCurso = req.query.id_curso || '';
         if (!idMateria) return res.status(400).json({ error: 'Falta id_materia.' });
@@ -373,7 +379,7 @@ router.get('/', requireAuth, async (req, res) => {
             'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
         );
 
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         let idEstudiante = req.query.id_estudiante || '';
         const idMateria = req.query.id_materia || '';
 

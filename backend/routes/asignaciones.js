@@ -9,13 +9,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, periodoDe } = require('../helpers/contexto');
 
 // GET /api/asignaciones?id_periodo= -> asignaciones del periodo
 router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ asignaciones: [] });
         const r = await pool.query(
             `SELECT pmp.id_asignacion, pmp.id_profesor, pmp.id_materia, pmp.id_curso, pmp.id_periodo,
@@ -42,7 +42,7 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
 router.get('/opciones', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         const [profesores, materias, cursos] = await Promise.all([
             pool.query(
                 `SELECT pr.id_profesor, (u.nombres || ' ' || u.apellidos) AS nombre
@@ -63,11 +63,15 @@ router.get('/opciones', requireAuth, requireRole('administrador'), async (req, r
     }
 });
 
-// POST /api/asignaciones -> asignar (admin)
+// POST /api/asignaciones -> asignar (admin). M10: el curso es
+// OBLIGATORIO (sin asignaciones generales).
 router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
     const { id_profesor, id_materia, id_periodo, id_curso } = req.body || {};
     if (!id_profesor || !id_materia || !id_periodo) {
         return res.status(400).json({ error: 'Profesor, materia y periodo son obligatorios.' });
+    }
+    if (!id_curso) {
+        return res.status(400).json({ error: 'El curso es obligatorio: no existen asignaciones generales.' });
     }
     const client = await pool.connect();
     try {

@@ -67,18 +67,25 @@ async function renderLayout(usuario, periodoSeleccionado) {
 
   // Admin: ve todo excepto Registrar Nota
   // Profesor: ve calificaciones y consulta
-  // Representante: ve consulta y reportes
+  // Representante: ve consulta y reportes + su matricula
+  // Estudiante: ve sus notas + su matricula
   // Psicologo: ve rendimiento
+  const navMatricula = [
+    { href: 'mi-matricula.html', icon: '<path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>', label: 'Mi matrícula' },
+  ];
   let navItems2 = [];
   if (esAdmin) {
     navItems2 = [...navGestion, ...navCalificaciones.filter(n => n.href !== 'calificaciones.html')];
   } else if (esProfesor) {
-    navItems2 = navCalificaciones;
+    // M10: Mis cursos es el hub (fuera Registrar Nota y Consultar Notas).
+    navItems2 = navCalificaciones.filter(n =>
+      n.href === 'mis-cursos.html' || n.href === 'reportes.html' ||
+      n.href === 'boletin.html' || n.href === 'planilla.html' || n.href === 'supletorio.html');
   } else if (esRepresentante) {
-    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html' || n.href === 'boletin.html');
+    navItems2 = [...navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'reportes.html' || n.href === 'boletin.html'), ...navMatricula];
   } else if (esEstudiante) {
-    // Estudiante: SOLO sus notas (sin reportes ni nominas ajenas).
-    navItems2 = navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'boletin.html');
+    // Estudiante: SOLO sus notas (sin reportes ni nominas ajenas) + su matricula.
+    navItems2 = [...navCalificaciones.filter(n => n.href === 'consulta.html' || n.href === 'boletin.html'), ...navMatricula];
   } else if (esPsicologo) {
     navItems2 = [];
   }
@@ -162,26 +169,36 @@ async function renderLayout(usuario, periodoSeleccionado) {
 }
 
 async function cargarPeriodos(seleccionado) {
+  const lista = document.getElementById('periodosLista');
+  const nombreEl = document.getElementById('periodoNombre');
+  if (!lista || !nombreEl) return;
+  // Watchdog M10: jamas dejar "Cargando..." clavado.
+  let d = null;
   try {
-    const d = await apiGet('/periodos/');
-    const periodos = d.periodos || [];
-    const activo = d.periodoActivo;
-    const lista = document.getElementById('periodosLista');
-    const nombreEl = document.getElementById('periodoNombre');
-    if (!lista || !nombreEl) return;
+    d = await Promise.race([
+      apiGet('/periodos/'),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+    ]);
+  } catch (e) { /* cae al fallback de abajo */ }
+  try {
+    const periodos = (d && d.periodos) || [];
+    const activo = d && d.periodoActivo;
 
     let idSeleccionado = seleccionado || (activo && activo.id_periodo);
     const periodoActual = periodos.find(p => String(p.id_periodo) === String(idSeleccionado)) || activo;
-    nombreEl.textContent = periodoActual ? esc(periodoActual.nombre) : 'Sin periodo';
+    if (periodoActual) {
+      nombreEl.textContent = periodoActual.nombre;
+    } else {
+      nombreEl.textContent = 'Sin periodo (toca para reintentar)';
+    }
 
     lista.innerHTML = periodos.map(p => {
-      const seleccionado = String(p.id_periodo) === String(idSeleccionado);
-      const clase = seleccionado ? ' class="activo"' : '';
-      return `<div class="header-periodo-item${seleccionado ? ' activo' : ''}" data-id="${p.id_periodo}">
-        <span class="check">${seleccionado ? '&#10003;' : ''}</span>
+      const esSel = String(p.id_periodo) === String(idSeleccionado);
+      return `<div class="header-periodo-item${esSel ? ' activo' : ''}" data-id="${p.id_periodo}">
+        <span class="check">${esSel ? '&#10003;' : ''}</span>
         <span>${esc(p.nombre)}</span>
       </div>`;
-    }).join('');
+    }).join('') || '<div class="header-periodo-footer">Sin periodos (toca para reintentar)</div>';
 
     lista.querySelectorAll('.header-periodo-item').forEach(item => {
       item.addEventListener('click', async () => {
@@ -191,7 +208,16 @@ async function cargarPeriodos(seleccionado) {
       });
     });
   } catch (e) {
-    const nombreEl = document.getElementById('periodoNombre');
-    if (nombreEl) nombreEl.textContent = 'Sin periodo';
+    nombreEl.textContent = 'Sin periodo (toca para reintentar)';
+  }
+  // Reintentar al abrir el dropdown si quedo vacio.
+  const btn = document.getElementById('btnPeriodo');
+  if (btn && !btn.dataset.retryM10) {
+    btn.dataset.retryM10 = '1';
+    btn.addEventListener('click', () => {
+      if (nombreEl.textContent.includes('reintentar') || !lista.querySelector('.header-periodo-item')) {
+        cargarPeriodos(seleccionado).catch(() => {});
+      }
+    });
   }
 }

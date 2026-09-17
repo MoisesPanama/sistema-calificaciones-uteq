@@ -87,7 +87,7 @@ async function getCursosPermitidos(client, usuario, idPeriodo) {
         if (esAdmin(usuario)) {
             const r = await client.query(
                 `SELECT id_curso, nombre, paralelo FROM cursos
-                 WHERE id_periodo = $1 ORDER BY nombre, paralelo`,
+                 WHERE id_periodo = $1 ORDER BY nivel NULLS LAST, nombre, paralelo`,
                 [idPeriodo]
             );
             return r.rows;
@@ -96,11 +96,11 @@ async function getCursosPermitidos(client, usuario, idPeriodo) {
         const idProfesor = await getProfesorId(client, usuario.id_usuario);
         if (!idProfesor) return [];
         const r = await client.query(
-            `SELECT DISTINCT c.id_curso, c.nombre, c.paralelo
+            `SELECT DISTINCT c.id_curso, c.nombre, c.paralelo, c.nivel
              FROM profesor_materia_periodo pmp
              JOIN cursos c ON c.id_curso = pmp.id_curso
              WHERE pmp.id_periodo = $1 AND pmp.id_profesor = $2
-             ORDER BY c.nombre, c.paralelo`,
+             ORDER BY c.nivel NULLS LAST, c.nombre, c.paralelo`,
             [idPeriodo, idProfesor]
         );
         return r.rows;
@@ -109,11 +109,34 @@ async function getCursosPermitidos(client, usuario, idPeriodo) {
     }
 }
 
+// Periodo efectivo de la request (M10, una sola regla):
+// ?id_periodo (si existe) -> sesion -> activo. Asi cambiar de
+// periodo en el header refleja los registros de ESE periodo
+// en todos los roles y endpoints, no los del actual.
+async function periodoDe(req, client = pool) {
+    const q = req.query && req.query.id_periodo;
+    if (q) {
+        try {
+            const r = await client.query(
+                'SELECT id_periodo FROM periodos_academicos WHERE id_periodo = $1',
+                [q]
+            );
+            if (r.rows.length > 0) return String(r.rows[0].id_periodo);
+        } catch (_) { /* cae a sesion/activo */ }
+    }
+    if (req.session && req.session.periodoSeleccionado) {
+        return String(req.session.periodoSeleccionado);
+    }
+    const activo = await getPeriodoActivo(client);
+    return activo ? String(activo.id_periodo) : null;
+}
+
 module.exports = {
     getPeriodoActivo,
     esAdmin,
     getProfesorId,
     getEstudianteId,
     getMateriasPermitidas,
-    getCursosPermitidos
+    getCursosPermitidos,
+    periodoDe
 };

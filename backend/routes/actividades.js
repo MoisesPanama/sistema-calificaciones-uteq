@@ -22,7 +22,8 @@ const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
 const {
     getPeriodoActivo,
     getMateriasPermitidas,
-    getCursosPermitidos
+    getCursosPermitidos,
+    periodoDe
 } = require('../helpers/contexto');
 const { validarContextoEvaluativo } = require('./calificaciones');
 
@@ -52,7 +53,7 @@ router.get('/', requireAuth, async (req, res) => {
         if (!periodoActivo) {
             return res.status(500).json({ error: 'No hay periodos registrados.' });
         }
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || periodoActivo.id_periodo;
+        const idPeriodo = await periodoDe(req);
         const { id_materia, id_ciclo, id_parcial, id_curso } = req.query;
         if (!id_materia) return res.status(400).json({ error: 'Debe seleccionar una materia.' });
 
@@ -345,9 +346,10 @@ router.post('/:id/estado', requireAuth, async (req, res) => {
         if (estado === 'publicada') {
             // Al publicar se generan las entregas pendientes de la
             // nomina visible (idempotente por UNIQUE).
+            // OJO $N: paramsR[0]=$1 actividad, [1]=$2 periodo.
             try {
                 const vis = await cursosVisibles({ ...act, estado }, req.session.usuario);
-                const paramsR = [act.id_periodo];
+                const paramsR = [req.params.id, act.id_periodo];
                 let filtroR = '';
                 if (vis.fijo) {
                     paramsR.push(vis.fijo);
@@ -359,9 +361,9 @@ router.post('/:id/estado', requireAuth, async (req, res) => {
                 const rIns = await client.query(
                     `INSERT INTO entregas (id_actividad, id_estudiante)
                      SELECT $1, m.id_estudiante FROM matriculas m
-                     WHERE m.id_periodo = $${paramsR.length + 1}${filtroR}
+                     WHERE m.id_periodo = $2${filtroR}
                      ON CONFLICT DO NOTHING`,
-                    [req.params.id, ...paramsR]
+                    paramsR
                 );
                 pendientes = rIns.rowCount;
             } catch (e) {
