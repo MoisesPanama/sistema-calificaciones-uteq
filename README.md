@@ -53,9 +53,9 @@ automáticamente si la BD está vacía, en `http://localhost:3001`
 
 ## Integrantes del equipo
 
-- Moises Panama — Backend, base de datos, interfaces de gestión
-- *(pendiente asignar)*
-- *(pendiente asignar)*
+- Panama Murillo Moises Antonio — Backend, base de datos, interfaces de gestión
+- Castro Espinoza Kevin Moisés — Tester UI / documentación
+- Velez Lopez Ricardo Elias — Analista V&V / tester API
 
 ## Stack tecnológico
 

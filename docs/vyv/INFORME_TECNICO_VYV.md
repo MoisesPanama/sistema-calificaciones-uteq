@@ -7,7 +7,7 @@
 | **Proyecto** | Sistema de Registro de Calificaciones — Unidad Educativa (UTEQ) |
 | **Materia** | Verificación y Validación de Software |
 | **Universidad** | Universidad Técnica Estatal de Quevedo (UTEQ) |
-| **Integrantes** | Castro Espinoza Kevin Moisés · Vélez López Ricardo Elías |
+| **Integrantes** | Castro Espinoza Kevin Moisés · Vélez López Ricardo Elías · Panama Murillo Moises Antonio |
 | **Docente** | Ing. Cordero Bazurto José Steven |
 | **Fecha** | Septiembre 2026 |
 | **Versión** | 1.0 |
@@ -311,6 +311,7 @@ Además, la suite automatizada **descubre los identificadores en tiempo de ejecu
 |---|---|---|
 | Analista de V&V / tester de API | Vélez López Ricardo | Pruebas de API, entorno, evidencias, hallazgos H1–H15 |
 | Tester de UI / documentación | Castro Espinoza Kevin Moisés | Suite Playwright, capturas, UAT, encuesta |
+| Desarrollo / BD / despliegue | Panama Murillo Moises Antonio | Backend, base de datos, Docker, despliegue |
 | Usuario final simulado (Beta) | Participantes B1–B6 | Prueba Beta y encuesta |
 
 | Actividad | Semana 1 | Semana 2 | Semana 3 | Semana 4 |

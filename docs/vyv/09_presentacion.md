@@ -8,7 +8,7 @@
 
 ## 1. Portada
 - Nombre del proyecto: Sistema de Registro de Calificaciones.
-- Integrantes: Castro Espinoza Kevin Moisés · Vélez López Ricardo Elías.
+- Integrantes: Castro Espinoza Kevin Moisés · Vélez López Ricardo Elías · Panama Murillo Moises Antonio.
 - Docente: Ing. Cordero Bazurto José Steven, universidad, fecha.
 
 ## 2. Presentación del proyecto
@@ -49,11 +49,11 @@
 - Acciones tomadas y backlog priorizado.
 
 ## 10. Encuesta de satisfacción
-- Diseño Google Forms, **20 preguntas**: 14 Likert 1–5 + 4 Sí/No + 2 abiertas. Aplicada a **30 usuarios**.
+- Diseño Google Forms, **20 preguntas**: 14 Likert 1–5 + 4 Sí/No + 2 abiertas. Aplicada a **89 usuarios** (89 respuestas reales: https://docs.google.com/forms/d/e/1FAIpQLSdZaDQaYE6l-JC0JduRN5m85KIeCi2PhMO-GI00an5a3hVkvw/viewform).
 
 ## 11. Resultados de la encuesta
-- Satisfacción global **4.7/5 (94%)** (N=30); confiabilidad, precisión y seguridad 5.0; apariencia y mensajes de error 4.2.
-- Sí/No: 112/120 favorables (93%); 0 errores bloqueantes.
+- Satisfacción global **4.8/5 (96%)** (N=89); 9 dimensiones en 5.0; mensajes de error 4.0 y apariencia 4.2.
+- Sí/No: 356/356 favorables (100%); 0 errores bloqueantes.
 - Interpretación y próximas mejoras.
 
 ## 12. Resumen de correcciones y mejoras (hallazgos V&V)
@@ -62,7 +62,7 @@
 
 ## 13. Conclusiones
 - 14/14 manuales, 101/101 automatizados, 7/7 UAT.
-- Satisfacción 4.7/5 → listo para producción.
+- Satisfacción 4.8/5 (96%, N=89) → listo para producción.
 - Mejoras futuras (exportación, gráficos, móvil).
 - **Cierre + ronda de preguntas.**
 
