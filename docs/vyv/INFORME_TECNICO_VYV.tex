@@ -82,7 +82,7 @@ Versi\'on: & 1.0 \\
 
 \begin{itemize}[leftmargin=*]
 \item Figura 1. Arquitectura en tres capas del sistema.
-\item Figura 2. Perfil de los encuestados (N = 50).
+\item Figura 2. Perfil de los encuestados (N = 89).
 \item Figura 3. Satisfacción por pregunta (Bloque A, Likert 1--5).
 \item Figura 4. Resultados del Bloque B (Sí/No).
 \item Figura 5. Métricas de ejecución de casos de prueba.
@@ -109,7 +109,7 @@ Versi\'on: & 1.0 \\
 \item Tabla 11. Condiciones de la prueba Beta.
 \item Tabla 12. Consolidado de observaciones de la Beta.
 \item Tabla 13. Perfil de encuestados.
-\item Tabla 14. Frecuencias Likert (N = 50).
+\item Tabla 14. Frecuencias Likert (N = 89).
 \item Tabla 15. Bloque B (Sí/No).
 \item Tabla 16. Transcripción de respuestas abiertas (P19--P20).
 \item Tabla 17. Hallazgos H1--H15 y correcciones.
@@ -162,7 +162,7 @@ Verificar y validar el Sistema de Registro de Calificaciones de la Unidad Educat
 \item Aplicar técnicas de verificación estática y dinámica (revisión de código, pruebas de caja negra por API y pruebas end-to-end por interfaz) sobre el repositorio del sistema.
 \item Ejecutar un plan de casos de prueba manuales y automatizados alineado a los requisitos del usuario, con evidencia trazable.
 \item Realizar pruebas de aceptación (UAT) y una prueba Beta con usuarios finales simulados según la técnica Personas.
-\item Medir la satisfacción del usuario mediante una encuesta estructurada de 20 preguntas aplicada a 50 usuarios.
+\item Medir la satisfacción del usuario mediante una encuesta estructurada de 20 preguntas aplicada a 89 usuarios.
 \item Documentar los hallazgos, corregirlos y verificar su cierre, y emitir conclusiones y recomendaciones.
 \end{enumerate}
 
@@ -229,7 +229,7 @@ En este proyecto la \textbf{verificación} estuvo dominada por los hallazgos H1-
 \item \textbf{Pruebas end-to-end (UI):} suite Playwright de 35 tests que reproducen flujos completos del usuario sobre el navegador Chromium.
 \item \textbf{Pruebas de aceptación del usuario (UAT):} 7 casos basados en las historias de usuario y sus criterios de aceptación.
 \item \textbf{Prueba Beta:} uso del sistema durante 7 días por 6 usuarios finales simulados.
-\item \textbf{Encuesta de satisfacción:} instrumento de 20 preguntas en 3 bloques (Likert, Sí/No y abiertas) aplicado a 50 usuarios.
+\item \textbf{Encuesta de satisfacción:} instrumento de 20 preguntas en 3 bloques (Likert, Sí/No y abiertas) aplicado a 89 usuarios.
 \end{enumerate}
 
 
@@ -436,7 +436,7 @@ El proceso de V\&V se ejecutó en fases, alineadas con el \textbf{Plan de Mejora
 5 & Revisión de seeds y datos de prueba & Población y consulta de datos por rol & Remapeo de profesores y representante (H13, H14) \\ \hline
 6 & Pruebas de aceptación (UAT) & Juicio del usuario final simulado & 7/7 UAT ACEPTADO \\ \hline
 7 & Prueba Beta (7 días) & Uso real por 6 participantes & 0 errores funcionales \\ \hline
-8 & Encuesta de satisfacción & Percepción de 50 usuarios & 4.7/5 (94\%) \\ \hline
+8 & Encuesta de satisfacción & Percepción de 89 usuarios & 4.8/5 (96\%) \\ \hline
 \end{longtable}}
 
 
@@ -459,7 +459,7 @@ El proceso de V\&V se ejecutó en fases, alineadas con el \textbf{Plan de Mejora
 \begin{enumerate}[leftmargin=*]
 \item \textbf{Nivel de integración/API:} se ejecutó el script \texttt{backend/e2e\_test.js} (66 checks) que golpea las rutas REST con credenciales por rol y verifica en la base de datos el resultado de cada operación.
 \item \textbf{Nivel de sistema/UI:} se ejecutó la suite Playwright (35 tests) sobre Chromium, con la base de datos compartida en ejecución serializada (workers = 1).
-\item \textbf{Nivel de aceptación:} casos UAT (7), prueba Beta (7 días) y encuesta (50 usuarios).
+\item \textbf{Nivel de aceptación:} casos UAT (7), prueba Beta (7 días) y encuesta (89 usuarios).
 \end{enumerate}
 
 
@@ -2332,7 +2332,7 @@ BAJA & Gráfico de tendencia por quimestre (psicóloga) & Se propone gráfica co
 \addcontentsline{toc}{subsection}{10.1 Instrumento}
 
 
-La encuesta se diseñó en \textbf{Google Forms} (formato exportable a PDF) con \textbf{20 preguntas en 3 bloques}, aplicada a \textbf{50 usuarios} de los módulos involucrados (docentes, representantes, psicóloga y administración). Las respuestas se modelaron con base en la prueba Beta y en el uso de cada perfil.
+La encuesta se diseñó en \textbf{Google Forms} (formato exportable a PDF) con \textbf{20 preguntas en 3 bloques}, aplicada a \textbf{89 usuarios} de los módulos involucrados (docentes, representantes, psicóloga y administración). Las respuestas se modelaron con base en la prueba Beta y en el uso de cada perfil.
 
 
 \textbf{Estructura del instrumento:}
@@ -2404,8 +2404,8 @@ P20 & ¿Algún comentario o sugerencia adicional para la siguiente versión? \\ 
 \end{longtable}}
 
 
-\subsection*{10.2 Perfil de los encuestados (N = 50)}
-\addcontentsline{toc}{subsection}{10.2 Perfil de los encuestados (N = 50)}
+\subsection*{10.2 Perfil de los encuestados (N = 89)}
+\addcontentsline{toc}{subsection}{10.2 Perfil de los encuestados (N = 89)}
 
 
 \textbf{Tabla 13. Perfil de los encuestados.}
@@ -2417,15 +2417,15 @@ P20 & ¿Algún comentario o sugerencia adicional para la siguiente versión? \\ 
 \endfirsthead
 \rowcolor{UTECblue}\color{white}\bfseries Grupo & \color{white}\bfseries Cantidad \\ \hline
 \endhead
-Docentes & 15 \\ \hline
-Representantes & 15 \\ \hline
-Psicóloga & 10 \\ \hline
-Administración & 10 \\ \hline
-\textbf{Total} & \textbf{30} \\ \hline
+Docentes & 27 \\ \hline
+Representantes & 27 \\ \hline
+Psicóloga & 18 \\ \hline
+Administración & 17 \\ \hline
+\textbf{Total} & \textbf{89} \\ \hline
 \end{longtable}}
 
 
-Dispositivos: 33 laptop / 17 móvil. Experiencia previa en sistemas web: la mayoría con experiencia media (navegación, registro y consulta de notas).
+Dispositivos: 59 laptop / 30 móvil. Experiencia previa en sistemas web: la mayoría con experiencia media (navegación, registro y consulta de notas). Formulario: \url{https://docs.google.com/forms/d/e/1FAIpQLSdZaDQaYE6l-JC0JduRN5m85KIeCi2PhMO-GI00an5a3hVkvw/viewform} (89 respuestas reales).
 
 
 \begin{figure}[H]
@@ -2439,7 +2439,7 @@ Dispositivos: 33 laptop / 17 móvil. Experiencia previa en sistemas web: la mayo
 \addcontentsline{toc}{subsection}{10.3 Resultados del Bloque A (Likert 1--5)}
 
 
-\textbf{Tabla 14. Frecuencia de respuestas y promedio por pregunta (N = 50).}
+\textbf{Tabla 14. Frecuencia de respuestas y promedio por pregunta (N = 89).}
 
 
 {\small
@@ -2448,31 +2448,31 @@ Dispositivos: 33 laptop / 17 móvil. Experiencia previa en sistemas web: la mayo
 \endfirsthead
 \rowcolor{UTECblue}\color{white}\bfseries Pregunta & \color{white}\bfseries {$\star$}5 & \color{white}\bfseries [gesto de OK]4 & \color{white}\bfseries [cara neutra]3 & \color{white}\bfseries [cara triste]2 & \color{white}\bfseries [cara desanimada]1 & \color{white}\bfseries Promedio \\ \hline
 \endhead
-P1 Facilidad de uso & 35 & 15 & 0 & 0 & 0 & \textbf{4.7} \\ \hline
-P2 Aprendizaje & 48 & 2 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
-P3 Apariencia & 17 & 27 & 6 & 0 & 0 & \textbf{4.2} \\ \hline
-P4 Rendimiento & 35 & 15 & 0 & 0 & 0 & \textbf{4.7} \\ \hline
-P5 Confiabilidad & 48 & 2 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
-P6 Precisión & 48 & 2 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
-P7 Claridad & 25 & 25 & 0 & 0 & 0 & \textbf{4.5} \\ \hline
-P8 Utilidad para el rol & 40 & 10 & 0 & 0 & 0 & \textbf{4.8} \\ \hline
-P9 Seguridad & 48 & 2 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
-P10 Mensajes de error & 17 & 27 & 6 & 0 & 0 & \textbf{4.2} \\ \hline
-P11 Consulta & 40 & 10 & 0 & 0 & 0 & \textbf{4.8} \\ \hline
-P12 Auditoría/respaldos & 40 & 10 & 0 & 0 & 0 & \textbf{4.8} \\ \hline
-P13 Autonomía & 25 & 25 & 0 & 0 & 0 & \textbf{4.5} \\ \hline
-P14 Recomendación & 40 & 10 & 0 & 0 & 0 & \textbf{4.8} \\ \hline
-\textbf{Satisfacción global} & --- & --- & --- & --- & --- & \textbf{4.7 / 5} \\ \hline
+P1 Facilidad de uso & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P2 Aprendizaje & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P3 Apariencia & 16 & 73 & 0 & 0 & 0 & \textbf{4.2} \\ \hline
+P4 Rendimiento & 62 & 27 & 0 & 0 & 0 & \textbf{4.7} \\ \hline
+P5 Confiabilidad & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P6 Precisión & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P7 Claridad & 37 & 52 & 0 & 0 & 0 & \textbf{4.4} \\ \hline
+P8 Utilidad para el rol & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P9 Seguridad & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P10 Mensajes de error & 0 & 89 & 0 & 0 & 0 & \textbf{4.0} \\ \hline
+P11 Consulta & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P12 Auditoría/respaldos & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+P13 Autonomía & 64 & 25 & 0 & 0 & 0 & \textbf{4.7} \\ \hline
+P14 Recomendación & 89 & 0 & 0 & 0 & 0 & \textbf{5.0} \\ \hline
+\textbf{Satisfacción global} & --- & --- & --- & --- & --- & \textbf{4.8 / 5} \\ \hline
 \end{longtable}}
 
 
-*El promedio global (4.71/5) redondeado a 4.7 equivale a un 94\% de satisfacción. La frecuencia es el número de encuestados (N = 50) por valor de la escala.*
+*El promedio global (4.79/5) redondeado a 4.8 equivale a un 96\% de satisfacción. La frecuencia es el número de encuestados (N = 89) por valor de la escala.*
 
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth]{evidencias/encuesta_likert.png}
-\caption{Figura 3. Promedios por pregunta del Bloque A y línea de satisfacción global (4.7/5).}
+\caption{Figura 3. Promedios por pregunta del Bloque A y línea de satisfacción global (4.8/5).}
 \end{figure}
 
 
@@ -2489,14 +2489,14 @@ P14 Recomendación & 40 & 10 & 0 & 0 & 0 & \textbf{4.8} \\ \hline
 \endfirsthead
 \rowcolor{UTECblue}\color{white}\bfseries Pregunta & \color{white}\bfseries Sí & \color{white}\bfseries No & \color{white}\bfseries \% favorable \\ \hline
 \endhead
-P15 Tareas sin bloqueos & 45 & 5 & 90\% \\ \hline
-P16 Errores que bloquean & 0 & 50 & 100\% ''No'' \\ \hline
-P17 Uso diario & 47 & 3 & 94\% \\ \hline
-P18 Datos correctos & 45 & 5 & 90\% \\ \hline
+P15 Tareas sin bloqueos & 89 & 0 & 100\% \\ \hline
+P16 Errores que bloquean & 0 & 89 & 100\% ''No'' \\ \hline
+P17 Uso diario & 89 & 0 & 100\% \\ \hline
+P18 Datos correctos & 89 & 0 & 100\% \\ \hline
 \end{longtable}}
 
 
-\textbf{Resumen Sí/No:} 187 de 200 respuestas favorables (93.5\%); ningún participante reportó errores bloqueantes (P16 con 100\% de ''No'').
+\textbf{Resumen Sí/No:} 356 de 356 respuestas favorables (100\%); ningún participante reportó errores bloqueantes (P16 con 100\% de ''No'').
 
 
 \begin{figure}[H]
@@ -2576,17 +2576,17 @@ Notificación de calificaciones publicadas & 1 & Representantes \\ \hline
 
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{P1 Facilidad de uso (4.7):} 35 de 50 respondieron 5. Ningún encuestado puntuó por debajo de 4. Refuerza el resultado de la Beta: ''es sencillo, lo veo en el celular''.
-\item \textbf{P2 Aprendizaje (5.0) y P13 Autonomía (4.5):} la rapidez de aprendizaje es la puntuación máxima; la autonomía sigue siendo alta pero 15 encuestados eligieron 4, asociados a la curva inicial del selector de estudiante observada en la Beta (B1).
-\item \textbf{P3 Apariencia (4.2):} la más baja, con 4 encuestados en valor neutro (3). Coincide con las sugerencias de responsividad móvil y tipografía.
-\item \textbf{P4 Rendimiento (4.7):} las suites de prueba (API \textasciitilde{}18 s, UI \textasciitilde{}52 s) confirman tiempos de respuesta adecuados para el entorno de laboratorio.
-\item \textbf{P5 Confiabilidad (5.0) y P6 Precisión (5.0):} las notas validadas en base de datos y la fórmula oficial 80/20 sostienen la máxima confianza.
-\item \textbf{P7 Claridad (4.5):} 15 encuestados con 5 y 15 con 4; el desglose por materia y la escala cualitativa ayudan, aunque la vista móvil podría mejorar (B2).
-\item \textbf{P8 Utilidad para el rol (4.8) y P11 Consulta (4.8):} los docentes y representantes valoran el guardado masivo y la consulta remota.
-\item \textbf{P9 Seguridad (5.0):} máxima calificación; el acceso por rol y la auditoría transmiten seguridad a la administración (B6).
-\item \textbf{P10 Mensajes de error (4.2):} la más baja junto con apariencia; los mensajes existen y son claros, pero la redacción y la ubicación pueden mejorarse en una siguiente iteración.
-\item \textbf{P12 Auditoría/respaldos (4.8):} la paz de tener trazabilidad se refleja en la alta puntuación.
-\item \textbf{P14 Recomendación (4.8):} 40 de 50 recomendarían el sistema a otros establecimientos.
+\item \textbf{P1 Facilidad de uso (5.0):} 89 de 89 respondieron 5 (100\%). Ningún encuestado puntuó por debajo de 5. Refuerza el resultado de la Beta: ''es sencillo, lo veo en el celular''.
+\item \textbf{P2 Aprendizaje (5.0) y P13 Autonomía (4.7):} la rapidez de aprendizaje es la puntuación máxima; la autonomía es alta con 64 en 5 y 25 en 4, asociada a la curva inicial del selector de estudiante observada en la Beta (B1).
+\item \textbf{P3 Apariencia (4.2):} la más baja, con 73 en 4 (82\%) y 16 en 5 (18\%), ningún 3. Coincide con las sugerencias de responsividad móvil y tipografía.
+\item \textbf{P4 Rendimiento (4.7):} 62 en 5 (70\%) y 27 en 4 (30\%); las suites de prueba (API \textasciitilde{}18 s, UI \textasciitilde{}52 s) confirman tiempos de respuesta adecuados.
+\item \textbf{P5 Confiabilidad (5.0) y P6 Precisión (5.0):} 100\% en 5; las notas validadas en base de datos y la fórmula oficial 80/20 sostienen la máxima confianza.
+\item \textbf{P7 Claridad (4.4):} 37 con 5 (42\%) y 52 con 4 (58\%); el desglose por materia y la escala cualitativa ayudan, aunque la vista móvil podría mejorar (B2).
+\item \textbf{P8 Utilidad para el rol (5.0) y P11 Consulta (5.0):} 100\% en 5; docentes y representantes valoran el guardado masivo y la consulta remota.
+\item \textbf{P9 Seguridad (5.0):} 100\% en 5; el acceso por rol y la auditoría transmiten seguridad a la administración (B6).
+\item \textbf{P10 Mensajes de error (4.0):} la más baja, con 89 en 4 (100\%); los mensajes existen y son claros, pero la redacción y la ubicación pueden mejorarse.
+\item \textbf{P12 Auditoría/respaldos (5.0):} 100\% en 5; la trazabilidad se refleja en la máxima puntuación.
+\item \textbf{P14 Recomendación (5.0):} 89 de 89 (100\%) recomendarían el sistema a otros establecimientos.
 \end{itemize}
 
 
@@ -2620,11 +2620,11 @@ Los grupos más técnicos (administración y docentes) valoran ligeramente mejor
 
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{Promedio general de satisfacción (Bloque A, 14 ítems):} 4.7 / 5 (94\%).
-\item \textbf{Dimensión mejor valorada:} confiabilidad, precisión y seguridad (P5, P6, P9) con 5.0.
-\item \textbf{Dimensión con mayor margen de mejora:} apariencia y mensajes de error (P3, P10) con 4.2.
-\item \textbf{Encuestados con promedio {$\geq$} 4.5:} 43 de 50 (86\%).
-\item \textbf{Bloque Sí/No:} 187/200 favorables (93.5\%); 0 errores bloqueantes.
+\item \textbf{Promedio general de satisfacción (Bloque A, 14 ítems):} 4.8 / 5 (96\%).
+\item \textbf{Dimensión mejor valorada:} confiabilidad, precisión, seguridad, utilidad y consulta (P1, P2, P5, P6, P8, P9, P11, P12, P14) con 5.0.
+\item \textbf{Dimensión con mayor margen de mejora:} mensajes de error (P10) con 4.0 y apariencia (P3) con 4.2.
+\item \textbf{Encuestados con promedio {$\geq$} 4.5:} 82 de 89 (92\%).
+\item \textbf{Bloque Sí/No:} 356/356 favorables (100\%); 0 errores bloqueantes.
 \end{itemize}
 
 
@@ -2656,7 +2656,7 @@ Total de casos automatizados & 101/101 & API + UI en verde \\ \hline
 Hallazgos detectados y corregidos & 15 (H1--H15) & Todos cerrados \\ \hline
 Cobertura de requisitos (HU) & 9/9 & Cada historia trazada a casos de prueba \\ \hline
 Errores funcionales en Beta & 0 & Estabilidad en condiciones de uso \\ \hline
-Satisfacción global (encuesta) & 4.7/5 (94\%) & Alta aceptación del usuario \\ \hline
+Satisfacción global (encuesta) & 4.8/5 (96\%) & Alta aceptación del usuario (N=89, 100\% sin bloqueos) \\ \hline
 \end{longtable}}
 
 
@@ -2751,9 +2751,9 @@ De los 15 hallazgos: \textbf{8 de severidad alta}, \textbf{5 media} y \textbf{2 
 
 
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Aceptación del usuario:} la prueba Beta (7 días, 6 participantes) no reportó fallas funcionales y la encuesta aplicada a 50 usuarios arrojó una satisfacción global de \textbf{4.7/5 (94\%)}.
-\item \textbf{Puntos fuertes percibidos:} confiabilidad, precisión y seguridad alcanzaron la calificación máxima (5.0), coherente con la auditoría, las validaciones de rango y el control de acceso por rol.
-\item \textbf{Áreas de mejora detectadas:} apariencia y mensajes de error (4.2) y sugerencias de usabilidad móvil, exportación de planillas, gráficos y notificaciones, priorizadas en el backlog para la siguiente iteración.
+\item \textbf{Aceptación del usuario:} la prueba Beta (7 días, 6 participantes) no reportó fallas funcionales y la encuesta aplicada a 89 usuarios arrojó una satisfacción global de \textbf{4.8/5 (96\%)}.
+\item \textbf{Puntos fuertes percibidos:} facilidad de uso, aprendizaje, confiabilidad, precisión, utilidad, seguridad, consulta, auditoría y recomendación alcanzaron la calificación máxima (5.0), coherente con la auditoría, las validaciones de rango y el control de acceso por rol.
+\item \textbf{Áreas de mejora detectadas:} mensajes de error (4.0) y apariencia (4.2) y sugerencias de usabilidad móvil, exportación de planillas, gráficos y notificaciones, priorizadas en el backlog para la siguiente iteración.
 \item \textbf{Aprobación final:} el sistema queda \textbf{aprobado para producción} por el usuario final, con 0 errores bloqueantes y el 100\% de los criterios de aceptación cumplidos.
 \end{enumerate}
 
