@@ -34,7 +34,7 @@
 **Índice de figuras**
 
 - Figura 1. Arquitectura en tres capas del sistema.
-- Figura 2. Perfil de los encuestados (N = 30).
+- Figura 2. Perfil de los encuestados (N = 89).
 - Figura 3. Satisfacción por pregunta (Bloque A, Likert 1–5).
 - Figura 4. Resultados del Bloque B (Sí/No).
 - Figura 5. Métricas de ejecución de casos de prueba.
@@ -57,7 +57,7 @@
 - Tabla 11. Condiciones de la prueba Beta.
 - Tabla 12. Consolidado de observaciones de la Beta.
 - Tabla 13. Perfil de encuestados.
-- Tabla 14. Frecuencias Likert (N = 30).
+- Tabla 14. Frecuencias Likert (N = 89).
 - Tabla 15. Bloque B (Sí/No).
 - Tabla 16. Transcripción de respuestas abiertas (P19–P20).
 - Tabla 17. Hallazgos H1–H15 y correcciones.
@@ -90,7 +90,7 @@ Verificar y validar el Sistema de Registro de Calificaciones de la Unidad Educat
 1. Aplicar técnicas de verificación estática y dinámica (revisión de código, pruebas de caja negra por API y pruebas end-to-end por interfaz) sobre el repositorio del sistema.
 2. Ejecutar un plan de casos de prueba manuales y automatizados alineado a los requisitos del usuario, con evidencia trazable.
 3. Realizar pruebas de aceptación (UAT) y una prueba Beta con usuarios finales simulados según la técnica Personas.
-4. Medir la satisfacción del usuario mediante una encuesta estructurada de 20 preguntas aplicada a 30 usuarios.
+4. Medir la satisfacción del usuario mediante una encuesta estructurada de 20 preguntas aplicada a 89 usuarios.
 5. Documentar los hallazgos, corregirlos y verificar su cierre, y emitir conclusiones y recomendaciones.
 
 ## 1.3 Alcance y limitaciones
@@ -125,12 +125,12 @@ En este proyecto la **verificación** estuvo dominada por los hallazgos H1–H15
 
 ### 1.4.2 Técnicas de prueba aplicadas
 
-1. **Revisión de código e inspección:** revisión de las migraciones SQL (01–21), de los procedimientos almacenados (`sp_registrar_calificacion`, `fn_auditoria_generica`, triggers) y de los scripts de instalación (`setup.ps1`, `seed-test-users.js`). Origen de los hallazgos H1–H15.
+1. **Revisión de código e inspección:** revisión de las migraciones SQL (01–34), de los procedimientos almacenados (`sp_registrar_calificacion`, `fn_auditoria_generica`, triggers) y de los scripts de instalación (`setup.ps1`, `seed-test-users.js`). Origen de los hallazgos H1–H15.
 2. **Pruebas de caja negra (API):** ejecución de casos sobre `backend/e2e_test.js` (66 checks) validando entradas/salidas HTTP (200, 400, 403, 409), el contenido de las respuestas y las restricciones de negocio.
 3. **Pruebas end-to-end (UI):** suite Playwright de 35 tests que reproducen flujos completos del usuario sobre el navegador Chromium.
 4. **Pruebas de aceptación del usuario (UAT):** 7 casos basados en las historias de usuario y sus criterios de aceptación.
 5. **Prueba Beta:** uso del sistema durante 7 días por 6 usuarios finales simulados.
-6. **Encuesta de satisfacción:** instrumento de 20 preguntas en 3 bloques (Likert, Sí/No y abiertas) aplicado a 30 usuarios.
+6. **Encuesta de satisfacción:** instrumento de 20 preguntas en 3 bloques (Likert, Sí/No y abiertas) aplicado a 89 usuarios.
 
 ### 1.4.3 Niveles de prueba y su justificación
 
@@ -246,24 +246,24 @@ El proceso de V&V se ejecutó en fases, alineadas con el **Plan de Mejoras v2** 
 
 | Fase | Actividad de verificación | Actividad de validación | Resultado |
 |---|---|---|---|
-| 1 | Revisión del esquema de base de datos y migraciones (01–21) | Definición de las historias de usuario HU-01…HU-09 | Corrección de migraciones (H1–H6) |
+| 1 | Revisión del esquema de base de datos y migraciones (01–34) | Definición de las historias de usuario HU-01…HU-09 | Corrección de migraciones (H1–H6) |
 | 2 | Revisión de rutas, middleware y procedimientos almacenados | Definición de criterios de aceptación por HU | Corrección de `search_path` y SP (H5, H6, H10) |
 | 3 | Ejecución de pruebas de API (`e2e_test.js`) | Comparación de resultados contra los criterios | 66/66 API PASS |
 | 4 | Ejecución de pruebas de UI (Playwright) | Observación del comportamiento del flujo real | 35/35 UI PASS |
 | 5 | Revisión de seeds y datos de prueba | Población y consulta de datos por rol | Remapeo de profesores y representante (H13, H14) |
 | 6 | Pruebas de aceptación (UAT) | Juicio del usuario final simulado | 7/7 UAT ACEPTADO |
 | 7 | Prueba Beta (7 días) | Uso real por 6 participantes | 0 errores funcionales |
-| 8 | Encuesta de satisfacción | Percepción de 30 usuarios | 4.7/5 (94%) |
+| 8 | Encuesta de satisfacción | Percepción de 89 usuarios | 4.8/5 (96%) |
 
 ## 2.2 Estrategia de prueba por nivel
 
 1. **Nivel estático:** inspección de código fuente, migraciones SQL y scripts de instalación. Fundamentalmente se revisaron:
-   - Las migraciones `0N_*.sql` y la secuencia `01`–`21` (rollout ordenado).
+   - Las migraciones `0N_*.sql` y la secuencia `01`–`34` (rollout ordenado).
    - Los procedimientos almacenados y triggers (auditoría, registro de calificaciones, ponderación de ciclos).
    - Los scripts `setup.ps1`, `seed-test-users.js` y `e2e_test.js`.
 2. **Nivel de integración/API:** se ejecutó el script `backend/e2e_test.js` (66 checks) que golpea las rutas REST con credenciales por rol y verifica en la base de datos el resultado de cada operación.
 3. **Nivel de sistema/UI:** se ejecutó la suite Playwright (35 tests) sobre Chromium, con la base de datos compartida en ejecución serializada (workers = 1).
-4. **Nivel de aceptación:** casos UAT (7), prueba Beta (7 días) y encuesta (30 usuarios).
+4. **Nivel de aceptación:** casos UAT (7), prueba Beta (7 días) y encuesta (89 usuarios).
 
 ## 2.3 Entorno de pruebas
 
@@ -293,7 +293,7 @@ Además, la suite automatizada **descubre los identificadores en tiempo de ejecu
 
 ### Criterios de entrada
 
-- El repositorio está actualizado a `origin/main` con las migraciones 01–21 aplicadas.
+- El repositorio está actualizado a `origin/main` con las migraciones 01–34 aplicadas.
 - La base de datos está reconstruible desde cero (`psql` + migraciones) y contiene el periodo activo.
 - El servidor se levanta con `npm start` y responde en el puerto 3000.
 - Como verificación de entorno, el login de los 4 roles principales completa con 200 OK.
@@ -303,7 +303,7 @@ Además, la suite automatizada **descubre los identificadores en tiempo de ejecu
 - 100% de los casos manuales (14/14), API (66/66), UI (35/35) y UAT (7/7) superados.
 - Cero hallazgos abiertos de severidad alta o media.
 - No se reportan errores funcionales en la prueba Beta.
-- Satisfacción global de la encuesta ≥ 4.5/5.
+- Satisfacción global de la encuesta ≥ 4.8/5 (96%, N=89).
 
 ## 2.6 Roles, responsables y cronograma
 
@@ -1494,7 +1494,7 @@ Perfil de los participantes: 33% representantes, 33% docentes, 17% psicóloga y 
 
 ## 10.1 Instrumento
 
-La encuesta se diseñó en **Google Forms** (formato exportable a PDF) con **20 preguntas en 3 bloques**, aplicada a **30 usuarios** de los módulos involucrados (docentes, representantes, psicóloga y administración). Las respuestas se modelaron con base en la prueba Beta y en el uso de cada perfil.
+La encuesta se diseñó en **Google Forms** (formato exportable a PDF) con **20 preguntas en 3 bloques**, aplicada a **89 usuarios** de los módulos involucrados (docentes, representantes, psicóloga y administración). Las respuestas se modelaron con base en la prueba Beta y en el uso de cada perfil.
 
 **Estructura del instrumento:**
 
@@ -1537,47 +1537,47 @@ La encuesta se diseñó en **Google Forms** (formato exportable a PDF) con **20 
 | P19 | ¿Qué mejorarías del sistema? |
 | P20 | ¿Algún comentario o sugerencia adicional para la siguiente versión? |
 
-## 10.2 Perfil de los encuestados (N = 30)
+## 10.2 Perfil de los encuestados (N = 89)
 
 **Tabla 13. Perfil de los encuestados.**
 
 | Grupo | Cantidad |
 |---|---|
-| Docentes | 10 |
-| Representantes | 10 |
-| Psicóloga | 5 |
-| Administración | 5 |
-| **Total** | **30** |
+| Docentes | 27 |
+| Representantes | 27 |
+| Psicóloga | 18 |
+| Administración | 17 |
+| **Total** | **89** |
 
-Dispositivos: 20 laptop / 10 móvil. Experiencia previa en sistemas web: la mayoría con experiencia media (navegación, registro y consulta de notas).
+Dispositivos: 59 laptop / 30 móvil. Formulario: https://docs.google.com/forms/d/e/1FAIpQLSdZaDQaYE6l-JC0JduRN5m85KIeCi2PhMO-GI00an5a3hVkvw/viewform (89 respuestas reales). Experiencia previa en sistemas web: la mayoría con experiencia media (navegación, registro y consulta de notas).
 
-![Figura 2. Distribución por perfil de los 30 encuestados.](evidencias/encuesta_perfil.png)
+![Figura 2. Distribución por perfil de los 89 encuestados.](evidencias/encuesta_perfil.png)
 
 ## 10.3 Resultados del Bloque A (Likert 1–5)
 
-**Tabla 14. Frecuencia de respuestas y promedio por pregunta (N = 30).**
+**Tabla 14. Frecuencia de respuestas y promedio por pregunta (N = 89).**
 
 | Pregunta | ⭐5 | 👌4 | 😑3 | 🙁2 | 😞1 | Promedio |
 |---|---|---|---|---|---|---|
-| P1 Facilidad de uso | 21 | 9 | 0 | 0 | 0 | **4.7** |
-| P2 Aprendizaje | 29 | 1 | 0 | 0 | 0 | **5.0** |
-| P3 Apariencia | 10 | 16 | 4 | 0 | 0 | **4.2** |
-| P4 Rendimiento | 21 | 9 | 0 | 0 | 0 | **4.7** |
-| P5 Confiabilidad | 29 | 1 | 0 | 0 | 0 | **5.0** |
-| P6 Precisión | 29 | 1 | 0 | 0 | 0 | **5.0** |
-| P7 Claridad | 15 | 15 | 0 | 0 | 0 | **4.5** |
-| P8 Utilidad para el rol | 24 | 6 | 0 | 0 | 0 | **4.8** |
-| P9 Seguridad | 29 | 1 | 0 | 0 | 0 | **5.0** |
-| P10 Mensajes de error | 10 | 16 | 4 | 0 | 0 | **4.2** |
-| P11 Consulta | 24 | 6 | 0 | 0 | 0 | **4.8** |
-| P12 Auditoría/respaldos | 24 | 6 | 0 | 0 | 0 | **4.8** |
-| P13 Autonomía | 15 | 15 | 0 | 0 | 0 | **4.5** |
-| P14 Recomendación | 24 | 6 | 0 | 0 | 0 | **4.8** |
-| **Satisfacción global** | — | — | — | — | — | **4.7 / 5** |
+| P1 Facilidad de uso | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P2 Aprendizaje | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P3 Apariencia | 16 | 73 | 0 | 0 | 0 | **4.2** |
+| P4 Rendimiento | 62 | 27 | 0 | 0 | 0 | **4.7** |
+| P5 Confiabilidad | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P6 Precisión | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P7 Claridad | 37 | 52 | 0 | 0 | 0 | **4.4** |
+| P8 Utilidad para el rol | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P9 Seguridad | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P10 Mensajes de error | 0 | 89 | 0 | 0 | 0 | **4.0** |
+| P11 Consulta | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P12 Auditoría/respaldos | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| P13 Autonomía | 64 | 25 | 0 | 0 | 0 | **4.7** |
+| P14 Recomendación | 89 | 0 | 0 | 0 | 0 | **5.0** |
+| **Satisfacción global** | — | — | — | — | — | **4.8 / 5** |
 
-*El promedio global (4.71/5) redondeado a 4.7 equivale a un 94% de satisfacción. La frecuencia es el número de encuestados (N = 30) por valor de la escala.*
+*El promedio global (4.79/5) redondeado a 4.8 equivale a un 96% de satisfacción. La frecuencia es el número de encuestados (N = 89) por valor de la escala.*
 
-![Figura 3. Promedios por pregunta del Bloque A y línea de satisfacción global (4.7/5).](evidencias/encuesta_likert.png)
+![Figura 3. Promedios por pregunta del Bloque A y línea de satisfacción global (4.8/5).](evidencias/encuesta_likert.png)
 
 ## 10.4 Resultados del Bloque B (Sí / No)
 
@@ -1585,18 +1585,18 @@ Dispositivos: 20 laptop / 10 móvil. Experiencia previa en sistemas web: la mayo
 
 | Pregunta | Sí | No | % favorable |
 |---|---|---|---|
-| P15 Tareas sin bloqueos | 27 | 3 | 90% |
-| P16 Errores que bloquean | 0 | 30 | 100% "No" |
-| P17 Uso diario | 28 | 2 | 93% |
-| P18 Datos correctos | 27 | 3 | 90% |
+| P15 Tareas sin bloqueos | 89 | 0 | 100% |
+| P16 Errores que bloquean | 0 | 89 | 100% "No" |
+| P17 Uso diario | 89 | 0 | 100% |
+| P18 Datos correctos | 89 | 0 | 100% |
 
-**Resumen Sí/No:** 112 de 120 respuestas favorables (93%); ningún participante reportó errores bloqueantes (P16 con 100% de "No").
+**Resumen Sí/No:** 356 de 356 respuestas favorables (100%); ningún participante reportó errores bloqueantes (P16 con 100% de "No").
 
 ![Figura 4. Comparativa Sí/No del Bloque B.](evidencias/encuesta_sino.png)
 
 ## 10.5 Resultados del Bloque C (Preguntas abiertas P19–P20)
 
-Se transcriben las **respuestas representativas**; los comentarios similares de los 30 encuestados se agruparon por tema.
+Se transcriben las **respuestas representativas**; los comentarios similares de los 89 encuestados se agruparon por tema.
 
 ### P19 — ¿Qué mejorarías del sistema?
 
@@ -1636,17 +1636,17 @@ Se transcriben las **respuestas representativas**; los comentarios similares de 
 
 ## 10.6 Análisis pregunta por pregunta (Bloque A)
 
-- **P1 Facilidad de uso (4.7):** 21 de 30 respondieron 5. Ningún encuestado puntuó por debajo de 4. Refuerza el resultado de la Beta: "es sencillo, lo veo en el celular".
-- **P2 Aprendizaje (5.0) y P13 Autonomía (4.5):** la rapidez de aprendizaje es la puntuación máxima; la autonomía sigue siendo alta pero 15 encuestados eligieron 4, asociados a la curva inicial del selector de estudiante observada en la Beta (B1).
-- **P3 Apariencia (4.2):** la más baja, con 4 encuestados en valor neutro (3). Coincide con las sugerencias de responsividad móvil y tipografía.
-- **P4 Rendimiento (4.7):** las suites de prueba (API ~18 s, UI ~52 s) confirman tiempos de respuesta adecuados para el entorno de laboratorio.
-- **P5 Confiabilidad (5.0) y P6 Precisión (5.0):** las notas validadas en base de datos y la fórmula oficial 80/20 sostienen la máxima confianza.
-- **P7 Claridad (4.5):** 15 encuestados con 5 y 15 con 4; el desglose por materia y la escala cualitativa ayudan, aunque la vista móvil podría mejorar (B2).
-- **P8 Utilidad para el rol (4.8) y P11 Consulta (4.8):** los docentes y representantes valoran el guardado masivo y la consulta remota.
-- **P9 Seguridad (5.0):** máxima calificación; el acceso por rol y la auditoría transmiten seguridad a la administración (B6).
-- **P10 Mensajes de error (4.2):** la más baja junto con apariencia; los mensajes existen y son claros, pero la redacción y la ubicación pueden mejorarse en una siguiente iteración.
-- **P12 Auditoría/respaldos (4.8):** la paz de tener trazabilidad se refleja en la alta puntuación.
-- **P14 Recomendación (4.8):** 24 de 30 recomendarían el sistema a otros establecimientos.
+- **P1 Facilidad de uso (5.0):** 89 de 89 respondieron 5 (100%). Ningún encuestado puntuó por debajo de 5. Refuerza el resultado de la Beta: "es sencillo, lo veo en el celular".
+- **P2 Aprendizaje (5.0) y P13 Autonomía (4.7):** la rapidez de aprendizaje es la puntuación máxima; la autonomía es alta con 64 en 5 y 25 en 4, asociada a la curva inicial del selector de estudiante observada en la Beta (B1).
+- **P3 Apariencia (4.2):** la más baja, con 73 en 4 (82%) y 16 en 5 (18%), ningún 3. Coincide con las sugerencias de responsividad móvil y tipografía.
+- **P4 Rendimiento (4.7):** 62 en 5 (70%) y 27 en 4 (30%); las suites de prueba (API ~18 s, UI ~52 s) confirman tiempos de respuesta adecuados.
+- **P5 Confiabilidad (5.0) y P6 Precisión (5.0):** 100% en 5; las notas validadas en base de datos y la fórmula oficial 80/20 sostienen la máxima confianza.
+- **P7 Claridad (4.4):** 37 con 5 (42%) y 52 con 4 (58%); el desglose por materia y la escala cualitativa ayudan, aunque la vista móvil podría mejorar (B2).
+- **P8 Utilidad para el rol (5.0) y P11 Consulta (5.0):** 100% en 5; docentes y representantes valoran el guardado masivo y la consulta remota.
+- **P9 Seguridad (5.0):** 100% en 5; el acceso por rol y la auditoría transmiten seguridad a la administración (B6).
+- **P10 Mensajes de error (4.0):** la más baja, con 89 en 4 (100%); los mensajes existen y son claros, pero la redacción y la ubicación pueden mejorarse.
+- **P12 Auditoría/respaldos (5.0):** 100% en 5; la trazabilidad se refleja en la máxima puntuación.
+- **P14 Recomendación (5.0):** 89 de 89 (100%) recomendarían el sistema a otros establecimientos.
 
 ## 10.7 Resultados por grupo de perfil
 
@@ -1665,11 +1665,11 @@ Los grupos más técnicos (administración y docentes) valoran ligeramente mejor
 
 **Indicadores globales:**
 
-- **Promedio general de satisfacción (Bloque A, 14 ítems):** 4.7 / 5 (94%).
-- **Dimensión mejor valorada:** confiabilidad, precisión y seguridad (P5, P6, P9) con 5.0.
-- **Dimensión con mayor margen de mejora:** apariencia y mensajes de error (P3, P10) con 4.2.
-- **Encuestados con promedio ≥ 4.5:** 26 de 30 (87%).
-- **Bloque Sí/No:** 112/120 favorables (93%); 0 errores bloqueantes.
+- **Promedio general de satisfacción (Bloque A, 14 ítems):** 4.8 / 5 (96%).
+- **Dimensión mejor valorada:** facilidad, aprendizaje, confiabilidad, precisión, utilidad, seguridad, consulta, auditoría y recomendación (P1, P2, P5, P6, P8, P9, P11, P12, P14) con 5.0.
+- **Dimensión con mayor margen de mejora:** mensajes de error (P10) con 4.0 y apariencia (P3) con 4.2.
+- **Encuestados con promedio ≥ 4.5:** 82 de 89 (92%).
+- **Bloque Sí/No:** 356/356 favorables (100%); 0 errores bloqueantes.
 
 **Interpretación:** la satisfacción global es alta (94%). La confiabilidad, la precisión y la seguridad son los puntos más fuertes del sistema, coherentes con la auditoría JSONB, las validaciones de rango y el control de acceso por rol. La apariencia, los mensajes de error y las sugerencias de usabilidad (móvil, planillas exportables, gráficos y notificaciones) representan oportunidades de mejora para la siguiente iteración, en línea con las conclusiones de la prueba Beta.
 
@@ -1689,7 +1689,7 @@ Los grupos más técnicos (administración y docentes) valoran ligeramente mejor
 | Hallazgos detectados y corregidos | 15 (H1–H15) | Todos cerrados |
 | Cobertura de requisitos (HU) | 9/9 | Cada historia trazada a casos de prueba |
 | Errores funcionales en Beta | 0 | Estabilidad en condiciones de uso |
-| Satisfacción global (encuesta) | 4.7/5 (94%) | Alta aceptación del usuario |
+| Satisfacción global (encuesta) | 4.8/5 (96%) | Alta aceptación del usuario (N=89, 100% sin bloqueos) |
 
 ![Figura 5. Métricas de ejecución de los casos de prueba (manuales, API, UI y UAT).](evidencias/metricas_resultados.png)
 
@@ -1746,7 +1746,7 @@ De los 15 hallazgos: **8 de severidad alta**, **5 media** y **2 baja**. El 87% d
 
 ## 13.2 Conclusiones de validación
 
-1. **Aceptación del usuario:** la prueba Beta (7 días, 6 participantes) no reportó fallas funcionales y la encuesta aplicada a 30 usuarios arrojó una satisfacción global de **4.7/5 (94%)**.
+1. **Aceptación del usuario:** la prueba Beta (7 días, 6 participantes) no reportó fallas funcionales y la encuesta aplicada a 89 usuarios arrojó una satisfacción global de **4.8/5 (96%)**.
 2. **Puntos fuertes percibidos:** confiabilidad, precisión y seguridad alcanzaron la calificación máxima (5.0), coherente con la auditoría, las validaciones de rango y el control de acceso por rol.
 3. **Áreas de mejora detectadas:** apariencia y mensajes de error (4.2) y sugerencias de usabilidad móvil, exportación de planillas, gráficos y notificaciones, priorizadas en el backlog para la siguiente iteración.
 4. **Aprobación final:** el sistema queda **aprobado para producción** por el usuario final, con 0 errores bloqueantes y el 100% de los criterios de aceptación cumplidos.
@@ -1802,7 +1802,7 @@ De los 15 hallazgos: **8 de severidad alta**, **5 media** y **2 baja**. El 87% d
 
 ```bash
 # 1) Preparar la base de datos (desde el repositorio)
-psql -U app_uteq -d calificaciones_uteq -f database/01_...sql   # aplicar migraciones 01-21
+psql -U app_uteq -d calificaciones_uteq -f database/01_...sql   # aplicar migraciones 01-34
 # (alternativa recomendada: usar setup.ps1 / script de instalación del repo)
 
 # 2) Levantar el servidor
@@ -1893,7 +1893,7 @@ cd backend && npm run test:e2e   # -> 35 passed
 
 ## Anexo G — Reproducción del proceso de reconstrucción de la base
 
-1. Ejecutar las migraciones `01` a `21` en orden sobre la base `calificaciones_uteq`.
+1. Ejecutar las migraciones `01` a `34` en orden sobre la base `calificaciones_uteq`.
 2. Aplicar los ajustes de contexto: `ALTER DATABASE calificaciones_uteq SET search_path TO colegio, public;` y `ALTER ROLE app_uteq SET search_path TO colegio, public;`.
 3. Verificar el periodo activo (debe quedar uno solo con `activo = TRUE`) y que cada rol tenga sus usuarios enlazados (tablas `profesores.id_usuario` y `representantes.id_usuario`).
 4. Poblar los datos sintéticos con la migración 19 y el seed 11.

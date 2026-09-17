@@ -2,7 +2,7 @@
 ***Asignatura:*** * Verificación y Validación de Software — UTEQ*  
 
  La encuesta se diseñó en * ***Google Forms*** * (formato exportable a PDF) y se aplicó a * ***89 usuarios*** * reales de los módulos involucrados (docentes, representantes, psicóloga y administración). Formulario: `https://docs.google.com/forms/d/e/1FAIpQLSdZaDQaYE6l-JC0JduRN5m85KIeCi2PhMO-GI00an5a3hVkvw/viewform` — 89 respuestas registradas.*  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OMQ2AABAAsSNBCkLfFR7wwIgHRiywEZJWQZeZ2ao9AAD+4lyruzq+ngAA8Nr1AOIEBeX8aGZPAAAAAElFTkSuQmCC)  
+  
 **Perfil de los encuestados (N = 89)**  
 | | |  
 |-|-|  
@@ -14,7 +14,7 @@
 | **Total** | **89** |   
    
 Dispositivos: 59 laptop / 30 móvil. Experiencia previa en sistemas web: mayoría con experiencia media (navegación, registro y consulta de notas).  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAM0lEQVR4nO3KsQ0AIRAEsUW6Qij1KvnevhMSYmKQ7GiCGd09k3wBAOAVf+2o4wYAwE1qAdYuAy151mgcAAAAAElFTkSuQmCC)  
+![](evidencias/encuesta_perfil.png)  
 **Formulario de encuesta**  
 **Título:** Encuesta de aceptación — Sistema de Registro de Calificaciones UTEQ  
 **Estructura:** 20 preguntas en 3 bloques  
@@ -56,7 +56,7 @@ Dispositivos: 59 laptop / 30 móvil. Experiencia previa en sistemas web: mayorí
 | P19 | ¿Qué mejorarías del sistema? |   
 | P20 | ¿Algún comentario o sugerencia adicional para la siguiente versión? |   
    
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANElEQVR4nO3OQQmAABRAsSdYxKa/i8WMIR7ECt5E2BJsmZmt2gMA4C+Otbqr8+sJAACvXQ85PAYartXEogAAAABJRU5ErkJggg==)  
+![](evidencias/encuesta_likert.png)  
 **Resultados de la encuesta (N = 89)**  
 **Bloque A — Likert (1–5): frecuencia de respuestas y promedio**  
 | | | | | | | |  
@@ -115,7 +115,7 @@ Dispositivos: 59 laptop / 30 móvil. Experiencia previa en sistemas web: mayorí
 | Psicóloga | "Los gráficos facilitarían explicar el rendimiento en reuniones." |   
 | Administración | "Todo perfecto, ningún comentario adicional." |   
    
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANUlEQVR4nO3OQQmAABRAsSd4NIGhrOTvaQBrWMGbCFuCLTOzV2cAAPzFvVZbdXw9AQDgtesBhYQEO+64Y8AAAAAASUVORK5CYII=)  
+![](evidencias/encuesta_sino.png)  
    
    
 **Resultado global**  

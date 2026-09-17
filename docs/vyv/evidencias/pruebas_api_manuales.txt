@@ -1,6 +1,6 @@
 # Evidencia — Pruebas manuales de API (validaciones de negocio)
 
-Fecha: 2026-09-10 (re-validado contra repositorio actualizado, migraciones 01-20)
+Fecha: 2026-09-16 (re-validado contra repositorio actualizado, migraciones 01-34)
 Entorno: localhost:3000 · PostgreSQL 18 · sesiones por cookie · search_path = colegio, public
 
 ## CP-03 — Cédula duplicada → HTTP 409

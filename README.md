@@ -21,8 +21,7 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
 Eso instala dependencias (backend + frontend), crea el `.env`, el rol/base de datos, ejecuta las
-migraciones `01..09`, asigna las passwords de prueba y levanta **dos servidores**: la API en
-`http://localhost:3000` y el frontend en `http://localhost:5173` (abre `pages/login.html`).
+migraciones `01..34` (`01_schema.sql` … `34_familia.sql`, incluye 06/07 duplicadas y seeds), asigna las passwords de prueba y levanta la **API en `http://localhost:3000`** (sirve también el frontend estático en el mismo origen; opcionalmente `npm run dev --prefix frontend` levanta `http://localhost:5173` con `serve`).
 El script es re-ejecutable: si la BD ya existe, la conserva.
 
 > En VS Code también puedes usar la tarea **Setup y levantar proyecto**
@@ -46,9 +45,9 @@ powershell -ExecutionPolicy Bypass -File .\down.ps1
 ./down.sh
 ```
 
-Levanta BD + API con migraciones `01..26` y seeds aplicados
-automáticamente si la BD está vacía, en `http://localhost:3001`
-(`APP_PORT`/`DB_PORT` configurables por entorno). Usa
+Levanta BD + API con migraciones `01..34` y seeds aplicados
+automáticamente si la BD está vacía, en `http://localhost:3001` (host) → `3000` en contenedor
+(`APP_PORT`/`DB_PORT` configurables; DB host `5433` → `5432` en contenedor para no chocar con PG local `5432`). Usa
 `docker-compose.yml` + `backend/Dockerfile` (incluidos).
 
 ## Integrantes del equipo
@@ -287,7 +286,7 @@ El sistema se usa desde `http://localhost:5173/pages/login.html`.
 
 ```
 sistema-calificaciones-uteq/
-├── database/              # migraciones SQL 01..09
+├── database/              # migraciones SQL 01..34 (01_schema … 34_familia)
 ├── backend/               # API REST JSON (Express, sin vistas)
 │   ├── app.js             # CORS + sesion + montaje /api/*
 │   ├── config/db.js

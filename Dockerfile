@@ -1,3 +1,6 @@
+# DEPRECATED: este Dockerfile raiz se mantiene por compatibilidad.
+# El stack Docker oficial usa ./backend/Dockerfile (con migraciones y entrypoint).
+# Preferir: docker compose build (usa backend/Dockerfile) o `docker build -f backend/Dockerfile .`
 # ---- Build ----
 FROM node:20-alpine AS build
 WORKDIR /app

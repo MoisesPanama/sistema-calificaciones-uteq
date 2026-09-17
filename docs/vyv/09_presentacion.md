@@ -68,7 +68,7 @@
 
 ## 14. Demostración final
 - Recorrido en vivo de ~5 min: login admin → planilla como Elena (ciclo/parcial) → guardar notas → auditoría con usuario → consulta de Fernando → rendimiento de María → correr `npm test` y `npm run test:e2e --prefix backend`.
-- Preparado: backend en :3000, BD migraciones 01-20, 110 estudiantes.
+- Preparado: backend en :3000, BD migraciones 01-34, ~110 estudiantes (01_schema … 34_familia).
 
 ## 15. Enlace de recursos
 - Repositorio `github.com/MoisesPanama/sistema-calificaciones-uteq` · BD PostgreSQL 18 esquema `colegio` · evidencias en `docs/vyv/evidencias/` · documento técnico PDF/DOCX · suites `backend/e2e_test.js` y `backend/tests/`.

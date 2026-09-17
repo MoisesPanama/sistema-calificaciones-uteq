@@ -32,3 +32,15 @@ temp_*.json
 backend/backups-test/
 # Subidas locales (S3): nunca se commitean archivos de usuarios
 backend/uploads/
+
+# LaTeX temporales (Informe VyV)
+*.aux
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.pdf#
+.~lock.*

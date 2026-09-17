@@ -20,7 +20,7 @@
 \usepackage{fancyhdr}
 \usepackage{hyperref}
 \hypersetup{colorlinks=true,linkcolor=UTECblue,urlcolor=UTECblue,breaklinks=true}
-\graphicspath{{/home/ricardo/Documentos/GitHub/sistema-calificaciones-uteq/docs/vyv/}}
+\graphicspath{{./}{./evidencias/}{evidencias/}}
 \pagestyle{fancy}
 \fancyhead[L]{\small Informe T\'ecnico VyV --- Sistema de Calificaciones UTEQ}
 \fancyhead[R]{\small \thepage}
@@ -224,7 +224,7 @@ En este proyecto la \textbf{verificación} estuvo dominada por los hallazgos H1-
 
 
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Revisión de código e inspección:} revisión de las migraciones SQL (01--21), de los procedimientos almacenados (\texttt{sp\_registrar\_calificacion}, \texttt{fn\_auditoria\_generica}, triggers) y de los scripts de instalación (\texttt{setup.ps1}, \texttt{seed-test-users.js}). Origen de los hallazgos H1--H15.
+\item \textbf{Revisión de código e inspección:} revisión de las migraciones SQL (01--34), de los procedimientos almacenados (\texttt{sp\_registrar\_calificacion}, \texttt{fn\_auditoria\_generica}, triggers) y de los scripts de instalación (\texttt{setup.ps1}, \texttt{seed-test-users.js}). Origen de los hallazgos H1--H15.
 \item \textbf{Pruebas de caja negra (API):} ejecución de casos sobre \texttt{backend/e2e\_test.js} (66 checks) validando entradas/salidas HTTP (200, 400, 403, 409), el contenido de las respuestas y las restricciones de negocio.
 \item \textbf{Pruebas end-to-end (UI):} suite Playwright de 35 tests que reproducen flujos completos del usuario sobre el navegador Chromium.
 \item \textbf{Pruebas de aceptación del usuario (UAT):} 7 casos basados en las historias de usuario y sus criterios de aceptación.
@@ -429,7 +429,7 @@ El proceso de V\&V se ejecutó en fases, alineadas con el \textbf{Plan de Mejora
 \endfirsthead
 \rowcolor{UTECblue}\color{white}\bfseries Fase & \color{white}\bfseries Actividad de verificación & \color{white}\bfseries Actividad de validación & \color{white}\bfseries Resultado \\ \hline
 \endhead
-1 & Revisión del esquema de base de datos y migraciones (01--21) & Definición de las historias de usuario HU-01{\ldots}HU-09 & Corrección de migraciones (H1--H6) \\ \hline
+1 & Revisión del esquema de base de datos y migraciones (01--34) & Definición de las historias de usuario HU-01{\ldots}HU-09 & Corrección de migraciones (H1--H6) \\ \hline
 2 & Revisión de rutas, middleware y procedimientos almacenados & Definición de criterios de aceptación por HU & Corrección de \texttt{search\_path} y SP (H5, H6, H10) \\ \hline
 3 & Ejecución de pruebas de API (\texttt{e2e\_test.js}) & Comparación de resultados contra los criterios & 66/66 API PASS \\ \hline
 4 & Ejecución de pruebas de UI (Playwright) & Observación del comportamiento del flujo real & 35/35 UI PASS \\ \hline
@@ -450,7 +450,7 @@ El proceso de V\&V se ejecutó en fases, alineadas con el \textbf{Plan de Mejora
 
 
 \begin{itemize}[leftmargin=*]
-\item Las migraciones \texttt{0N\_*.sql} y la secuencia \texttt{01}--\texttt{21} (rollout ordenado).
+\item Las migraciones \texttt{0N\_*.sql} y la secuencia \texttt{01}--\texttt{34} (rollout ordenado).
 \item Los procedimientos almacenados y triggers (auditoría, registro de calificaciones, ponderación de ciclos).
 \item Los scripts \texttt{setup.ps1}, \texttt{seed-test-users.js} y \texttt{e2e\_test.js}.
 \end{itemize}
@@ -511,7 +511,7 @@ Además, la suite automatizada \textbf{descubre los identificadores en tiempo de
 
 
 \begin{itemize}[leftmargin=*]
-\item El repositorio está actualizado a \texttt{origin/main} con las migraciones 01--21 aplicadas.
+\item El repositorio está actualizado a \texttt{origin/main} con las migraciones 01--34 aplicadas.
 \item La base de datos está reconstruible desde cero (\texttt{psql} + migraciones) y contiene el periodo activo.
 \item El servidor se levanta con \texttt{npm start} y responde en el puerto 3000.
 \item Como verificación de entorno, el login de los 4 roles principales completa con 200 OK.
@@ -2944,7 +2944,7 @@ Vista sin notas + filtro & 2 & Tarjetas sin-calificar, filtro de curso incluye s
 
 
 \begin{enumerate}[leftmargin=*]
-\item Ejecutar las migraciones \texttt{01} a \texttt{21} en orden sobre la base \texttt{calificaciones\_uteq}.
+\item Ejecutar las migraciones \texttt{01} a \texttt{34} en orden sobre la base \texttt{calificaciones\_uteq}.
 \item Aplicar los ajustes de contexto: \texttt{ALTER DATABASE calificaciones\_uteq SET search\_path TO colegio, public;} y \texttt{ALTER ROLE app\_uteq SET search\_path TO colegio, public;}.
 \item Verificar el periodo activo (debe quedar uno solo con \texttt{activo = TRUE}) y que cada rol tenga sus usuarios enlazados (tablas \texttt{profesores.id\_usuario} y \texttt{representantes.id\_usuario}).
 \item Poblar los datos sintéticos con la migración 19 y el seed 11.
