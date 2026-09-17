@@ -1,19 +1,19 @@
 **Encuesta de Satisfacción**  
 ***Asignatura:*** * Verificación y Validación de Software — UTEQ*  
  
- La encuesta se diseñó en * ***Google Forms*** * (formato exportable a PDF). Respuestas * ***simuladas*** * con base en la prueba Beta y aplicada a * ***30 usuarios*** * de los módulos involucrados (docentes, representantes, psicóloga y administración).*  
+ La encuesta se diseñó en * ***Google Forms*** * (formato exportable a PDF). Respuestas * ***simuladas*** * con base en la prueba Beta y aplicada a * ***50 usuarios*** * de los módulos involucrados (docentes, representantes, psicóloga y administración).*  
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OMQ2AABAAsSNBCkLfFR7wwIgHRiywEZJWQZeZ2ao9AAD+4lyruzq+ngAA8Nr1AOIEBeX8aGZPAAAAAElFTkSuQmCC)  
 **Perfil de los encuestados (N = 30)**  
 | | |  
 |-|-|  
 | **Grupo** | **Cantidad** |   
-| Docentes | 10 |   
-| Representantes | 10 |   
-| Psicóloga | 5 |   
-| Administración | 5 |   
-| **Total** | **30** |   
+| Docentes | 15 |   
+| Representantes | 15 |   
+| Psicóloga | 10 |   
+| Administración | 10 |   
+| **Total** | **50** |   
    
-Dispositivos: 20 laptop / 10 móvil. Experiencia previa en sistemas web: mayoría con experiencia media (navegación, registro y consulta de notas).  
+Dispositivos: 33 laptop / 17 móvil. Experiencia previa en sistemas web: mayoría con experiencia media (navegación, registro y consulta de notas).  
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAM0lEQVR4nO3KsQ0AIRAEsUW6Qij1KvnevhMSYmKQ7GiCGd09k3wBAOAVf+2o4wYAwE1qAdYuAy151mgcAAAAAElFTkSuQmCC)  
 **Formulario de encuesta**  
 **Título:** Encuesta de aceptación — Sistema de Registro de Calificaciones UTEQ  
@@ -62,33 +62,33 @@ Dispositivos: 20 laptop / 10 móvil. Experiencia previa en sistemas web: mayorí
 | | | | | | | |  
 |-|-|-|-|-|-|-|  
 | **Pregunta** | **⭐5** | **👌4** | **😑3** | **🙁2** | **😞1** | **Promedio** |   
-| P1 Facilidad de uso | 21 | 9 | 0 | 0 | 0 | **4.7** |   
-| P2 Aprendizaje | 29 | 1 | 0 | 0 | 0 | **5.0** |   
-| P3 Apariencia | 10 | 16 | 4 | 0 | 0 | **4.2** |   
-| P4 Rendimiento | 21 | 9 | 0 | 0 | 0 | **4.7** |   
-| P5 Confiabilidad | 29 | 1 | 0 | 0 | 0 | **5.0** |   
-| P6 Precisión | 29 | 1 | 0 | 0 | 0 | **5.0** |   
-| P7 Claridad | 15 | 15 | 0 | 0 | 0 | **4.5** |   
-| P8 Utilidad para el rol | 24 | 6 | 0 | 0 | 0 | **4.8** |   
-| P9 Seguridad | 29 | 1 | 0 | 0 | 0 | **5.0** |   
-| P10 Mensajes de error | 10 | 16 | 4 | 0 | 0 | **4.2** |   
-| P11 Consulta | 24 | 6 | 0 | 0 | 0 | **4.8** |   
-| P12 Auditoría/respaldos | 24 | 6 | 0 | 0 | 0 | **4.8** |   
-| P13 Autonomía | 15 | 15 | 0 | 0 | 0 | **4.5** |   
-| P14 Recomendación | 24 | 6 | 0 | 0 | 0 | **4.8** |   
+| P1 Facilidad de uso | 35 | 15 | 0 | 0 | 0 | **4.7** |   
+| P2 Aprendizaje | 48 | 2 | 0 | 0 | 0 | **5.0** |   
+| P3 Apariencia | 17 | 27 | 6 | 0 | 0 | **4.2** |   
+| P4 Rendimiento | 35 | 15 | 0 | 0 | 0 | **4.7** |   
+| P5 Confiabilidad | 48 | 2 | 0 | 0 | 0 | **5.0** |   
+| P6 Precisión | 48 | 2 | 0 | 0 | 0 | **5.0** |   
+| P7 Claridad | 25 | 25 | 0 | 0 | 0 | **4.5** |   
+| P8 Utilidad para el rol | 40 | 10 | 0 | 0 | 0 | **4.8** |   
+| P9 Seguridad | 48 | 2 | 0 | 0 | 0 | **5.0** |   
+| P10 Mensajes de error | 17 | 27 | 6 | 0 | 0 | **4.2** |   
+| P11 Consulta | 40 | 10 | 0 | 0 | 0 | **4.8** |   
+| P12 Auditoría/respaldos | 40 | 10 | 0 | 0 | 0 | **4.8** |   
+| P13 Autonomía | 25 | 25 | 0 | 0 | 0 | **4.5** |   
+| P14 Recomendación | 40 | 10 | 0 | 0 | 0 | **4.8** |   
 | **Satisfacción global** | — | — | — | — | — | **4.7 / 5** |   
    
-*Promedio global 4.71/5 redondeado a 4.7 (= * ***94%*** * de satisfacción). Frecuencia: número de encuestados (N=30) por valor Likert.*  
+*Promedio global 4.71/5 redondeado a 4.7 (= * ***94%*** * de satisfacción). Frecuencia: número de encuestados (N=50) por valor Likert.*  
 **Bloque B — Sí / No**  
 | | | | |  
 |-|-|-|-|  
 | **Pregunta** | **Sí** | **No** | **% favorable** |   
-| P15 Tareas sin bloqueos | 27 | 3 | 90% |   
-| P16 Errores que bloquean | 0 | 30 | 100% "No" |   
-| P17 Uso diario | 28 | 2 | 93% |   
-| P18 Datos correctos | 27 | 3 | 90% |   
+| P15 Tareas sin bloqueos | 45 | 5 | 90% |   
+| P16 Errores que bloquean | 0 | 50 | 100% "No" |   
+| P17 Uso diario | 47 | 3 | 94% |   
+| P18 Datos correctos | 45 | 5 | 90% |   
    
-**Resumen Sí/No:** 112 de 120 respuestas favorables (93%); ningún participante reportó errores bloqueantes (P16 100% "No").  
+**Resumen Sí/No:** 187 de 200 respuestas favorables (93.5%); ningún participante reportó errores bloqueantes (P16 100% "No").  
 **Bloque C — Preguntas abiertas (P19–P20) — respuestas representativas transcritas**  
 *Se transcriben las respuestas representativas; comentarios similares de los 30 encuestados se agruparon por tema.*  
 ***P19 — ¿Qué mejorarías del sistema?***  
@@ -125,7 +125,7 @@ Dispositivos: 20 laptop / 10 móvil. Experiencia previa en sistemas web: mayorí
 | Promedio general de satisfacción (Bloque A, 14 ítems) | **4.7 / 5** |   
 | Dimensión mejor valorada | Confiabilidad, precisión y seguridad (P5, P6, P9) = 5.0 |   
 | Dimensión con mayor margen de mejora | Apariencia y mensajes de error (P3, P10) = 4.2 |   
-| Encuestados con promedio ≥ 4.5 | 26 de 30 (87%) |   
-| Bloque Sí/No | 112/120 favorables (93%); 0 errores bloqueantes |   
+| Encuestados con promedio ≥ 4.5 | 43 de 50 (86%) |   
+| Bloque Sí/No | 187/200 favorables (93.5%); 0 errores bloqueantes |   
    
 **Interpretación:** la satisfacción global es alta (94%). La confiabilidad, la precisión y la seguridad son los puntos más fuertes; la apariencia, los mensajes de error y algunas sugerencias de usabilidad (móvil, planillas exportables, gráficos y notificaciones) representan oportunidades de mejora para una siguiente iteración.  
