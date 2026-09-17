@@ -11,7 +11,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
-const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
+const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 const PASSWORD_DEFAULT = 'UTEQ2026';
@@ -142,7 +142,10 @@ function validarEstudiante(body) {
 }
 
 // POST /api/estudiantes -> crea un nuevo estudiante + usuario con password UTEQ2026
-router.post('/', requireAuth, async (req, res) => {
+// POST /api/estudiantes -> SOLO admin (M9 matricula ciega).
+// La familia entra por preinscripcion publica; el admin aprueba.
+// Se conserva para correcciones internas y para los tests.
+router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
     const { cedula, nombres, apellidos, fecha_nacimiento, id_representante } = req.body || {};
     const errores = validarEstudiante(req.body || {});
     if (errores.length > 0) {

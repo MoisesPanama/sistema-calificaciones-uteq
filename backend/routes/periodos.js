@@ -21,13 +21,16 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/periodos { nombre, fecha_inicio, fecha_fin }
+// POST /api/periodos { nombre, fecha_inicio, fecha_fin, matricula_desde?, matricula_hasta? }
 router.post('/', requireAuth, async (req, res) => {
-    const { nombre, fecha_inicio, fecha_fin } = req.body || {};
+    const { nombre, fecha_inicio, fecha_fin, matricula_desde, matricula_hasta } = req.body || {};
     const errores = [];
     if (!nombre || String(nombre).trim() === '') errores.push('El nombre del periodo es obligatorio.');
     if (!fecha_inicio) errores.push('La fecha de inicio es obligatoria.');
     if (!fecha_fin) errores.push('La fecha de fin es obligatoria.');
+    if (matricula_desde && matricula_hasta && String(matricula_hasta) < String(matricula_desde)) {
+        errores.push('El fin de matriculacion no puede ser anterior a su inicio.');
+    }
     if (errores.length > 0) {
         return res.status(400).json({ error: errores.join(' '), errores });
     }
@@ -38,8 +41,8 @@ router.post('/', requireAuth, async (req, res) => {
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
-                'INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin) VALUES ($1, $2, $3) RETURNING id_periodo',
-                [nombre, fecha_inicio, fecha_fin]
+                'INSERT INTO periodos_academicos (nombre, fecha_inicio, fecha_fin, matricula_desde, matricula_hasta) VALUES ($1, $2, $3, $4, $5) RETURNING id_periodo',
+                [nombre, fecha_inicio, fecha_fin, matricula_desde || null, matricula_hasta || null]
             );
             await client.query('COMMIT');
             res.status(201).json({ ok: true, id_periodo: r.rows[0].id_periodo });
@@ -62,11 +65,14 @@ router.post('/', requireAuth, async (req, res) => {
 
 // POST /api/periodos/:id/editar
 router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req, res) => {
-    const { nombre, fecha_inicio, fecha_fin } = req.body || {};
+    const { nombre, fecha_inicio, fecha_fin, matricula_desde, matricula_hasta } = req.body || {};
     const errores = [];
     if (!nombre || String(nombre).trim() === '') errores.push('El nombre del periodo es obligatorio.');
     if (!fecha_inicio) errores.push('La fecha de inicio es obligatoria.');
     if (!fecha_fin) errores.push('La fecha de fin es obligatoria.');
+    if (matricula_desde && matricula_hasta && String(matricula_hasta) < String(matricula_desde)) {
+        errores.push('El fin de matriculacion no puede ser anterior a su inicio.');
+    }
     if (errores.length > 0) {
         return res.status(400).json({ error: errores.join(' '), errores });
     }
@@ -77,8 +83,8 @@ router.post('/:id/editar', requireAuth, requireRole('administrador'), async (req
             await client.query('BEGIN');
             await setUsuarioAuditoria(req.session.usuario.id_usuario, client);
             const r = await client.query(
-                'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3 WHERE id_periodo = $4 RETURNING id_periodo',
-                [nombre, fecha_inicio, fecha_fin, req.params.id]
+                'UPDATE periodos_academicos SET nombre = $1, fecha_inicio = $2, fecha_fin = $3, matricula_desde = $4, matricula_hasta = $5 WHERE id_periodo = $6 RETURNING id_periodo',
+                [nombre, fecha_inicio, fecha_fin, matricula_desde || null, matricula_hasta || null, req.params.id]
             );
             await client.query('COMMIT');
             if (r.rows.length === 0) {

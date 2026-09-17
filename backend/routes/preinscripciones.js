@@ -20,21 +20,45 @@ const { generarEmail, crearUsuario, asegurarRol } = require('../helpers/usuarios
 
 const subirDoc = fabricaUpload('solicitudes', 1);
 
-// GET /api/preinscripciones/opciones -> periodos + cursos (publico,
-// sin datos sensibles: lo necesita el formulario sin login).
+// GET /api/preinscripciones/opciones?cedula=&id_periodo= -> periodos +
+// cursos (publico, sin datos sensibles: lo necesita el formulario
+// sin login). Con ?cedula= devuelve SOLO los cursos elegibles
+// con cupo (nuevo -> nivel inicial; rematricula -> sube o repite
+// nivel segun regla todo-o-nada) + si la ventana esta abierta.
 router.get('/opciones', async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
         const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const cedula = String(req.query.cedula || '').trim();
         const periodos = await pool.query(
             'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
         );
-        const cursos = idPeriodo
-            ? (await pool.query(
-                'SELECT id_curso, nombre, paralelo FROM cursos WHERE id_periodo = $1 ORDER BY nombre, paralelo',
-                [idPeriodo])).rows
-            : [];
-        res.json({ periodos: periodos.rows, periodoActivo, cursos });
+        let cursos = [];
+        let elegibles = [];
+        let tipo = 'nuevo';
+        let abierta = true;
+        if (idPeriodo) {
+            const rAbierta = await pool.query('SELECT fn_matricula_abierta($1) AS abierta', [idPeriodo]);
+            abierta = !!rAbierta.rows[0]?.abierta;
+            const rCur = await pool.query(
+                `SELECT id_curso, nombre, paralelo, nivel, cupo_max,
+                        fn_ocupacion_curso(id_curso, $1) AS ocupados,
+                        (cupo_max - fn_ocupacion_curso(id_curso, $1)) AS disponibles
+                 FROM cursos WHERE id_periodo = $1 ORDER BY nivel NULLS LAST, nombre, paralelo`,
+                [idPeriodo]
+            );
+            cursos = rCur.rows;
+            if (cedula) {
+                const rEst = await pool.query('SELECT id_estudiante FROM estudiantes WHERE cedula = $1', [cedula]);
+                if (rEst.rows.length > 0) tipo = 'rematricula';
+                const rEl = await pool.query('SELECT * FROM fn_cursos_elegibles($1, $2)', [cedula, idPeriodo]);
+                elegibles = rEl.rows;
+            } else {
+                const rEl = await pool.query('SELECT * FROM fn_cursos_elegibles($1, $2)', ['', idPeriodo]);
+                elegibles = rEl.rows;
+            }
+        }
+        res.json({ periodos: periodos.rows, periodoActivo, cursos, elegibles, tipo, matricula_abierta: abierta });
     } catch (error) {
         console.error('Error en opciones:', error.message);
         res.status(500).json({ error: 'No se pudieron cargar las opciones.' });
@@ -73,14 +97,31 @@ router.post('/', (req, res) => {
                 if (req.file) fs.unlink(req.file.path, () => {});
                 return res.status(500).json({ error: 'No hay periodos registrados.' });
             }
-            if (b.id_curso) {
-                const rCur = await pool.query(
-                    'SELECT id_curso FROM cursos WHERE id_curso = $1 AND id_periodo = $2', [b.id_curso, idPeriodo]
-                );
-                if (rCur.rows.length === 0) {
-                    if (req.file) fs.unlink(req.file.path, () => {});
-                    return res.status(400).json({ error: 'El curso no pertenece al periodo.' });
-                }
+            // Ventana de matriculacion (M9, patron OpenEducat).
+            const rAbierta = await pool.query('SELECT fn_matricula_abierta($1) AS abierta', [idPeriodo]);
+            if (!rAbierta.rows[0]?.abierta) {
+                if (req.file) fs.unlink(req.file.path, () => {});
+                return res.status(403).json({ error: 'El periodo de matriculacion esta cerrado en este momento.' });
+            }
+            // Tipo real en servidor (no se confia en el cliente).
+            const rEst = await pool.query('SELECT id_estudiante FROM estudiantes WHERE cedula = $1', [String(b.cedula).trim()]);
+            const tipo = rEst.rows.length > 0 ? 'rematricula' : 'nuevo';
+            // Curso obligatorio y dentro de los elegibles con cupo.
+            if (!b.id_curso) {
+                if (req.file) fs.unlink(req.file.path, () => {});
+                return res.status(400).json({ error: 'Debes elegir un curso con cupo disponible.' });
+            }
+            const rCur = await pool.query(
+                'SELECT id_curso FROM cursos WHERE id_curso = $1 AND id_periodo = $2', [b.id_curso, idPeriodo]
+            );
+            if (rCur.rows.length === 0) {
+                if (req.file) fs.unlink(req.file.path, () => {});
+                return res.status(400).json({ error: 'El curso no pertenece al periodo.' });
+            }
+            const rEl = await pool.query('SELECT id_curso FROM fn_cursos_elegibles($1, $2)', [String(b.cedula).trim(), idPeriodo]);
+            if (!rEl.rows.some((e) => String(e.id_curso) === String(b.id_curso))) {
+                if (req.file) fs.unlink(req.file.path, () => {});
+                return res.status(409).json({ error: 'Ese curso no te corresponde o ya no tiene cupo disponible.' });
             }
             const dup = await pool.query(
                 'SELECT id_solicitud FROM solicitudes_matricula WHERE cedula = $1 AND id_periodo = $2',
@@ -94,21 +135,21 @@ router.post('/', (req, res) => {
                 `INSERT INTO solicitudes_matricula
                      (nombres, apellidos, cedula, fecha_nacimiento,
                       rep_nombres, rep_apellidos, rep_telefono, rep_email,
-                      rep_parentesco, rep_documento,
+                      rep_parentesco, rep_documento, tipo,
                       id_periodo, id_curso,
                       documento_nombre, documento_ruta, documento_mime, documento_tamano)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
                  RETURNING id_solicitud`,
                 [String(b.nombres).trim(), String(b.apellidos).trim(), String(b.cedula).trim(), b.fecha_nacimiento,
                  String(b.rep_nombres).trim(), String(b.rep_apellidos).trim(),
                  b.rep_telefono || null, b.rep_email || null,
-                 String(b.rep_parentesco).trim(), String(b.rep_documento).trim(),
-                 idPeriodo, b.id_curso || null,
+                 String(b.rep_parentesco).trim(), String(b.rep_documento).trim(), tipo,
+                 idPeriodo, b.id_curso,
                  req.file.originalname.slice(0, 255),
                  path.join('solicitudes', path.basename(req.file.path)),
                  req.file.mimetype, req.file.size]
             );
-            res.status(201).json({ ok: true, mensaje: 'Solicitud recibida. El colegio la revisara.', id_solicitud: r.rows[0].id_solicitud });
+            res.status(201).json({ ok: true, mensaje: `Solicitud de ${tipo} recibida. El colegio la revisara.`, id_solicitud: r.rows[0].id_solicitud, tipo });
         } catch (error) {
             if (req.file) fs.unlink(req.file.path, () => {});
             if (error.code === '23505') {
@@ -126,12 +167,17 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
     try {
         const { page, limit, offset } = leerPaginacion(req.query, { porDefecto: 15, minimo: 5 });
         const estado = req.query.estado || '';
+        const tipo = req.query.tipo || '';
         const q = String(req.query.q || '').trim();
         const conds = [];
         const params = [];
         if (estado) {
             params.push(estado);
             conds.push(`s.estado = $${params.length}`);
+        }
+        if (tipo) {
+            params.push(tipo);
+            conds.push(`s.tipo = $${params.length}`);
         }
         if (q) {
             params.push(`%${q}%`);
@@ -155,6 +201,10 @@ router.get('/', requireAuth, requireRole('administrador'), async (req, res) => {
 });
 
 // POST /api/preinscripciones/:id/aprobar (admin)
+// Nuevo: crea representante/usuario/estudiante/matricula.
+// Rematricula: reutiliza el estudiante existente y solo crea
+// la matricula en el curso elegido (sube o repite nivel segun
+// elegibles). El cupo se verifica con bloqueo (FOR UPDATE).
 router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (req, res) => {
     const client = await pool.connect();
     try {
@@ -171,6 +221,24 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
         if (sol.estado !== 'pendiente') {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: `Ya fue ${sol.estado}.` });
+        }
+        // Cupo con bloqueo: la solicitud pendiente ya ocupa lugar,
+        // aprobar la convierte en matricula (neto igual).
+        if (sol.id_curso) {
+            const rCup = await client.query(
+                'SELECT cupo_max FROM cursos WHERE id_curso = $1 FOR UPDATE', [sol.id_curso]
+            );
+            if (rCup.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'El curso de la solicitud ya no existe.' });
+            }
+            const rOcu = await client.query(
+                'SELECT fn_ocupacion_curso($1, $2) AS ocupados', [sol.id_curso, sol.id_periodo]
+            );
+            if (Number(rOcu.rows[0].ocupados) > Number(rCup.rows[0].cupo_max)) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: 'El curso ya no tiene cupo disponible.' });
+            }
         }
         // Representante: reutilizar por email/telefono o crear.
         let idRep = null;
@@ -189,19 +257,41 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
             );
             idRep = rRep.rows[0].id_representante;
         }
-        // Usuario + estudiante (mismo patron que POST /estudiantes).
-        const rolEst = await asegurarRol(client, 'estudiante');
-        const { id_usuario: idUsuario, email } = await crearUsuario(
-            client, sol.nombres, sol.apellidos,
-            generarEmail(sol.nombres, sol.apellidos), rolEst);
-        const rEst = await client.query(
-            `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_estudiante`,
-            [sol.cedula, sol.nombres, sol.apellidos, sol.fecha_nacimiento, idRep, idUsuario]
+        // Estudiante: si ya existe por cedula es rematricula.
+        let idEstudiante = null;
+        let email = null;
+        let password = null;
+        const rEx = await client.query(
+            `SELECT e.id_estudiante, u.email FROM estudiantes e
+             LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
+             WHERE e.cedula = $1`,
+            [sol.cedula]
         );
+        if (rEx.rows.length > 0) {
+            idEstudiante = rEx.rows[0].id_estudiante;
+            email = rEx.rows[0].email;
+            // Vincula al representante actual si cambio de acudiente.
+            await client.query(
+                'UPDATE estudiantes SET id_representante = $1 WHERE id_estudiante = $2',
+                [idRep, idEstudiante]
+            );
+        } else {
+            const rolEst = await asegurarRol(client, 'estudiante');
+            const creado = await crearUsuario(
+                client, sol.nombres, sol.apellidos,
+                generarEmail(sol.nombres, sol.apellidos), rolEst);
+            const rEst = await client.query(
+                `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario)
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_estudiante`,
+                [sol.cedula, sol.nombres, sol.apellidos, sol.fecha_nacimiento, idRep, creado.id_usuario]
+            );
+            idEstudiante = rEst.rows[0].id_estudiante;
+            email = creado.email;
+            password = 'UTEQ2026';
+        }
         await client.query(
             'INSERT INTO matriculas (id_estudiante, id_periodo, id_curso) VALUES ($1, $2, $3)',
-            [rEst.rows[0].id_estudiante, sol.id_periodo, sol.id_curso]
+            [idEstudiante, sol.id_periodo, sol.id_curso]
         );
         await client.query(
             `UPDATE solicitudes_matricula SET estado = 'aprobada', revisada_por = $1, fecha_revision = NOW()
@@ -210,8 +300,8 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
         );
         await client.query('COMMIT');
         res.status(201).json({
-            ok: true, mensaje: 'Matricula aprobada.',
-            id_estudiante: rEst.rows[0].id_estudiante, email, password: 'UTEQ2026'
+            ok: true, mensaje: sol.tipo === 'rematricula' ? 'Rematricula aprobada.' : 'Matricula aprobada.',
+            tipo: sol.tipo, id_estudiante: idEstudiante, email, password
         });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});

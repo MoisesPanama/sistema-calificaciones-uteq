@@ -29,6 +29,10 @@
           <input type="date" id="fecha_inicio" required>
           <label for="fecha_fin">Fecha de fin</label>
           <input type="date" id="fecha_fin" required>
+          <label for="mat_desde">Matriculación desde (vacío = siempre abierto)</label>
+          <input type="date" id="mat_desde">
+          <label for="mat_hasta">Matriculación hasta</label>
+          <input type="date" id="mat_hasta">
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
             <button type="button" class="btn-secondary" id="btn-cerrar">Cancelar</button>
@@ -48,6 +52,10 @@
           <input type="date" id="ed-fecha_inicio" required>
           <label for="ed-fecha_fin">Fecha de fin</label>
           <input type="date" id="ed-fecha_fin" required>
+          <label for="ed-mat_desde">Matriculación desde (vacío = siempre abierto)</label>
+          <input type="date" id="ed-mat_desde">
+          <label for="ed-mat_hasta">Matriculación hasta</label>
+          <input type="date" id="ed-mat_hasta">
           <div class="form-actions">
             <button type="submit" class="btn-primary">Guardar</button>
             <button type="button" class="btn-secondary" id="btn-cerrar-editar">Cancelar</button>
@@ -85,17 +93,22 @@
         if (rol !== 'administrador') return '';
         return `<button class="btn-secondary btn-sm" data-editar='${JSON.stringify(p)}'>Editar</button>`;
       };
+      const fmtV = (v) => v ? new Date(v).toLocaleDateString('es-EC') : '—';
+      const badgeMat = (p) => p.matricula_abierta
+        ? '<span class="badge badge-success">Abierta</span>'
+        : '<span class="badge badge-danger">Cerrada</span>';
       document.getElementById('tabla').innerHTML =
         `<div class="table-responsive">
           <table>
             <thead><tr>
-              <th>Nombre</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Periodo</th><th></th>
+              <th>Nombre</th><th>Inicio</th><th>Fin</th><th>Matriculación</th><th>Estado</th><th>Periodo</th><th></th>
             </tr></thead>
             <tbody>
             ${periodos.map(p => `<tr>
               <td>${esc(p.nombre)}</td>
               <td>${new Date(p.fecha_inicio).toLocaleDateString('es-EC')}</td>
               <td>${new Date(p.fecha_fin).toLocaleDateString('es-EC')}</td>
+              <td>${fmtV(p.matricula_desde)} → ${fmtV(p.matricula_hasta)}<br>${badgeMat(p)}</td>
               <td><span class="${badge(p.estado)}">${p.estado}</span></td>
               <td>${colAccion(p)}</td>
               <td class="td-actions">${colEditar(p)}</td>
@@ -116,6 +129,8 @@
         document.getElementById('ed-nombre').value = p.nombre;
         document.getElementById('ed-fecha_inicio').value = p.fecha_inicio.split('T')[0];
         document.getElementById('ed-fecha_fin').value = p.fecha_fin.split('T')[0];
+        document.getElementById('ed-mat_desde').value = p.matricula_desde ? String(p.matricula_desde).slice(0, 10) : '';
+        document.getElementById('ed-mat_hasta').value = p.matricula_hasta ? String(p.matricula_hasta).slice(0, 10) : '';
         document.getElementById('modalEditar').classList.add('activo');
       });
     }
@@ -139,7 +154,9 @@
           await apiPost('/periodos/', {
             nombre: document.getElementById('nombre').value,
             fecha_inicio: document.getElementById('fecha_inicio').value,
-            fecha_fin: document.getElementById('fecha_fin').value
+            fecha_fin: document.getElementById('fecha_fin').value,
+            matricula_desde: document.getElementById('mat_desde').value || null,
+            matricula_hasta: document.getElementById('mat_hasta').value || null
           });
           modal.classList.remove('activo');
           showOk('Periodo creado correctamente.');
@@ -153,7 +170,9 @@
           await apiPost(`/periodos/${id}/editar`, {
             nombre: document.getElementById('ed-nombre').value,
             fecha_inicio: document.getElementById('ed-fecha_inicio').value,
-            fecha_fin: document.getElementById('ed-fecha_fin').value
+            fecha_fin: document.getElementById('ed-fecha_fin').value,
+            matricula_desde: document.getElementById('ed-mat_desde').value || null,
+            matricula_hasta: document.getElementById('ed-mat_hasta').value || null
           });
           modalEditar.classList.remove('activo');
           showOk('Periodo actualizado correctamente.');

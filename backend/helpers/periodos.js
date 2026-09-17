@@ -5,9 +5,15 @@
 
 const pool = require('../config/db');
 
-// Consulta base que calcula el estado segun la fecha actual
+// Consulta base que calcula el estado segun la fecha actual.
+// Incluye la ventana de matriculacion (M9, patron OpenEducat:
+// NULL = siempre abierto, no rompe historial).
 const QUERY_PERIODOS = `
     SELECT id_periodo, nombre, fecha_inicio, fecha_fin, activo,
+           matricula_desde, matricula_hasta,
+           (matricula_desde IS NULL OR CURRENT_DATE >= matricula_desde)
+           AND (matricula_hasta IS NULL OR CURRENT_DATE <= matricula_hasta)
+           AS matricula_abierta,
            CASE
                WHEN fecha_fin < CURRENT_DATE THEN 'Finalizado'
                WHEN fecha_inicio <= CURRENT_DATE AND fecha_fin >= CURRENT_DATE THEN 'Activo'
