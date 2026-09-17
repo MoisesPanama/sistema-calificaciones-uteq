@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, periodoDe } = require('../helpers/contexto');
 
 // GET /api/catalogos/periodo-activo
 router.get('/periodo-activo', requireAuth, async (req, res) => {
@@ -23,7 +23,7 @@ router.get('/periodo-activo', requireAuth, async (req, res) => {
 router.get('/cursos', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ cursos: [] });
         const r = await pool.query(
             'SELECT id_curso, nombre, paralelo FROM cursos WHERE id_periodo = $1 ORDER BY nombre, paralelo',
@@ -51,7 +51,7 @@ router.get('/tipos-evaluacion', requireAuth, async (req, res) => {
 router.get('/ciclos', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ ciclos: [] });
         const r = await pool.query(
             `SELECT id_ciclo, nombre, tipo, orden, peso, peso_formativa, peso_sumativa

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi matrícula - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="layout">
+  <aside class="sidebar" id="app-sidebar"></aside>
+  <div class="topbar-wrapper">
+    <header class="topbar" id="app-topbar"></header>
+    <main class="main-content">
+    <h1>Mi matrícula</h1>
+    <p class="periodo-fijo" id="info-periodo"></p>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <div id="ventana"></div>
+    <div id="lista"></div>
+    <div class="form-box no-print" style="margin-top:1.2rem;">
+      <p style="font-size:0.88rem;color:#6b7280;">
+        ¿Nuevo ingreso o cambio de nivel? Haz tu
+        <a href="preinscripcion.html">preinscripción aquí</a>
+        (solo con cupo y en periodo de matriculación).
+      </p>
+    </div>
+    </main>
+  </div>
+</div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    const nivTxt = (n) => n == null ? '—' : (n == 8 ? '8vo' : n == 9 ? '9no' : n == 10 ? '10mo' : n + '°');
+    (async () => {
+      const u = await initPage();
+      if (!u) return;
+      if (u.nombre_rol !== 'estudiante' && u.nombre_rol !== 'representante') {
+        document.querySelector('main').innerHTML = '<div class="alert alert-error">Solo estudiante o representante.</div>';
+        return;
+      }
+      try {
+        const per = await apiGet('/periodos/');
+        const idPeriodo = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+        document.getElementById('info-periodo').innerHTML =
+          `Periodo: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
+        const d = await apiGet('/matriculas/mia?id_periodo=' + encodeURIComponent(idPeriodo));
+        document.getElementById('ventana').innerHTML = d.matricula_abierta
+          ? '<p><span class="pill pill-ok">matriculación abierta</span></p>'
+          : '<p><span class="pill pill-danger">matriculación cerrada</span> <span style="font-size:0.85rem;color:#6b7280;">La preinscripción está inhabilitada hasta que se abra el periodo.</span></p>';
+        const div = document.getElementById('lista');
+        if (!d.matriculas || d.matriculas.length === 0) {
+          div.innerHTML = '<div class="mat-form-card"><p>Sin matrícula en este periodo. Usa la preinscripción cuando la ventana esté abierta.</p></div>';
+          return;
+        }
+        div.innerHTML = `<div class="table-responsive"><table><thead><tr>
+          <th>Estudiante</th><th>Cédula</th><th>Curso</th><th>Nivel</th></tr></thead><tbody>` +
+          d.matriculas.map(m => `<tr><td>${esc(m.apellidos)} ${esc(m.nombres)}</td>
+            <td>${esc(m.cedula)}</td>
+            <td>${m.curso_nombre ? esc(m.curso_nombre) + ' ' + esc(m.paralelo || '') : '<em>Sin curso</em>'}</td>
+            <td>${nivTxt(m.nivel)}</td></tr>`).join('') +
+          '</tbody></table></div>';
+      } catch (err) { showError(err.message); }
+    })();
+  </script>
+</body>
+</html>

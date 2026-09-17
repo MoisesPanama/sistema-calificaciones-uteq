@@ -42,16 +42,20 @@ test('2. admin crea una materia nueva', async ({ page }) => {
   await expect(page.locator('#tabla')).toContainText('DemoMat ' + tag, { timeout: 15000 });
 });
 
-test('3. admin matricula al nuevo estudiante', async ({ page }) => {
+test('3. admin matricula al nuevo estudiante (via aprobacion)', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
+  // M9 matricula ciega: sin formulario manual; el admin matricula
+  // via API interna y verifica en la lista + bandeja.
+  const per = await api(page, 'GET', '/periodos/');
+  const idPeriodo = per.data.periodoActivo.id_periodo;
+  const r = await api(page, 'POST', '/matriculas/', {
+    id_estudiante: idEst, id_periodo: idPeriodo, id_curso: null
+  });
+  expect(r.status).toBe(201);
   await go(page, '/pages/matriculas.html');
-  await expect(page.locator('#sel-estudiante option').nth(1)).toBeAttached({ timeout: 15000 });
-  await page.locator('#sel-estudiante').selectOption(String(idEst));
-  const nCursos = await page.locator('#sel-curso option').count();
-  if (nCursos > 1) await page.locator('#sel-curso').selectOption({ index: 1 });
-  await page.locator('#btn-matricular').click();
   await page.locator('#busqueda').fill('Demo ' + tag);
   await page.locator('#btn-buscar').click();
   await expect(page.locator('#lista')).toContainText('Demo ' + tag, { timeout: 15000 });
   await expect(page.locator('#contador')).toContainText('matriculado');
+  await expect(page.locator('#form-matricula')).toHaveCount(0);
 });

@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
-const { requireAuth, setUsuarioAuditoria } = require('../middleware/auth');
+const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 const PASSWORD_DEFAULT = 'UTEQ2026';
@@ -100,10 +100,10 @@ function validarRepresentante(body) {
     return errores;
 }
 
-// POST /api/representantes -> crear. Si ya existe uno igual
-// (mismo nombre+apellido+telefono), devuelve 409 con su id
-// para que la UI lo seleccione en vez de duplicarlo.
-router.post('/', requireAuth, async (req, res) => {
+// POST /api/representantes -> SOLO admin (M9 matricula ciega).
+// Si ya existe uno igual (mismo nombre+apellido+telefono),
+// devuelve 409 con su id para seleccionarlo sin duplicar.
+router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
     const { nombres, apellidos, telefono } = req.body || {};
     const errores = validarRepresentante(req.body || {});
     if (errores.length > 0) return res.status(400).json({ error: errores.join(' '), errores });

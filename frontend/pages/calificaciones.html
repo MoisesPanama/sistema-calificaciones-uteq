@@ -31,6 +31,7 @@
     <header class="topbar" id="app-topbar"></header>
     <main class="main-content">
     <h1>Registrar Calificaciones</h1>
+    <p><a href="mis-cursos.html" class="btn-secondary btn-sm" id="btn-regresar">&larr; Mis cursos</a></p>
     <p class="periodo-fijo" id="info-periodo"></p>
     <p class="alert-exito" id="ok" style="display:none"></p>
     <p class="alert alert-error" id="error" style="display:none"></p>
@@ -41,8 +42,8 @@
           <select id="sel-materia" style="width:100%;"><option value="">-- Selecciona una materia --</option></select>
         </div>
         <div style="flex:1;min-width:200px;">
-          <label for="sel-curso">Curso</label>
-          <select id="sel-curso" style="width:100%;"><option value="">-- Todos mis cursos --</option></select>
+          <label for="sel-curso">Curso (siempre uno concreto)</label>
+          <select id="sel-curso" style="width:100%;"><option value="">-- Selecciona un curso --</option></select>
         </div>
         <div style="flex:1;min-width:160px;">
           <label for="sel-ciclo">Ciclo (quimestre/trimestre)</label>
@@ -229,10 +230,21 @@
           '<option value="">-- Selecciona una materia --</option>' +
           data.materias.map(m => `<option value="${m.id_materia}">${esc(m.nombre)}</option>`).join('');
         document.getElementById('sel-curso').innerHTML =
-          '<option value="">-- Todos mis cursos --</option>' +
+          '<option value="">-- Selecciona un curso --</option>' +
           data.cursos.map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
         if (data.materias.length === 0) {
           showError('No tiene materias asignadas en este periodo. Pida al administrador que le asigne materias.');
+        }
+        // Deep-link desde Mis cursos (?id_materia=&id_curso=); si no,
+        // curso por defecto = el primero (nunca modo general).
+        const qp = new URLSearchParams(location.search);
+        if (first && qp.get('id_materia')) {
+          document.getElementById('sel-materia').value = qp.get('id_materia');
+        }
+        if (first && qp.get('id_curso')) {
+          document.getElementById('sel-curso').value = qp.get('id_curso');
+        } else if (first && data.cursos.length > 0 && !document.getElementById('sel-curso').value) {
+          document.getElementById('sel-curso').selectedIndex = 1;
         }
         await cargarCiclos();
       }
@@ -270,6 +282,12 @@
       actividadActual = null;
       if (!idMateria) {
         sec.style.display = 'none';
+        return;
+      }
+      const idCurso = document.getElementById('sel-curso').value;
+      if (!idCurso) {
+        sec.style.display = 'block';
+        lista.innerHTML = '<p>Selecciona un curso concreto para ver sus actividades.</p>';
         return;
       }
       sec.style.display = 'block';
@@ -435,6 +453,7 @@
         const r = await apiPost('/calificaciones/lote', {
           id_periodo: ctxPeriodo,
           id_materia: document.getElementById('sel-materia').value,
+          id_curso: document.getElementById('sel-curso').value,
           id_parcial: actividadActual.id_parcial,
           id_ciclo: actividadActual.id_ciclo,
           id_actividad: actividadActual.id_actividad,
@@ -453,6 +472,7 @@
         const r = await apiPost('/calificaciones/lote', {
           id_periodo: ctxPeriodo,
           id_materia: document.getElementById('sel-materia').value,
+          id_curso: document.getElementById('sel-curso').value,
           id_parcial: actividadActual.id_parcial,
           id_ciclo: actividadActual.id_ciclo,
           id_actividad: actividadActual.id_actividad,
@@ -509,7 +529,11 @@
     });
 
     (async () => {
-      if (!await initPage()) return;
+      const usuario = await initPage();
+      if (!usuario) return;
+      if (usuario.nombre_rol !== 'profesor' && usuario.nombre_rol !== 'administrador') {
+        document.getElementById('btn-regresar').style.display = 'none';
+      }
       await cargarTipos();
       await cargarBase(true).catch(showError);
       document.getElementById('sel-materia').onchange = async () => {

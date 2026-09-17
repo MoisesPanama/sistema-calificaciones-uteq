@@ -119,6 +119,7 @@
     <!-- Nivel 2: nomina paginada del bloque -->
     <div id="vista-grupo" style="display:none">
       <button class="btn-secondary" id="btn-grupos" style="margin-bottom:1rem;">&larr; Todos los grupos</button>
+      <a href="mis-cursos.html" class="btn-secondary btn-sm" id="btn-miscursos-g" style="margin-bottom:1rem;margin-left:0.5rem;">&larr; Mis cursos</a>
       <h2 id="grupo-titulo" style="font-size:1.05rem;color:#1e3a8a;margin-bottom:1rem;"></h2>
       <div id="nomina"></div>
       <div class="pagination" id="paginacion-nom"></div>
@@ -127,6 +128,7 @@
     <!-- Nivel 3: detalle del estudiante -->
     <div id="vista-detalle" style="display:none">
       <button class="btn-secondary" id="btn-nomina" style="margin-bottom:1rem;">&larr; Volver a la nómina</button>
+      <a href="mis-cursos.html" class="btn-secondary btn-sm" id="btn-miscursos-d" style="margin-bottom:1rem;margin-left:0.5rem;">&larr; Mis cursos</a>
       <div id="resultado"></div>
       <div id="desglose"></div>
     </div>
@@ -142,6 +144,7 @@
   <script>
     let periodoId = '';
     let grupo = null;
+    let gruposCache = [];
     let rolActual = '';
     let detalleCtx = null;
 
@@ -166,6 +169,18 @@
       if (detalleCtx.modo === 'bloque') await verDetalle(detalleCtx.idEst);
       else await verDetallePropio();
     }
+
+    // Acordeon por materia (M10): la cabecera expande/contrae.
+    document.addEventListener('click', (e) => {
+      const head = e.target.closest('[data-mat-toggle]');
+      if (head) {
+        const det = head.closest('.mat-card')?.querySelector('.mat-detalle');
+        if (det) det.style.display = det.style.display === 'none' ? 'block' : 'none';
+        return;
+      }
+      const vd = e.target.closest('[data-ver-desglose]');
+      if (vd) verDesgloseMat(vd).catch(showError);
+    });
 
     document.addEventListener('click', async (e) => {
       const add = e.target.closest('[data-falta-add]');
@@ -212,6 +227,7 @@
 
     async function cargarGrupos() {
       const d = await apiGet('/consulta/grupos?id_periodo=' + encodeURIComponent(periodoId));
+      gruposCache = d.grupos || [];
       document.getElementById('info-periodo').innerHTML =
         `Periodo seleccionado: <strong>${esc(d.periodoNombre || '—')}</strong>`;
       const div = document.getElementById('grupos');
@@ -298,15 +314,20 @@
           ? `<span class="mat-escala na">pendiente</span>`
           : `<span class="mat-escala">${esc(m.escala)}</span>`;
         html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
-            <div class="mat-top">
+            <div class="mat-top" data-mat-toggle style="cursor:pointer;" title="Expandir / contraer">
               <span class="mat-nombre">${esc(m.nombre)}</span>
               ${prom}${esc_}${pillRec(m)}
-              <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
+              <span class="mat-chev" style="color:#9ca3af;">&#9660;</span>
+              <button class="btn-secondary btn-sm" onclick="event.stopPropagation();document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
               <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
               <tbody>${filas}</tbody></table></div>
               ${await htmlFaltas(d.idEstudiante, m.id_materia, d.idPeriodo)}
+              <div style="margin-top:0.6rem;">
+                <button class="btn-secondary btn-sm" data-ver-desglose data-id-materia="${m.id_materia}" data-id-est="${d.idEstudiante}" data-id-periodo="${d.idPeriodo}" data-desglose-box="mat-des-${i}">Ver desglose por ciclo y parcial</button>
+                <div id="mat-des-${i}" style="display:none"></div>
+              </div>
             </div>
           </div>`;
       }
@@ -334,56 +355,77 @@
       return `<span class="badge-escala ${cls}">${e}</span>`;
     }
 
+    // Render del desglose ciclo/parcial (M10: se reusa perezoso
+    // dentro de cada tarjeta de materia, no todo de golpe).
+    function htmlDesglose(g, sufijo) {
+      if (!g.ciclos || g.ciclos.length === 0) return '';
+      return `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial${sufijo || ''}</h3>
+        <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.${g.recuperacion ? ` Recuperación validada: <span class="pill ${g.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn'}">${esc(g.recuperacion.instancia)}: ${esc(g.recuperacion.nota)}</span>` : ''}</p>` +
+        g.ciclos.map((c, ci) => {
+          const promStr = c.promedio != null ? esc(c.promedio) : '—';
+          const escalaStr = c.escala || 'S/N';
+          const parciales = c.parciales.map(p => {
+            const insHtml = p.n_insumos != null
+              ? (p.faltan > 0
+                ? `<span class="ins-falta">${p.n_insumos}/${p.minimo} (faltan ${p.faltan})</span>`
+                : `<span class="ins-ok">${p.n_insumos}/${p.minimo} &#10003;</span>`)
+              : '<span style="color:#9ca3af;">—</span>';
+            return `<div class="parcial-row">
+              <span class="parcial-nombre">${esc(p.nombre)}</span>
+              <span class="parcial-prom${p.promedio == null ? ' vacio' : ''}">${p.promedio != null ? esc(p.promedio) : '—'}</span>
+              <span>${badgeEscala(p.escala)}</span>
+              <span class="parcial-ins">${insHtml}</span>
+            </div>`;
+          }).join('');
+
+          return `<div class="ciclo-card" id="ciclo-${c.id_ciclo}">
+            <div class="ciclo-header" onclick="document.getElementById('ciclo-${c.id_ciclo}').classList.toggle('abierto')">
+              <div class="ciclo-header-left">
+                <div>
+                  <div class="ciclo-nombre">${esc(c.nombre)}</div>
+                  <div class="ciclo-meta">Peso anual ${esc(c.peso)} &middot; Formativa ${esc(c.peso_formativa)} / Examen ${esc(c.peso_sumativa)}</div>
+                </div>
+              </div>
+              <div class="ciclo-header-right">
+                <span class="ciclo-prom-badge">${promStr}</span>
+                <span class="ciclo-escala-badge">${badgeEscala(escalaStr)}</span>
+                <span class="ciclo-chevron">&#9660;</span>
+              </div>
+            </div>
+            <div class="ciclo-body">
+              <div class="parcial-row" style="background:#f8f9fb;font-weight:700;color:#6b7280;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.03em;">
+                <span>Parcial</span><span style="text-align:center;">Promedio</span><span>Escala</span><span style="text-align:right;">Insumos</span>
+              </div>
+              ${parciales}
+            </div>
+          </div>`;
+        }).join('');
+    }
+
+    // Carga perezosa del desglose dentro de la tarjeta (una vez).
+    async function verDesgloseMat(btn) {
+      const box = document.getElementById(btn.dataset.desgloseBox);
+      if (!box) return;
+      if (box.dataset.loaded === '1') {
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        return;
+      }
+      box.innerHTML = '<p style="font-size:0.85rem;color:#6b7280;">Cargando desglose…</p>';
+      box.style.display = 'block';
+      try {
+        const g = await apiGet(`/consulta/materia/${btn.dataset.idMateria}?id_estudiante=${btn.dataset.idEst}&id_periodo=${btn.dataset.idPeriodo}`);
+        box.innerHTML = htmlDesglose(g, g.materia ? ' — ' + g.materia.nombre : '');
+        box.dataset.loaded = '1';
+      } catch (err) { box.innerHTML = `<p class="alert alert-error">${esc(err.message)}</p>`; }
+    }
+
     async function cargarDesglose(d, append = false) {
       const div = document.getElementById('desglose');
       if (!append) div.innerHTML = '';
       if (!d.idMateria || !d.idEstudiante) return;
       try {
         const g = await apiGet(`/consulta/materia/${d.idMateria}?id_estudiante=${d.idEstudiante}&id_periodo=${d.idPeriodo}`);
-        if (!g.ciclos || g.ciclos.length === 0) return;
-
-        div.innerHTML += `<h3 style="font-size:1rem;color:#1e3a8a;margin:1.2rem 0 0.6rem;">Desglose por ciclo y parcial${append && g.materia ? ' — ' + esc(g.materia.nombre) : ''}</h3>
-          <p style="font-size:0.8rem;color:#6b7280;margin-bottom:0.8rem;">Minimo esperado de insumos por parcial: <strong>${g.minimo_insumos}</strong>.${g.recuperacion ? ` Recuperación validada: <span class="pill ${g.estado_final === 'aprobado' ? 'pill-ok' : 'pill-warn'}">${esc(g.recuperacion.instancia)}: ${esc(g.recuperacion.nota)}</span>` : ''}</p>` +
-          g.ciclos.map((c, ci) => {
-            const promStr = c.promedio != null ? esc(c.promedio) : '—';
-            const escalaStr = c.escala || 'S/N';
-            const abierto = ci === 0 ? ' abierto' : '';
-            const parciales = c.parciales.map(p => {
-              const insHtml = p.n_insumos != null
-                ? (p.faltan > 0
-                  ? `<span class="ins-falta">${p.n_insumos}/${p.minimo} (faltan ${p.faltan})</span>`
-                  : `<span class="ins-ok">${p.n_insumos}/${p.minimo} &#10003;</span>`)
-                : '<span style="color:#9ca3af;">—</span>';
-              return `<div class="parcial-row">
-                <span class="parcial-nombre">${esc(p.nombre)}</span>
-                <span class="parcial-prom${p.promedio == null ? ' vacio' : ''}">${p.promedio != null ? esc(p.promedio) : '—'}</span>
-                <span>${badgeEscala(p.escala)}</span>
-                <span class="parcial-ins">${insHtml}</span>
-              </div>`;
-            }).join('');
-
-            return `<div class="ciclo-card${abierto}" id="ciclo-${ci}">
-              <div class="ciclo-header" onclick="document.getElementById('ciclo-${ci}').classList.toggle('abierto')">
-                <div class="ciclo-header-left">
-                  <div>
-                    <div class="ciclo-nombre">${esc(c.nombre)}</div>
-                    <div class="ciclo-meta">Peso anual ${esc(c.peso)} &middot; Formativa ${esc(c.peso_formativa)} / Examen ${esc(c.peso_sumativa)}</div>
-                  </div>
-                </div>
-                <div class="ciclo-header-right">
-                  <span class="ciclo-prom-badge">${promStr}</span>
-                  <span class="ciclo-escala-badge">${badgeEscala(escalaStr)}</span>
-                  <span class="ciclo-chevron">&#9660;</span>
-                </div>
-              </div>
-              <div class="ciclo-body">
-                <div class="parcial-row" style="background:#f8f9fb;font-weight:700;color:#6b7280;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.03em;">
-                  <span>Parcial</span><span style="text-align:center;">Promedio</span><span>Escala</span><span style="text-align:right;">Insumos</span>
-                </div>
-                ${parciales}
-              </div>
-            </div>`;
-          }).join('');
+        div.innerHTML += htmlDesglose(g, append && g.materia ? ' — ' + g.materia.nombre : '');
       } catch (err) { showError(err.message); }
     }
 
@@ -393,13 +435,7 @@
       mostrar(3);
       detalleCtx.idEst = d.idEstudiante;
       await renderDetalleDirecto(d);
-      // Desglose por cada materia con notas (vista propia del estudiante).
       document.getElementById('desglose').innerHTML = '';
-      for (const m of (d.materias || [])) {
-        if (!m.sin_notas) {
-          await cargarDesglose({ idMateria: m.id_materia, idEstudiante: d.idEstudiante, idPeriodo: d.idPeriodo }, true);
-        }
-      }
     }
 
     async function renderDetalleDirecto(d) {
@@ -426,15 +462,20 @@
           ? `<span class="mat-escala na">pendiente</span>`
           : `<span class="mat-escala">${esc(m.escala)}</span>`;
         html += `<div class="mat-card ${m.sin_notas ? 'sin-notas' : ''}">
-            <div class="mat-top">
+            <div class="mat-top" data-mat-toggle style="cursor:pointer;" title="Expandir / contraer">
               <span class="mat-nombre">${esc(m.nombre)}</span>
               ${prom}${esc_}${pillRec(m)}
-              <button class="btn-secondary btn-sm" onclick="document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
+              <span class="mat-chev" style="color:#9ca3af;">&#9660;</span>
+              <button class="btn-secondary btn-sm" onclick="event.stopPropagation();document.getElementById('mat-det-${i}').style.display = document.getElementById('mat-det-${i}').style.display === 'none' ? 'block' : 'none'">Ver notas</button>
             </div>
             <div class="mat-detalle" id="mat-det-${i}" style="display:none">
               <div class="table-responsive"><table><thead><tr><th>Tipo de evaluación</th><th>Nota</th></tr></thead>
               <tbody>${filas}</tbody></table></div>
               ${await htmlFaltas(d.idEstudiante, m.id_materia, d.idPeriodo)}
+              <div style="margin-top:0.6rem;">
+                <button class="btn-secondary btn-sm" data-ver-desglose data-id-materia="${m.id_materia}" data-id-est="${d.idEstudiante}" data-id-periodo="${d.idPeriodo}" data-desglose-box="mat-des-${i}">Ver desglose por ciclo y parcial</button>
+                <div id="mat-des-${i}" style="display:none"></div>
+              </div>
             </div>
           </div>`;
       }
@@ -459,6 +500,11 @@
         document.getElementById('btn-grupos').style.display = 'none';
         document.getElementById('btn-nomina').style.display = 'none';
       }
+      // Mis cursos solo existe para profesor/admin.
+      if (rolActual !== 'profesor' && rolActual !== 'administrador') {
+        document.getElementById('btn-miscursos-g').style.display = 'none';
+        document.getElementById('btn-miscursos-d').style.display = 'none';
+      }
       document.getElementById('btn-grupos').onclick = () => cargarGrupos().catch(showError);
       document.getElementById('btn-nomina').onclick = () => mostrar(2);
       try {
@@ -467,6 +513,14 @@
           await verDetallePropio();
         } else {
           await cargarGrupos();
+          // Deep-link desde Mis cursos (?modo=grupo&id_materia=&id_curso=).
+          const qp = new URLSearchParams(location.search);
+          if (qp.get('modo') === 'grupo' && qp.get('id_materia')) {
+            const g = gruposCache.find(x => String(x.id_materia) === String(qp.get('id_materia')) &&
+              String(x.id_curso || '') === String(qp.get('id_curso') || ''));
+            if (g) entrarGrupo(g);
+            else showError('Ese grupo no está entre tus asignaciones.');
+          }
         }
       } catch (err) { showError(err.message); }
       document.getElementById('sel-periodo').onchange = async () => {

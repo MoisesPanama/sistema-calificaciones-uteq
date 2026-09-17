@@ -35,6 +35,7 @@ test('consulta muestra lo propio sin elegir a nadie', async ({ page }) => {
 });
 
 test('sin notas ve tarjetas Sin calificar, no error', async ({ page }) => {
+  await login(page, 'admin@uteq.edu.ec');
   const t2 = Date.now().toString(36);
   const crea = await api(page, 'POST', '/estudiantes/', {
     cedula: '19' + String(Date.now()).slice(-8),

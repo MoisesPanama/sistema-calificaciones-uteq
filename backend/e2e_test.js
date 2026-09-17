@@ -103,8 +103,10 @@ const loginAs = async (email) => {
   log('Contexto usable', !!(materia && estudiante && tipo),
     `mat=${materia?.id_materia} est=${estudiante?.id_estudiante} tipo=${tipo?.id_tipo_evaluacion}`);
   if (materia && estudiante && tipo) {
+    const cursoE3 = (ctx.body.cursos || [])[0];
     const save = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: materia.id_materia,
+      id_curso: cursoE3?.id_curso,
       id_parcial: parcial ? parcial.id_parcial : null,
       id_ciclo: ciclo ? ciclo.id_ciclo : null,
       notas: { [estudiante.id_estudiante]: { [tipo.id_tipo_evaluacion]: '8.50' } }
@@ -112,6 +114,7 @@ const loginAs = async (email) => {
     log('Lote con parcial/ciclo', save.status === 200 && save.body.ok, save.body.mensaje || save.body.error);
     const bad = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: materia.id_materia,
+      id_curso: cursoE3?.id_curso,
       id_parcial: 999999,
       notas: { [estudiante.id_estudiante]: { [tipo.id_tipo_evaluacion]: '8.50' } }
     });
@@ -291,14 +294,35 @@ const loginAs = async (email) => {
   log('Listar asignaciones', asg.status === 200 && Array.isArray(asg.body.asignaciones), `${asg.body.asignaciones?.length}`);
   const opt = await get(`/asignaciones/opciones?id_periodo=${idPeriodo}`);
   log('Opciones para formulario', opt.status === 200 && opt.body.profesores?.length > 0 && opt.body.materias?.length > 0, '');
-  const asgBody = { id_profesor: 5, id_materia: 7, id_periodo: idPeriodo, id_curso: null };
-  const creaAsg1 = await post('/asignaciones/', asgBody);
-  log('Asignar materia general', creaAsg1.status === 201, creaAsg1.body.error || '');
-  const creaAsg2 = await post('/asignaciones/', asgBody);
-  log('Asignacion duplicada -> 409', creaAsg2.status === 409, '');
-  if (creaAsg1.body.id_asignacion) {
-    const borraAsg = await del(`/asignaciones/${creaAsg1.body.id_asignacion}`);
-    log('Quitar asignacion', borraAsg.status === 200, borraAsg.body.error || '');
+  // Par profesor+materia+curso aun no asignado (M10: sin General).
+  const asgExist = asg.body.asignaciones || [];
+  const cursosPer = await get(`/cursos/?id_periodo=${idPeriodo}`);
+  const listaCursos = cursosPer.body.cursos || [];
+  let asgBody = null;
+  for (const p of (opt.body.profesores || []).slice(0, 4)) {
+    for (const m of (opt.body.materias || []).slice(0, 6)) {
+      for (const c of listaCursos.slice(0, 6)) {
+        const ya = asgExist.some(a => String(a.id_profesor) === String(p.id_profesor)
+          && String(a.id_materia) === String(m.id_materia)
+          && String(a.id_curso) === String(c.id_curso));
+        if (!ya) { asgBody = { id_profesor: p.id_profesor, id_materia: m.id_materia, id_periodo: idPeriodo, id_curso: c.id_curso }; break; }
+      }
+      if (asgBody) break;
+    }
+    if (asgBody) break;
+  }
+  log('Hay tupla libre para asignar', !!asgBody, '');
+  const sinCurso = await post('/asignaciones/', { id_profesor: asgBody?.id_profesor, id_materia: asgBody?.id_materia, id_periodo: idPeriodo });
+  log('Asignar sin curso -> 400', sinCurso.status === 400, '');
+  if (asgBody) {
+    const creaAsg1 = await post('/asignaciones/', asgBody);
+    log('Asignar materia general', creaAsg1.status === 201, creaAsg1.body.error || '');
+    const creaAsg2 = await post('/asignaciones/', asgBody);
+    log('Asignacion duplicada -> 409', creaAsg2.status === 409, '');
+    if (creaAsg1.body.id_asignacion) {
+      const borraAsg = await del(`/asignaciones/${creaAsg1.body.id_asignacion}`);
+      log('Quitar asignacion', borraAsg.status === 200, borraAsg.body.error || '');
+    }
   }
 
   console.log('\n=== 13. ROL ESTUDIANTE: SOLO LO SUYO, SIN REPORTES ===');
@@ -364,6 +388,7 @@ const loginAs = async (email) => {
     `${(tiposAct.body.tipos || []).length} tipos`);
   const ctx15 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
   const mat15 = (ctx15.body.materias || [])[0];
+  const cur15 = (ctx15.body.cursos || [])[0];
   const tag15 = Date.now().toString(36);
   let idAct15 = null;
   if (mat15) {
@@ -392,6 +417,7 @@ const loginAs = async (email) => {
     const est15 = (ctxA.body.estudiantes || [])[0];
     const notaAct = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: mat15.id_materia,
+      id_curso: cur15?.id_curso,
       id_parcial: parcial ? parcial.id_parcial : null,
       id_ciclo: ciclo ? ciclo.id_ciclo : null,
       id_actividad: idAct15,
@@ -419,7 +445,7 @@ const loginAs = async (email) => {
   if (inactivo) {
     const rInac = await post('/calificaciones/', {
       id_estudiante: 1, id_materia: 1, id_periodo: inactivo.id_periodo,
-      id_tipo_evaluacion: 1, valor: 8
+      id_tipo_evaluacion: 4, valor: 8
     });
     log('Periodo inactivo -> 400', rInac.status === 400, rInac.body.error || '');
   } else {
@@ -487,7 +513,7 @@ const loginAs = async (email) => {
     if (alB) {
       const cong = await post('/calificaciones/', {
         id_estudiante: alB.id_estudiante, id_materia: 1, id_periodo: idPeriodo,
-        id_tipo_evaluacion: 1, valor: 8
+        id_tipo_evaluacion: 4, valor: 8
       });
       log('Nota con acta validada -> 400', cong.status === 400, cong.body.error || '');
     }
@@ -616,7 +642,7 @@ const loginAs = async (email) => {
   await loginAs('admin@uteq.edu.ec');
   const obs19 = await post('/calificaciones/', {
     id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo,
-    id_tipo_evaluacion: 1, valor: 8.5, observacion: 'E2E obs ' + Date.now().toString(36)
+    id_tipo_evaluacion: 4, valor: 8.5, observacion: 'E2E obs ' + Date.now().toString(36)
   });
   log('Individual con observacion', obs19.status === 201, obs19.body.error || '');
   const consObs = await get(`/consulta/?id_periodo=${idPeriodo}&id_estudiante=1`);
@@ -640,11 +666,20 @@ const loginAs = async (email) => {
   }
   await loginAs('elena.romero@uteq.edu.ec');
   const faltaAjen = await post('/asistencias/', {
-    id_estudiante: 1, id_materia: 1, id_periodo: idPeriodo, motivo: 'falta'
+    id_estudiante: 1, id_materia: 4, id_periodo: idPeriodo, motivo: 'falta'
   });
   log('Falta en materia no asignada -> 403', faltaAjen.status === 403, '');
   await loginAs('fernando.castillo@uteq.edu.ec');
-  const faltaRep = await get('/asistencias/?id_estudiante=8&id_materia=1&id_periodo=' + idPeriodo);
+  // Hijo dinamico: primer alumno de su pagina 1 (los hijos E2E
+  // acumulan y los ids fijos se mueven de pagina).
+  const grRep = await get(`/consulta/grupos?id_periodo=${idPeriodo}`);
+  const gRep = (grRep.body.grupos || [])[0];
+  let hijoRep = '2';
+  if (gRep) {
+    const nomRep = await get(`/consulta/grupo?id_periodo=${idPeriodo}&id_materia=${gRep.id_materia}&id_curso=${gRep.id_curso || ''}&page=1&limit=10`);
+    if ((nomRep.body.datos || []).length > 0) hijoRep = String(nomRep.body.datos[0].id_estudiante);
+  }
+  const faltaRep = await get(`/asistencias/?id_estudiante=${hijoRep}&id_materia=1&id_periodo=` + idPeriodo);
   log('Representante ve faltas del hijo', faltaRep.status === 200, '');
   const faltaRep2 = await get('/asistencias/?id_estudiante=1&id_materia=1&id_periodo=' + idPeriodo);
   log('Representante no ve ajenos -> 403', faltaRep2.status === 403, '');
@@ -665,52 +700,50 @@ const loginAs = async (email) => {
   const nombres20 = (ctx20.body.tiposEvaluacion || []).map(t => t.nombre);
   log('Planilla sin Parcial 1/2', !nombres20.some(n => /^parcial \d/i.test(n)), nombres20.join(', '));
 
-  console.log('\n=== 21. PREINSCRIPCION PUBLICA + APROBACION ===');
+  console.log('\n=== 21. PREINSCRIPCION PUBLICA + APROBACION (M9: cupo/nivel) ===');
   for (const k of Object.keys(cookies)) delete cookies[k];
   const tag21 = Date.now().toString(36);
-  const solBody = new URLSearchParams({
-    nombres: 'Preins', apellidos: 'Crito Uno',
-    cedula: '29' + String(Date.now()).slice(-8),
+  // Autocura de cupo: las corridas acumulan pendientes que ocupan lugar.
+  await loginAs('admin@uteq.edu.ec');
+  const cur21b = await get(`/cursos/?id_periodo=${idPeriodo}`);
+  const c8e2e = ((cur21b.body.cursos || []).filter(c => Number(c.nivel) === 8) || [])
+    .sort((a, b) => Number(b.disponibles) - Number(a.disponibles))[0];
+  if (c8e2e && Number(c8e2e.disponibles) < 2) {
+    await put(`/cursos/${c8e2e.id_curso}`, {
+      nombre: c8e2e.nombre, paralelo: c8e2e.paralelo, nivel: 8,
+      cupo_max: Number(c8e2e.ocupados) + 5
+    });
+  }
+  for (const k of Object.keys(cookies)) delete cookies[k];
+  const pdfE2E = Buffer.from('%PDF-1.4 e2e m9\n');
+  async function postSolicitud(campos, conPdf) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(campos)) fd.append(k, String(v));
+    if (conPdf) fd.append('documento', new Blob([pdfE2E], { type: 'application/pdf' }), 'doc.pdf');
+    const r = await fetch('http://localhost:3000/api/preinscripciones', { method: 'POST', body: fd });
+    let body = {};
+    try { body = await r.json(); } catch { /* vacio */ }
+    return { status: r.status, body };
+  }
+  // Elegibles para cedula nueva: nivel inicial con cupo.
+  const opt21 = await (await fetch(`http://localhost:3000/api/preinscripciones/opciones?id_periodo=${idPeriodo}`)).json();
+  const curso21 = (opt21.elegibles || [])[0];
+  log('Elegibles con cupo para nuevo', !!curso21 && opt21.tipo === 'nuevo' && opt21.matricula_abierta === true,
+    curso21 ? `${curso21.nombre} ${curso21.paralelo} (${curso21.disponibles} cupos)` : (opt21.error || ''));
+  const ced21 = '29' + String(Date.now()).slice(-8);
+  const base21 = {
+    nombres: 'Preins', apellidos: 'Crito Uno', cedula: ced21,
     fecha_nacimiento: '2012-04-05',
     rep_nombres: 'Padre Pre', rep_apellidos: 'Crito Uno',
-    rep_telefono: '0990000111', id_periodo: String(idPeriodo)
-  }).toString();
-  const sol21 = await new Promise((resolve) => {
-    const opts = {
-      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
-    };
-    const req = http.request(opts, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        let json; try { json = JSON.parse(data); } catch { json = data; }
-        resolve({ status: res.statusCode, body: json });
-      });
-    });
-    req.on('error', () => resolve({ status: 0, body: {} }));
-    req.write(solBody);
-    req.end();
-  });
-  log('Solicitud publica sin login', sol21.status === 201 && !!sol21.body.id_solicitud, sol21.body.error || '');
-  const dup21 = await new Promise((resolve) => {
-    const opts = {
-      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(solBody) }
-    };
-    const req = http.request(opts, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        let json; try { json = JSON.parse(data); } catch { json = data; }
-        resolve({ status: res.statusCode, body: json });
-      });
-    });
-    req.on('error', () => resolve({ status: 0, body: {} }));
-    req.write(solBody);
-    req.end();
-  });
+    rep_parentesco: 'padre', rep_documento: '17' + String(Date.now()).slice(-8),
+    rep_telefono: '0990000111', id_periodo: String(idPeriodo), id_curso: String(curso21.id_curso)
+  };
+  const sol21 = await postSolicitud(base21, true);
+  log('Solicitud publica sin login', sol21.status === 201 && !!sol21.body.id_solicitud && sol21.body.tipo === 'nuevo', sol21.body.error || '');
+  const dup21 = await postSolicitud(base21, true);
   log('Duplicada -> 409', dup21.status === 409, '');
+  const sinPdf = await postSolicitud({ ...base21, cedula: '27' + String(Date.now()).slice(-8) }, false);
+  log('Sin PDF -> 400', sinPdf.status === 400, '');
   await loginAs('elena.romero@uteq.edu.ec');
   const bandejaProf = await get('/preinscripciones/?estado=pendiente');
   log(' Profesora no ve bandeja -> 403', bandejaProf.status === 403, '');
@@ -725,28 +758,12 @@ const loginAs = async (email) => {
     const verMat = await get(`/matriculas/?id_periodo=${idPeriodo}&q=${encodeURIComponent('Preins')}`);
     log('Matriculado visible', verMat.status === 200 && (verMat.body.datos || []).length > 0, '');
   }
-  const sol21b = await new Promise((resolve) => {
-    const b2 = new URLSearchParams({
-      nombres: 'Rech', apellidos: 'Zado Uno', cedula: '28' + String(Date.now()).slice(-8),
-      fecha_nacimiento: '2012-04-05', rep_nombres: 'Padre Re', rep_apellidos: 'Chazo Uno',
-      id_periodo: String(idPeriodo)
-    }).toString();
-    const opts = {
-      hostname: 'localhost', port: 3000, path: '/api/preinscripciones', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(b2) }
-    };
-    const req = http.request(opts, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        let json; try { json = JSON.parse(data); } catch { json = data; }
-        resolve({ status: res.statusCode, body: json });
-      });
-    });
-    req.on('error', () => resolve({ status: 0, body: {} }));
-    req.write(b2);
-    req.end();
-  });
+  const sol21b = await postSolicitud({
+    nombres: 'Rech', apellidos: 'Zado Uno', cedula: '28' + String(Date.now()).slice(-8),
+    fecha_nacimiento: '2012-04-05', rep_nombres: 'Padre Re', rep_apellidos: 'Chazo Uno',
+    rep_parentesco: 'madre', rep_documento: '18' + String(Date.now()).slice(-8),
+    id_periodo: String(idPeriodo), id_curso: String(curso21.id_curso)
+  }, true);
   if (sol21b.body.id_solicitud) {
     const rech = await post(`/preinscripciones/${sol21b.body.id_solicitud}/rechazar`, { motivo: 'E2E: cupo lleno' });
     log('Rechazar con motivo', rech.status === 200, rech.body.error || '');

@@ -200,7 +200,18 @@ psql -U postgres -d calificaciones_uteq -f database/28_preinscripciones.sql
 psql -U postgres -d calificaciones_uteq -f database/29_supletorios.sql
 psql -U postgres -d calificaciones_uteq -f database/30_cierre_recuperacion.sql
 psql -U postgres -d calificaciones_uteq -f database/31_notas_coherentes.sql
+psql -U postgres -d calificaciones_uteq -f database/32_matricula_cupos.sql
+psql -U postgres -d calificaciones_uteq -f database/33_sin_general.sql
 ```
+
+> **Reseed de pruebas (solo BD test, destructivo):**
+> ```bash
+> psql -h localhost -p 5433 -U postgres -d calificaciones_uteq_test -v ON_ERROR_STOP=1 -f database/reseed_colegio_test.sql
+> TEST_USER_IDS=1,4,5,6,7,8,9 npm run seed:test-users  # desde backend/
+> ```
+> Deja 1 admin, 1 psicólogo, 3 profesores, 4 materias, 5 cursos
+> (8vo A/B, 9no A/B, 10mo A) con nivel y cupo, 60 estudiantes
+> con representantes, actividades y notas variadas.
 
 > **Nota:** la `13` revierte los `GRANT ALL` de la `12`/`fix_tables.sql`
 > y deja a `app_uteq` con privilegios mínimos (ver encabezado del
@@ -302,16 +313,16 @@ sistema-calificaciones-uteq/
 | GET | `/api/auth/me` | Sesión actual (guard del frontend) |
 | POST | `/api/auth/logout` | Cierra sesión |
 | GET | `/api/dashboard/` | Resumen por rol (métricas + bloques: movimientos, respaldos, materias, hijos, rendimiento) |
-| GET/POST | `/api/estudiantes/` | Listado (`?q=&page=&limit=`, formato `{datos,paginacion}`) / crear |
+| GET/POST | `/api/estudiantes/` | Listado (`?q=&page=&limit=`) / crear (solo admin; la familia entra por preinscripción) |
 | GET | `/api/estudiantes/representantes` | Select del formulario |
-| GET/POST | `/api/representantes/` | Buscador (`?q=&page=&limit=`) / crear (cualquiera autenticado) |
+| GET/POST | `/api/representantes/` | Buscador (`?q=&page=&limit=`) / crear (solo admin) |
 | PUT/DELETE | `/api/representantes/:id` | Editar / eliminar si no tiene estudiantes |
 | GET/PUT | `/api/estudiantes/:id` | Obtener / actualizar |
 | GET/POST | `/api/materias/` | Listado / crear |
-| GET/POST | `/api/periodos/` | Listado + periodo activo / crear |
+| GET/POST | `/api/periodos/` | Listado + periodo activo / crear (con ventana `matricula_desde/hasta`) |
 | POST | `/api/periodos/:id/activar` | Fijar periodo activo (solo admin) |
 | GET | `/api/calificaciones/contexto` | Materias, cursos, tipos, estudiantes y notas |
-| POST | `/api/calificaciones/lote` | Guardado masivo transaccional (`id_parcial`/`id_ciclo` opcionales) |
+| POST | `/api/calificaciones/lote` | Guardado masivo transaccional (materia y curso obligatorios; `id_parcial`/`id_ciclo` opcionales) |
 | POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
 | GET | `/api/consulta/` | Notas + promedios (estudiante: solo lo suyo, ignora `id_estudiante`) |
 | GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
@@ -326,7 +337,7 @@ sistema-calificaciones-uteq/
 | GET | `/api/catalogos/tipos-evaluacion` | Tipos de evaluación |
 | GET | `/api/catalogos/ciclos` | Ciclos del periodo (`?id_periodo=`) |
 | GET | `/api/catalogos/parciales` | Parciales del ciclo (`?id_ciclo=`) |
-| GET/POST | `/api/cursos/` | Cursos del periodo / crear (solo admin) |
+| GET/POST | `/api/cursos/` | Cursos del periodo (con nivel, cupo y disponibles) / crear (solo admin) |
 | PUT/DELETE | `/api/cursos/:id` | Editar / eliminar si no tiene uso (solo admin) |
 | GET | `/api/cursos/tutores` | Profesores para tutor |
 | GET/POST | `/api/ciclos/` | Ciclos del periodo / crear (solo admin, avisa si Σ pesos ≠ 1) |
@@ -335,7 +346,7 @@ sistema-calificaciones-uteq/
 | PUT/DELETE | `/api/parciales/:id` | Editar / eliminar si no tiene notas (solo admin) |
 | GET/POST | `/api/tipos/` | Tipos de evaluación / crear (solo admin) |
 | PUT/DELETE | `/api/tipos/:id` | Editar / eliminar si no tiene notas (solo admin) |
-| GET/POST | `/api/asignaciones/` | Asignaciones del periodo / asignar materia＋curso a profesor (solo admin) |
+| GET/POST | `/api/asignaciones/` | Asignaciones del periodo / asignar materia＋curso a profesor (curso obligatorio, solo admin) |
 | GET | `/api/asignaciones/opciones` | Profesores, materias y cursos para el formulario |
 | DELETE | `/api/asignaciones/:id` | Quitar asignación (solo admin) |
 | GET/POST | `/api/actas/` | Actas del periodo / crear borrador (solo admin) |
@@ -346,6 +357,11 @@ sistema-calificaciones-uteq/
 | PUT | `/api/supletorios/:id` | Editar nota (solo registrado, no validado) |
 | POST | `/api/supletorios/:id/validar` | Congelar acta y cerrar estado de la materia (solo admin) |
 | DELETE | `/api/supletorios/:id` | Eliminar solo en registrado (admin o quien lo creó) |
+| GET | `/api/preinscripciones/opciones?cedula=&id_periodo=` | Cursos elegibles con cupo + tipo + ventana (público) |
+| POST | `/api/preinscripciones/` | Solicitud pública con PDF (bloquea sin cupo / fuera de ventana) |
+| GET | `/api/preinscripciones/?estado=&tipo=&q=` | Bandeja admin (filtro tipo y búsqueda por cédula) |
+| POST | `/api/preinscripciones/:id/aprobar` | Aprueba con bloqueo de cupo (nuevo o rematrícula por nivel) |
+| GET | `/api/matriculas/mia` | Matrícula propia (estudiante) o de hijos (representante) + ventana |
 | POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
 | GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |
 | POST | `/api/entregas/:id/enviar` | Marcar enviada (propio, docente o admin) |
@@ -398,6 +414,7 @@ sistema-calificaciones-uteq/
 9. Panel de auditoría (solo administrador)
 10. Preinscripción pública + bandeja de aprobación (solo admin)
 11. Supletorio: ciclo supletorio → remedial → gracia + cierre de estado (docente/admin, valida admin)
+12. Mi matrícula (estudiante/representante, con aviso si la ventana está cerrada)
 
 ## Notas de diseño
 

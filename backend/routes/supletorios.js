@@ -18,7 +18,8 @@ const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware
 const {
     getPeriodoActivo,
     getMateriasPermitidas,
-    getCursosPermitidos
+    getCursosPermitidos,
+    periodoDe
 } = require('../helpers/contexto');
 
 // Promedio anual via BD; null si no hay notas (P0001).
@@ -77,7 +78,7 @@ router.get('/', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'No tienes permiso para ver supletorios.' });
         }
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ supletorios: [] });
         const idMateria = req.query.id_materia || '';
         const idCurso = req.query.id_curso || '';

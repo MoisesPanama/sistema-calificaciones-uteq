@@ -12,7 +12,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, periodoDe } = require('../helpers/contexto');
 const { leerPaginacion, respuestaPaginada } = require('../helpers/paginacion');
 
 // Promedio via BD (null si P0001 = sin notas). Nunca a mano.
@@ -55,7 +55,7 @@ router.get('/', requireAuth, requireRole('administrador', 'profesor', 'represent
             'SELECT id_periodo, nombre FROM periodos_academicos ORDER BY fecha_inicio DESC'
         );
 
-        const idPeriodo = req.query.id_periodo || req.session.periodoSeleccionado || String(periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         const idCurso = req.query.id_curso || '';
         const idMateria = req.query.id_materia || '';
 

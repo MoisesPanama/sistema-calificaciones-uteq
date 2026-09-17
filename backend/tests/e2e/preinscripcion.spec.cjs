@@ -1,9 +1,31 @@
-// Preinscripcion publica + bandeja admin (M3).
+// Preinscripcion publica + bandeja admin (M3 + M9 cupos).
 const { test, expect } = require('@playwright/test');
 const { login, api } = require('./helpers.cjs');
 
+// Autocura: garantiza un 8vo con cupo (las corridas acumulan
+// pendientes que ocupan lugar) y devuelve su id_curso.
+async function asegurarCupo8vo(page) {
+  await login(page, 'admin@uteq.edu.ec');
+  const per = await api(page, 'GET', '/periodos/');
+  const idP = per.data.periodoActivo.id_periodo;
+  const cur = await api(page, 'GET', `/cursos/?id_periodo=${idP}`);
+  const c8 = (cur.data.cursos || [])
+    .filter((c) => Number(c.nivel) === 8)
+    .sort((a, b) => Number(b.disponibles) - Number(a.disponibles))[0];
+  expect(c8).toBeTruthy();
+  if (Number(c8.disponibles) < 2) {
+    const r = await api(page, 'PUT', `/cursos/${c8.id_curso}`, {
+      nombre: c8.nombre, paralelo: c8.paralelo, nivel: 8,
+      cupo_max: Number(c8.ocupados) + 5
+    });
+    expect(r.status).toBe(200);
+  }
+  return c8.id_curso;
+}
+
 test('wizard publico envia solicitud sin login', async ({ page }) => {
   const tag = Date.now().toString(36);
+  const idCurso = await asegurarCupo8vo(page);
   await page.goto('/pages/preinscripcion.html');
   await expect(page.locator('#paso-1')).toBeVisible({ timeout: 15000 });
   await page.locator('#nombres').fill('Preinscrito');
@@ -16,6 +38,10 @@ test('wizard publico envia solicitud sin login', async ({ page }) => {
   await page.locator('#rep_parentesco').selectOption('padre');
   await page.locator('#rep_documento').fill('17' + String(Date.now()).slice(-8));
   await page.locator('#sig2').click();
+  // Curso obligatorio: 8vo con cupo asegurado.
+  await expect(page.locator(`#sel-curso option[value="${idCurso}"]`)).toBeAttached({ timeout: 15000 });
+  await page.locator('#sel-curso').selectOption(String(idCurso));
+  await expect(page.locator('#aviso-tipo')).toContainText('nueva', { timeout: 10000 });
   await page.locator('#documento').setInputFiles({
     name: 'documento.pdf',
     mimeType: 'application/pdf',
@@ -27,6 +53,7 @@ test('wizard publico envia solicitud sin login', async ({ page }) => {
 
 test('sin PDF la solicitud se rechaza (400)', async ({ page }) => {
   const tag = Date.now().toString(36);
+  const idCurso = await asegurarCupo8vo(page);
   await page.goto('/pages/preinscripcion.html');
   await expect(page.locator('#paso-1')).toBeVisible({ timeout: 15000 });
   await page.locator('#nombres').fill('SinPdf');
@@ -39,6 +66,8 @@ test('sin PDF la solicitud se rechaza (400)', async ({ page }) => {
   await page.locator('#rep_parentesco').selectOption('madre');
   await page.locator('#rep_documento').fill('18' + String(Date.now()).slice(-8));
   await page.locator('#sig2').click();
+  await expect(page.locator(`#sel-curso option[value="${idCurso}"]`)).toBeAttached({ timeout: 15000 });
+  await page.locator('#sel-curso').selectOption(String(idCurso));
   await page.locator('#enviar').click();
   await expect(page.locator('#error')).toContainText('PDF', { timeout: 15000 });
 });

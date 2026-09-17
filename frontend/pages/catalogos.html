@@ -62,6 +62,10 @@
           <input type="text" id="cur-nombre" placeholder="Octavo EGB" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
           <label for="cur-paralelo" style="font-size:0.82rem;font-weight:600;">Paralelo</label>
           <input type="text" id="cur-paralelo" placeholder="A" maxlength="10" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="cur-nivel" style="font-size:0.82rem;font-weight:600;">Nivel (8 = 8vo, 9 = 9no, 10 = 10mo)</label>
+          <input type="number" id="cur-nivel" min="1" max="12" placeholder="8" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
+          <label for="cur-cupo" style="font-size:0.82rem;font-weight:600;">Cupo máximo (puestos del aula)</label>
+          <input type="number" id="cur-cupo" min="1" step="1" placeholder="30" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;">
           <label for="cur-tutor" style="font-size:0.82rem;font-weight:600;">Tutor (opcional)</label>
           <select id="cur-tutor" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Sin tutor --</option></select>
           <div style="display:flex;gap:0.5rem;">
@@ -179,8 +183,8 @@
           <select id="asg-prof" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
           <label for="asg-mat" style="font-size:0.82rem;font-weight:600;">Materia</label>
           <select id="asg-mat" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.6rem;"></select>
-          <label for="asg-cur" style="font-size:0.82rem;font-weight:600;">Curso (vacío = todos los paralelos)</label>
-          <select id="asg-cur" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Todos --</option></select>
+          <label for="asg-cur" style="font-size:0.82rem;font-weight:600;">Curso (obligatorio, uno concreto)</label>
+          <select id="asg-cur" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;margin-bottom:0.8rem;"><option value="">-- Selecciona --</option></select>
           <div style="display:flex;gap:0.5rem;">
             <button class="btn-primary" id="asg-guardar">Asignar</button>
           </div>
@@ -279,13 +283,16 @@
     }
 
     // ---------- CURSOS ----------
+    const nivTxt = (n) => n == null || n === '' ? '—' : (n == 8 ? '8vo' : n == 9 ? '9no' : n == 10 ? '10mo' : n + '°');
     async function cargarCursos() {
       const d = await apiGet('/cursos/?id_periodo=' + encodeURIComponent(periodoDe('cur')));
       const div = document.getElementById('lista-cursos');
       if (!d.cursos || d.cursos.length === 0) { div.innerHTML = '<p>No hay cursos en este periodo.</p>'; return; }
       div.innerHTML = `<div class="table-responsive"><table><thead><tr>
-        <th>Curso</th><th>Paralelo</th><th>Tutor</th><th></th></tr></thead><tbody>` +
+        <th>Curso</th><th>Paralelo</th><th>Nivel</th><th>Cupo</th><th>Tutor</th><th></th></tr></thead><tbody>` +
         d.cursos.map(c => `<tr><td>${esc(c.nombre)}</td><td>${esc(c.paralelo)}</td>
+          <td>${nivTxt(c.nivel)}</td>
+          <td>${esc(c.ocupados ?? 0)}/${esc(c.cupo_max ?? '—')}</td>
           <td>${c.tutor ? esc(c.tutor) : '—'}</td>${botonesEditarEliminar(c.id_curso, 'cur')}</tr>`).join('') +
         '</tbody></table></div>';
       div.querySelectorAll('[data-editar-cur]').forEach(b => b.onclick = async () => {
@@ -293,6 +300,8 @@
         document.getElementById('cur-id').value = c.id_curso;
         document.getElementById('cur-nombre').value = c.nombre;
         document.getElementById('cur-paralelo').value = c.paralelo;
+        document.getElementById('cur-nivel').value = c.nivel ?? '';
+        document.getElementById('cur-cupo').value = c.cupo_max ?? '';
         document.getElementById('cur-tutor').value = c.id_tutor || '';
         document.getElementById('cur-form-titulo').textContent = 'Editar curso';
         document.getElementById('cur-cancelar').style.display = 'inline-block';
@@ -310,6 +319,8 @@
       document.getElementById('cur-id').value = '';
       document.getElementById('cur-nombre').value = '';
       document.getElementById('cur-paralelo').value = '';
+      document.getElementById('cur-nivel').value = '';
+      document.getElementById('cur-cupo').value = '';
       document.getElementById('cur-tutor').value = '';
       document.getElementById('cur-form-titulo').textContent = 'Nuevo curso';
       document.getElementById('cur-cancelar').style.display = 'none';
@@ -607,7 +618,9 @@
             nombre: document.getElementById('cur-nombre').value,
             paralelo: document.getElementById('cur-paralelo').value || 'A',
             id_periodo: periodoDe('cur'),
-            id_tutor: document.getElementById('cur-tutor').value || null
+            id_tutor: document.getElementById('cur-tutor').value || null,
+            nivel: document.getElementById('cur-nivel').value === '' ? null : Number(document.getElementById('cur-nivel').value),
+            cupo_max: document.getElementById('cur-cupo').value === '' ? null : Number(document.getElementById('cur-cupo').value)
           };
           try {
             const r = id ? await apiPut('/cursos/' + id, body) : await apiPost('/cursos/', body);
@@ -673,10 +686,12 @@
 
         document.getElementById('asg-guardar').onclick = async () => {
           try {
+            const idCur = document.getElementById('asg-cur').value;
+            if (!idCur) { showError('El curso es obligatorio: no existen asignaciones generales.'); return; }
             const r = await apiPost('/asignaciones/', {
               id_profesor: document.getElementById('asg-prof').value,
               id_materia: document.getElementById('asg-mat').value,
-              id_curso: document.getElementById('asg-cur').value || null,
+              id_curso: idCur,
               id_periodo: periodoDe('asg')
             });
             showOk('Asignación guardada.');

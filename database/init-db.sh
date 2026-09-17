@@ -8,7 +8,7 @@ set -e
 export PGOPTIONS="-c search_path=colegio,public"
 PSQL="psql -v ON_ERROR_STOP=1 -U postgres -d calificaciones_uteq"
 
-echo "=== [init] Ejecutando migraciones 01-31 ==="
+echo "=== [init] Ejecutando migraciones 01-33 ==="
 
 for f in \
   01_schema.sql \
@@ -43,7 +43,9 @@ for f in \
   28_preinscripciones.sql \
   29_supletorios.sql \
   30_cierre_recuperacion.sql \
-  31_notas_coherentes.sql
+  31_notas_coherentes.sql \
+  32_matricula_cupos.sql \
+  33_sin_general.sql
 do
   echo "  -> $f"
   $PSQL -f "/docker-entrypoint-initdb.d/sql/$f"

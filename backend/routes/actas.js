@@ -9,13 +9,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireAuth, requireRole, setUsuarioAuditoria } = require('../middleware/auth');
-const { getPeriodoActivo } = require('../helpers/contexto');
+const { getPeriodoActivo, periodoDe } = require('../helpers/contexto');
 
 // GET /api/actas?id_periodo= -> actas del periodo con conteos
 router.get('/', requireAuth, async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
-        const idPeriodo = req.query.id_periodo || (periodoActivo && periodoActivo.id_periodo);
+        const idPeriodo = await periodoDe(req);
         if (!idPeriodo) return res.json({ actas: [] });
         const r = await pool.query(
             `SELECT a.id_acta, a.id_periodo, a.id_materia, a.id_curso, a.id_ciclo, a.id_parcial,

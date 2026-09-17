@@ -32,21 +32,26 @@ test('reporte usa la misma oficial que consulta', { timeout: 180000 }, async ({ 
 
 test('recuperacion validada visible en consulta y boletin', { timeout: 180000 }, async ({ page }) => {
   const { idPeriodo, materias } = await periodoYMaterias(page);
+  // Crea su propio validado (determinista, no depende de otros tests):
+  // busca un elegible <7 sin supletorio en las primeras materias.
   let hallado = null;
   for (const m of materias.slice(0, 6)) {
     const r = await api(page, 'GET', `/supletorios/?id_periodo=${idPeriodo}&id_materia=${m.id_materia}`);
     if (r.status !== 200) continue;
-    const fila = (r.data.supletorios || []).find((x) => {
-      const inst = x.instancias || {};
-      return Object.entries(inst).some(([, v]) => v && v.estado === 'validado');
+    const cand = (r.data.supletorios || []).find((x) => x.elegible && !x.id_supletorio);
+    if (!cand) continue;
+    const creado = await api(page, 'POST', '/supletorios/', {
+      id_estudiante: cand.id_estudiante, id_materia: m.id_materia,
+      id_periodo: idPeriodo, id_curso: cand.id_curso || null,
+      nota: 8.0, instancia: 'supletorio'
     });
-    if (fila) {
-      const [instancia, v] = Object.entries(fila.instancias).find(([, vv]) => vv.estado === 'validado');
-      hallado = { materia: m, fila, instancia, nota: v.nota };
-      break;
-    }
+    if (creado.status !== 201) continue;
+    const val = await api(page, 'POST', `/supletorios/${creado.data.id_supletorio}/validar`, {});
+    expect(val.status).toBe(200);
+    hallado = { materia: m, fila: cand, instancia: 'supletorio', nota: 8.0 };
+    break;
   }
-  expect(hallado, 'se esperaba al menos un validado (lo crean los tests M7)').toBeTruthy();
+  expect(hallado, 'se esperaba al menos un elegible <7 sin supletorio').toBeTruthy();
 
   const det = await api(page, 'GET', `/consulta/materia/${hallado.materia.id_materia}?id_estudiante=${hallado.fila.id_estudiante}&id_periodo=${idPeriodo}`);
   expect(det.status).toBe(200);

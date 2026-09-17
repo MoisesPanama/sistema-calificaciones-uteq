@@ -21,20 +21,11 @@
       <select id="sel-periodo"></select>
     </div>
 
-    <div class="mat-form-card" id="form-matricula">
-      <h3>Matricular estudiante</h3>
-      <div class="mat-form-grid">
-        <div>
-          <label for="sel-estudiante">Estudiante</label>
-          <select id="sel-estudiante"><option value="">Seleccionar...</option></select>
-        </div>
-        <div>
-          <label for="sel-curso">Curso</label>
-          <select id="sel-curso"><option value="">Sin curso</option></select>
-        </div>
-        <button class="btn-primary btn-sm" id="btn-matricular">Matricular</button>
-      </div>
-    </div>
+    <p style="font-size:0.88rem;color:#6b7280;margin-bottom:1.2rem;max-width:760px;">
+      La matrícula es <strong>ciega</strong>: la familia se preinscribe sola y
+      el admin solo <strong>aprueba o rechaza</strong> desde la bandeja.
+      No hay matrícula manual.
+    </p>
 
     <div class="mat-form-card" id="bandeja-sol">
       <h3>Solicitudes de preinscripción pendientes <span id="sol-count" class="badge"></span></h3>
@@ -75,13 +66,8 @@
     }
 
     async function cargarOpciones() {
-      const d = await apiGet('/matriculas/opciones?id_periodo=' + encodeURIComponent(periodoId));
-      const selEst = document.getElementById('sel-estudiante');
-      selEst.innerHTML = '<option value="">Seleccionar...</option>' +
-        (d.estudiantes || []).map(e => `<option value="${e.id_estudiante}">${esc(e.apellidos)} ${esc(e.nombres)} (${esc(e.cedula)})</option>`).join('');
-      const selCur = document.getElementById('sel-curso');
-      selCur.innerHTML = '<option value="">Sin curso</option>' +
-        (d.cursos || []).map(c => `<option value="${c.id_curso}">${esc(c.nombre)} ${esc(c.paralelo || '')}</option>`).join('');
+      // Sin matrícula manual (M9): no hay selects que llenar.
+      return;
     }
 
     async function cargarSolicitudes() {
@@ -95,8 +81,9 @@
         const div = document.getElementById('lista-sol');
         if (arr.length === 0) { div.innerHTML = '<p style="font-size:0.85rem;color:#6b7280;">Sin solicitudes pendientes.</p>'; return; }
         div.innerHTML = `<div class="table-responsive"><table><thead><tr>
-          <th>Aspirante</th><th>Cédula</th><th>Acudiente</th><th>Parentesco</th><th>Curso</th><th></th></tr></thead><tbody>` +
+          <th>Aspirante</th><th>Cédula</th><th>Tipo</th><th>Acudiente</th><th>Parentesco</th><th>Curso</th><th></th></tr></thead><tbody>` +
           arr.map(s => `<tr><td>${esc(s.nombres)} ${esc(s.apellidos)}</td><td>${esc(s.cedula)}</td>
+            <td>${s.tipo === 'rematricula' ? '<span class="pill pill-info">rematricula</span>' : '<span class="pill pill-muted">nuevo</span>'}</td>
             <td>${esc(s.rep_nombres)} ${esc(s.rep_apellidos)}${s.rep_documento ? '<br><span style="font-size:0.78rem;color:#6b7280;">Doc: ' + esc(s.rep_documento) + '</span>' : ''}</td>
             <td>${esc(s.rep_parentesco || '—')}</td>
             <td>${s.curso_nombre ? esc(s.curso_nombre) + ' ' + esc(s.paralelo || '') : '—'}</td>
@@ -105,10 +92,10 @@
               <button class="btn-secondary btn-sm btn-danger-text" data-rechazar="${s.id_solicitud}">Rechazar</button>
             </td></tr>`).join('') + '</tbody></table></div>';
         div.querySelectorAll('[data-aprobar]').forEach(b => b.onclick = async () => {
-          if (!confirm('¿Aprobar y matricular? Se crearán representante, usuario y matrícula.')) return;
+          if (!confirm('¿Aprobar y matricular en el curso elegido?')) return;
           try {
             const r = await apiPost(`/preinscripciones/${b.dataset.aprobar}/aprobar`, {});
-            showOk(`${r.mensaje} Usuario: ${r.email} / UTEQ2026`);
+            showOk(r.password ? `${r.mensaje} Usuario: ${r.email} / ${r.password}` : `${r.mensaje} (${r.email})`);
             await cargarSolicitudes();
             await cargarLista(1);
           } catch (err) { showError(err.message); }
@@ -180,19 +167,6 @@
         document.getElementById('busqueda').onkeydown = (e) => { if (e.key === 'Enter') cargarLista(1).catch(showError); };
         document.getElementById('btn-buscar-sol').onclick = () => cargarSolicitudes().catch(showError);
         document.getElementById('busqueda-sol').onkeydown = (e) => { if (e.key === 'Enter') cargarSolicitudes().catch(showError); };
-        document.getElementById('btn-matricular').onclick = async () => {
-          const idEst = document.getElementById('sel-estudiante').value;
-          const idCur = document.getElementById('sel-curso').value;
-          if (!idEst) { showError('Selecciona un estudiante.'); return; }
-          try {
-            await apiPost('/matriculas/', {
-              id_estudiante: Number(idEst),
-              id_periodo: Number(periodoId),
-              id_curso: idCur ? Number(idCur) : null
-            });
-            await Promise.all([cargarOpciones(), cargarLista(1)]);
-          } catch (err) { showError(err.message); }
-        };
       } catch (err) { showError(err.message); }
     })();
   </script>
