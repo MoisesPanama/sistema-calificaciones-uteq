@@ -45,31 +45,25 @@ test('asignar desde catalogos responde ok o 409 justificado', async ({ page }) =
 
 test('observacion visible y falta registrable en el detalle', async ({ page }) => {
   const tag = Date.now().toString(36);
-  // Bloque SIN acta validada (e2e congela Matematicas en un curso)
-  // + primer hijo visible en SU pagina 1 (los hijos E2E acumulan
-  // y los ids fijos se mueven de pagina: nada hardcodeado).
+  // Bloque SIN acta validada (e2e congela Matematicas en un curso).
+  // M12: primero se elige HIJO (nada hardcodeado).
   await login(page, 'fernando.castillo@uteq.edu.ec');
   const per = await api(page, 'GET', '/periodos/');
   const idPeriodo = per.data.periodoActivo.id_periodo;
-  const gr = await api(page, 'GET', `/consulta/grupos?id_periodo=${idPeriodo}`);
-  const bloques = (gr.data.grupos || []).map((g, i) => ({ ...g, i })).filter((g) => g.materia !== 'Matematicas');
+  const lh = await api(page, 'GET', `/consulta/?id_periodo=${idPeriodo}`);
+  const hijo0 = (lh.data.estudiantes || [])[0];
+  expect(hijo0).toBeTruthy();
+  const idHijoFijo = hijo0.id_estudiante;
+  const gr = await api(page, 'GET', `/consulta/grupos?id_periodo=${idPeriodo}&id_estudiante=${idHijoFijo}`);
+  const bloques = (gr.data.grupos || []).filter((g) => g.materia !== 'Matematicas');
   expect(bloques.length).toBeGreaterThan(0);
-  let idx = -1;
-  let idHijo = null;
-  let idMateria = null;
-  for (const g of bloques) {
-    const nom = await api(page, 'GET', `/consulta/grupo?id_periodo=${idPeriodo}&id_materia=${g.id_materia}&id_curso=${g.id_curso || ''}&page=1&limit=10`);
-    if ((nom.data.datos || []).length > 0) {
-      idx = g.i; idHijo = nom.data.datos[0].id_estudiante; idMateria = g.id_materia;
-      break;
-    }
-  }
-  expect(idx).toBeGreaterThanOrEqual(0);
+  const g0 = bloques[0];
+  const idMateria = g0.id_materia;
   // Observacion en una nota del hijo (tipo 4 = Tarea, como admin).
   // Reutiliza la de corridas previas si ya existe (grano legacy
   // unico por estudiante+materia+tipo): asi es determinista.
   await login(page, 'admin@uteq.edu.ec');
-  const previa = await api(page, 'GET', `/consulta/?id_periodo=${idPeriodo}&id_estudiante=${idHijo}&id_materia=${idMateria}`);
+  const previa = await api(page, 'GET', `/consulta/?id_periodo=${idPeriodo}&id_estudiante=${idHijoFijo}&id_materia=${idMateria}`);
   const obsVieja = (previa.data.materias || [])
     .flatMap((m) => m.parciales || [])
     .map((p) => p.observacion || '')
@@ -78,18 +72,22 @@ test('observacion visible y falta registrable en el detalle', async ({ page }) =
   if (!tagObs) {
     tagObs = 'PWOBS ' + tag;
     const creada = await api(page, 'POST', '/calificaciones/', {
-      id_estudiante: idHijo, id_materia: idMateria, id_periodo: idPeriodo,
+      id_estudiante: idHijoFijo, id_materia: idMateria, id_periodo: idPeriodo,
       id_tipo_evaluacion: 4, valor: 8.2, observacion: tagObs
     });
     expect(creada.status).toBe(201);
   }
-  // Representante la ve en el detalle.
+  // Representante la ve en el detalle (hijo -> grupo -> nomina).
   await login(page, 'fernando.castillo@uteq.edu.ec');
   await go(page, '/pages/consulta.html');
-  await expect(page.locator('.cat-card').first()).toBeVisible({ timeout: 15000 });
-  await page.locator(`.cat-card[data-grupo="${idx}"]`).click();
+  await expect(page.locator('.cat-card[data-hijo]').first()).toBeVisible({ timeout: 15000 });
+  await page.locator(`.cat-card[data-hijo="${idHijoFijo}"]`).click();
+  const nombreMat = bloques.find((g) => String(g.id_materia) === String(idMateria)).materia;
+  const cardGrupo = page.locator('.cat-card[data-grupo]', { hasText: nombreMat }).first();
+  await expect(cardGrupo).toBeVisible({ timeout: 15000 });
+  await cardGrupo.click();
   await expect(page.locator('#nomina tbody tr').first()).toBeVisible({ timeout: 15000 });
-  await page.locator(`[data-ver-est="${idHijo}"]`).click();
+  await page.locator(`[data-ver-est="${idHijoFijo}"]`).click();
   await expect(page.locator('#vista-detalle')).toBeVisible();
   await expect(page.locator('#resultado')).toContainText(tagObs, { timeout: 15000 });
 });
@@ -114,8 +112,10 @@ test('docente registra falta desde el detalle', async ({ page }) => {
 test('materias en acordeon con desglose perezoso', async ({ page }) => {
   await login(page, 'fernando.castillo@uteq.edu.ec');
   await go(page, '/pages/consulta.html');
-  await expect(page.locator('.cat-card').first()).toBeVisible({ timeout: 15000 });
-  await page.locator('.cat-card').first().click();
+  await expect(page.locator('.cat-card[data-hijo]').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('.cat-card[data-hijo]').first().click();
+  await expect(page.locator('.cat-card[data-grupo]').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('.cat-card[data-grupo]').first().click();
   await expect(page.locator('#nomina tbody tr').first()).toBeVisible({ timeout: 15000 });
   await page.locator('[data-ver-est]').first().click();
   await expect(page.locator('#vista-detalle')).toBeVisible({ timeout: 15000 });

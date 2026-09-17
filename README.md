@@ -325,10 +325,10 @@ sistema-calificaciones-uteq/
 | POST | `/api/calificaciones/lote` | Guardado masivo transaccional (materia y curso obligatorios; `id_parcial`/`id_ciclo` opcionales) |
 | POST | `/api/calificaciones/` | Registro individual (`id_parcial`/`id_ciclo` opcionales) |
 | GET | `/api/consulta/` | Notas + promedios (estudiante: solo lo suyo, ignora `id_estudiante`) |
-| GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos |
-| GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
+| GET | `/api/consulta/grupos` | Bloques Materia＋Paralelo del periodo con conteos (`?id_estudiante=` filtra y valida propiedad) |
+| GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&id_estudiante=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
-| GET | `/api/reportes/` | Reporte paginado con la fórmula oficial (misma que consulta/boletín; admin/profesor/representante; estudiante 403, usa su consulta) |
+| GET | `/api/reportes/` | Reporte paginado con la fórmula oficial (solo admin/profesor; el resto usa su consulta) |
 | PUT | `/api/auth/password` | Cambio de clave propia `{actual, nueva, confirmacion}` (limpia clave temporal) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |

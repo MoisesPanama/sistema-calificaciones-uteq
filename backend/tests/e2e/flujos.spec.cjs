@@ -27,8 +27,12 @@ test('estudiantes pagina y muestra controles compartidos', async ({ page }) => {
 test('representante ve desglose por materia', async ({ page }) => {
   await login(page, 'fernando.castillo@uteq.edu.ec');
   await go(page, '/pages/consulta.html');
+  // M12: primero elige HIJO, luego grupo, luego nomina.
   await expect(page.locator('.cat-card').first()).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#bloques-titulo')).toContainText('hijo', { timeout: 10000 });
   await page.locator('.cat-card').first().click();
+  await expect(page.locator('.cat-card[data-grupo]').first()).toBeVisible({ timeout: 15000 });
+  await page.locator('.cat-card[data-grupo]').first().click();
   await expect(page.locator('#nomina tbody tr').first()).toBeVisible({ timeout: 15000 });
   await page.locator('[data-ver-est]').first().click();
   await expect(page.locator('#vista-detalle')).toBeVisible();

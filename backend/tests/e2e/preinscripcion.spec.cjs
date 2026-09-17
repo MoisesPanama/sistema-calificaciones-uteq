@@ -36,9 +36,8 @@ test('wizard publico envia solicitud sin login', async ({ page }) => {
   await page.locator('#rep_nombres').fill('Padre');
   await page.locator('#rep_apellidos').fill('Publico ' + tag);
   await page.locator('#rep_parentesco').selectOption('padre');
-  await page.locator('#rep_documento').fill('17' + String(Date.now()).slice(-8));
+  await page.locator('#rep_documento').fill('1999999983');
   await page.locator('#sig2').click();
-  // Curso obligatorio: 8vo con cupo asegurado.
   await expect(page.locator(`#sel-curso option[value="${idCurso}"]`)).toBeAttached({ timeout: 15000 });
   await page.locator('#sel-curso').selectOption(String(idCurso));
   await expect(page.locator('#aviso-tipo')).toContainText('nueva', { timeout: 10000 });

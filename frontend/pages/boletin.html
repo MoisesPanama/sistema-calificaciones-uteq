@@ -51,7 +51,7 @@
       const per = await apiGet('/periodos/');
       document.getElementById('sel-periodo').innerHTML =
         (per.periodos || []).map(p => `<option value="${p.id_periodo}">${esc(p.nombre)}</option>`).join('');
-      const id = String(per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '');
+      const id = await periodoPagina(per);
       document.getElementById('sel-periodo').value = id;
       return id;
     }

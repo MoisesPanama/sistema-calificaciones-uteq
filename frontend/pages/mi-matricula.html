@@ -35,13 +35,13 @@
     (async () => {
       const u = await initPage();
       if (!u) return;
-      if (u.nombre_rol !== 'estudiante' && u.nombre_rol !== 'representante') {
-        document.querySelector('main').innerHTML = '<div class="alert alert-error">Solo estudiante o representante.</div>';
+      if (u.nombre_rol !== 'estudiante') {
+        document.querySelector('main').innerHTML = '<div class="alert alert-error">Solo estudiante.</div>';
         return;
       }
       try {
         const per = await apiGet('/periodos/');
-        const idPeriodo = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+        const idPeriodo = await periodoPagina(per);
         document.getElementById('info-periodo').innerHTML =
           `Periodo: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
         const d = await apiGet('/matriculas/mia?id_periodo=' + encodeURIComponent(idPeriodo));

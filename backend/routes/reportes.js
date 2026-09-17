@@ -44,7 +44,8 @@ async function escalaOficial(conn, promedio) {
 
 // El estudiante NO entra aqui: tiene su consulta propia.
 // (psicologo tampoco: usa su vista de rendimiento).
-router.get('/', requireAuth, requireRole('administrador', 'profesor', 'representante'), async (req, res) => {
+// Representante TAMPOCO (M12: solo consulta de sus hijos).
+router.get('/', requireAuth, requireRole('administrador', 'profesor'), async (req, res) => {
     try {
         const periodoActivo = await getPeriodoActivo();
         if (!periodoActivo) {

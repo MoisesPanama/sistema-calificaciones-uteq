@@ -32,7 +32,7 @@
       if (!await initPage()) return;
       try {
         const per = await apiGet('/periodos/');
-        const idPeriodo = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+        const idPeriodo = await periodoPagina(per);
         document.getElementById('info-periodo').innerHTML =
           `Periodo seleccionado: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
         const d = await apiGet('/consulta/grupos?id_periodo=' + encodeURIComponent(idPeriodo));

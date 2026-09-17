@@ -119,52 +119,66 @@ test('fuera de ventana se bloquea (403) y dentro pasa', async ({ page }) => {
 
 test('rematricula en periodo nuevo respeta nivel y aprueba', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
-  // Periodo 2 con 8vo y 9no con cupo (cubre repite y sube).
-  const tag = Date.now().toString(36);
+  // Sandbox fijo reutilizable (cero crecimiento entre corridas).
+  const NOMBRE_P2 = 'E2E Sandbox Next';
+  let idP2 = null;
   const np = await api(page, 'POST', '/periodos/', {
-    nombre: 'E2E Next ' + tag, fecha_inicio: '2027-09-01', fecha_fin: '2028-07-31'
+    nombre: NOMBRE_P2, fecha_inicio: '2027-09-01', fecha_fin: '2028-07-31'
   });
-  expect(np.status).toBe(201);
-  const idP2 = np.data.id_periodo;
-  for (const [nom, par, niv] of [['Octavo EGB', 'E2E', 8], ['Noveno EGB', 'E2E', 9]]) {
+  if (np.status === 201) {
+    idP2 = np.data.id_periodo;
+  } else {
+    const per = await api(page, 'GET', '/periodos/');
+    idP2 = (per.data.periodos || []).find((p) => p.nombre === NOMBRE_P2)?.id_periodo;
+  }
+  expect(idP2).toBeTruthy();
+  for (const [nom, par, niv] of [['Octavo EGB', 'SBX', 8], ['Noveno EGB', 'SBX', 9]]) {
     const nc = await api(page, 'POST', '/cursos/', {
       nombre: nom, paralelo: par, id_periodo: idP2, nivel: niv, cupo_max: 5
     });
-    expect(nc.status).toBe(201);
+    // 201 nuevo, 409 si ya existe de otra corrida (se reutiliza).
+    if (nc.status !== 201 && nc.status !== 409) expect(nc.status).toBe(201);
   }
-  // Cedula existente del seed (estudiante 2, solo periodo 1).
+  // Cedula existente del seed: es rematricula (solo lectura).
   const cedulaExistente = '1000000002';
   const optR = await api(page, 'GET', `/preinscripciones/opciones?id_periodo=${idP2}&cedula=${cedulaExistente}`);
   expect(optR.data.tipo).toBe('rematricula');
   expect(optR.data.elegibles.length).toBeGreaterThanOrEqual(1);
-  const destino = optR.data.elegibles[0];
-  try {
+  // Flujo completo con un candidato del pool (el primero libre;
+  // la matricula se borra al final, la solicitud aprobada queda
+  // como historial invisible en bandeja).
+  const lista = await api(page, 'GET', '/estudiantes/?page=1&limit=100');
+  let hecho = null;
+  for (const cand of (lista.data.datos || []).slice(0, 30)) {
+    const op = await api(page, 'GET', `/preinscripciones/opciones?id_periodo=${idP2}&cedula=${cand.cedula}`);
+    const dest = (op.data.elegibles || [])[0];
+    if (!dest) continue;
     const sol = await postSolicitud(page, {
-      nombres: 'Remat', apellidos: 'ricula Uno', cedula: cedulaExistente,
+      nombres: 'Remat', apellidos: 'ricula Uno', cedula: cand.cedula,
       fecha_nacimiento: '2012-04-05', rep_nombres: 'Padre', rep_apellidos: 'Remat Uno',
       rep_parentesco: 'padre', rep_documento: nuevaCedula('17'),
-      id_periodo: String(idP2), id_curso: String(destino.id_curso)
+      id_periodo: String(idP2), id_curso: String(dest.id_curso)
     });
-    expect(sol.status).toBe(201);
+    if (sol.status !== 201) continue;
     expect(sol.data.tipo).toBe('rematricula');
     const apr = await api(page, 'POST', `/preinscripciones/${sol.data.id_solicitud}/aprobar`, {});
-    expect(apr.status).toBe(201);
-    expect(apr.data.mensaje).toMatch(/Rematricula/);
+    if (apr.status === 201 && /Rematricula/.test(apr.data.mensaje || '')) {
+      hecho = { est: cand.id_estudiante };
+      break;
+    }
+  }
+  expect(hecho, 'ningun candidato libre para rematricula (reseed si se agota)').toBeTruthy();
+  try {
+    expect(hecho).toBeTruthy();
   } finally {
-    // Higiene: borra matricula + cursos E2E para no mover la
-    // "ultima matricula" del estudiante en futuras corridas.
     const lm = await api(page, 'GET', `/matriculas/?id_periodo=${idP2}&limit=100`);
     for (const m of (lm.data.datos || [])) {
       await api(page, 'DELETE', `/matriculas/${m.id_matricula}`);
     }
-    const lc = await api(page, 'GET', `/cursos/?id_periodo=${idP2}`);
-    for (const c of (lc.data.cursos || [])) {
-      await api(page, 'DELETE', `/cursos/${c.id_curso}`);
-    }
   }
 });
 
-test('mi matricula: estudiante ve la suya, admin 403', async ({ page }) => {
+test('mi matricula: estudiante la ve; resto 403', async ({ page }) => {
   await login(page, 'alumno@uteq.edu.ec');
   await page.goto('/pages/mi-matricula.html');
   await expect(page.locator('#lista table')).toBeVisible({ timeout: 15000 });
@@ -172,4 +186,7 @@ test('mi matricula: estudiante ve la suya, admin 403', async ({ page }) => {
   await login(page, 'admin@uteq.edu.ec');
   const r = await api(page, 'GET', '/matriculas/mia');
   expect(r.status).toBe(403);
+  await login(page, 'fernando.castillo@uteq.edu.ec');
+  const r2 = await api(page, 'GET', '/matriculas/mia');
+  expect(r2.status).toBe(403);
 });

@@ -68,7 +68,7 @@
 
     async function cargarBase() {
       const per = await apiGet('/periodos/');
-      periodoId = per.periodoActivo?.id_periodo || per.periodos?.[0]?.id_periodo || '';
+      periodoId = await periodoPagina(per);
       document.getElementById('info-periodo').innerHTML =
         `Periodo: <strong>${esc(per.periodoActivo?.nombre || '—')}</strong>`;
       const ctx = await apiGet('/calificaciones/contexto?id_periodo=' + encodeURIComponent(periodoId));
