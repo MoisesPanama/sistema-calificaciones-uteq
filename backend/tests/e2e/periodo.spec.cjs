@@ -40,7 +40,7 @@ test('cambiar de periodo muestra sus registros y regresa', async ({ page }) => {
 
   // Regresa al activo.
   await page.locator('#btnPeriodo').click();
-  await page.locator('.header-periodo-item', { hasText: nombreActivo.trim().split(' ')[0] }).first().click();
+  await page.locator('.header-periodo-item', { hasText: nombreActivo.trim() }).click();
   await page.waitForLoadState('domcontentloaded');
   await expect(page.locator('#periodoNombre')).toContainText(nombreActivo.trim(), { timeout: 15000 });
   const gr2 = await api(page, 'GET', '/consulta/grupos');

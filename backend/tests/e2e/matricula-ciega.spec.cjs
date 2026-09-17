@@ -139,8 +139,8 @@ test('rematricula en periodo nuevo respeta nivel y aprueba', async ({ page }) =>
     // 201 nuevo, 409 si ya existe de otra corrida (se reutiliza).
     if (nc.status !== 201 && nc.status !== 409) expect(nc.status).toBe(201);
   }
-  // Cedula existente del seed: es rematricula (solo lectura).
-  const cedulaExistente = '1000000002';
+<  // Cedula existente del seed: es rematricula (solo lectura).
+  const cedulaExistente = '1250001111';
   const optR = await api(page, 'GET', `/preinscripciones/opciones?id_periodo=${idP2}&cedula=${cedulaExistente}`);
   expect(optR.data.tipo).toBe('rematricula');
   expect(optR.data.elegibles.length).toBeGreaterThanOrEqual(1);
