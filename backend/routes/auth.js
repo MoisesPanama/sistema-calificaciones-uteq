@@ -19,7 +19,7 @@ router.post('/login', async (req, res) => {
     try {
         const resultado = await pool.query(
             `SELECT u.id_usuario, u.nombres, u.apellidos, u.email,
-                    u.password_hash, u.activo, r.nombre_rol
+                    u.password_hash, u.activo, u.debe_cambiar_clave, r.nombre_rol
              FROM colegio.usuarios u
              JOIN colegio.roles r ON r.id_rol = u.id_rol
              WHERE u.email = $1`,
@@ -46,7 +46,8 @@ router.post('/login', async (req, res) => {
             nombres: usuario.nombres,
             apellidos: usuario.apellidos,
             email: usuario.email,
-            nombre_rol: usuario.nombre_rol
+            nombre_rol: usuario.nombre_rol,
+            debe_cambiar_clave: !!usuario.debe_cambiar_clave
         };
 
         res.json({ usuario: req.session.usuario });
@@ -76,12 +77,15 @@ router.post('/periodo-seleccionado', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// PUT /api/auth/password { actual, nueva } -> cambio de clave propia.
-// M8 seguridad minima: antes no habia forma de cambiarla sin psql.
+// PUT /api/auth/password { actual, nueva, confirmacion } -> cambio propio.
+// Limpia debe_cambiar_clave (M11: claves temporales).
 router.put('/password', requireAuth, async (req, res) => {
-    const { actual, nueva } = req.body || {};
+    const { actual, nueva, confirmacion } = req.body || {};
     if (!actual || !nueva) {
         return res.status(400).json({ error: 'Debes ingresar tu clave actual y la nueva.' });
+    }
+    if (confirmacion !== undefined && String(confirmacion) !== String(nueva)) {
+        return res.status(400).json({ error: 'La confirmacion no coincide con la nueva clave.' });
     }
     if (String(nueva).length < 6) {
         return res.status(400).json({ error: 'La nueva clave debe tener al menos 6 caracteres.' });
@@ -103,9 +107,10 @@ router.put('/password', requireAuth, async (req, res) => {
         }
         const hash = await bcrypt.hash(String(nueva), 10);
         await pool.query(
-            'UPDATE colegio.usuarios SET password_hash = $1 WHERE id_usuario = $2',
+            'UPDATE colegio.usuarios SET password_hash = $1, debe_cambiar_clave = FALSE WHERE id_usuario = $2',
             [hash, req.session.usuario.id_usuario]
         );
+        req.session.usuario.debe_cambiar_clave = false;
         res.json({ ok: true, mensaje: 'Clave actualizada.' });
     } catch (error) {
         console.error('Error al cambiar clave:', error.message);

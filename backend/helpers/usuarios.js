@@ -27,7 +27,7 @@ async function crearUsuario(conn, nombres, apellidos, email, idRol) {
         const exists = await conn.query('SELECT id_usuario FROM usuarios WHERE email = $1', [finalEmail]);
         if (exists.rows.length === 0) {
             const r = await conn.query(
-                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol) VALUES ($1, $2, $3, $4, $5) RETURNING id_usuario',
+                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol, debe_cambiar_clave) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id_usuario',
                 [nombres.trim(), apellidos.trim(), finalEmail, hash, idRol]
             );
             return { id_usuario: r.rows[0].id_usuario, email: finalEmail };

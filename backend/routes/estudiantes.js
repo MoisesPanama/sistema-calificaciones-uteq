@@ -36,7 +36,7 @@ async function crearUsuario(conn, nombres, apellidos, email, idRol) {
         const exists = await conn.query('SELECT id_usuario FROM usuarios WHERE email = $1', [finalEmail]);
         if (exists.rows.length === 0) {
             const r = await conn.query(
-                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol) VALUES ($1, $2, $3, $4, $5) RETURNING id_usuario',
+                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol, debe_cambiar_clave) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id_usuario',
                 [nombres.trim(), apellidos.trim(), finalEmail, hash, idRol]
             );
             return { id_usuario: r.rows[0].id_usuario, email: finalEmail };
@@ -146,7 +146,8 @@ function validarEstudiante(body) {
 // La familia entra por preinscripcion publica; el admin aprueba.
 // Se conserva para correcciones internas y para los tests.
 router.post('/', requireAuth, requireRole('administrador'), async (req, res) => {
-    const { cedula, nombres, apellidos, fecha_nacimiento, id_representante } = req.body || {};
+    const { cedula, nombres, apellidos, fecha_nacimiento, id_representante,
+            grupo_sanguineo, discapacidad, contacto_emergencia, tel_emergencia } = req.body || {};
     const errores = validarEstudiante(req.body || {});
     if (errores.length > 0) {
         return res.status(400).json({ error: errores.join(' '), errores });
@@ -162,9 +163,11 @@ router.post('/', requireAuth, requireRole('administrador'), async (req, res) => 
         const { id_usuario: idUsuario, email: finalEmail } = await crearUsuario(client, nombres, apellidos, email, rolId);
 
         const r = await client.query(
-            `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_estudiante`,
-            [cedula, nombres.trim(), apellidos.trim(), fecha_nacimiento, id_representante, idUsuario]
+            `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario,
+                                      grupo_sanguineo, discapacidad, contacto_emergencia, tel_emergencia)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id_estudiante`,
+            [cedula, nombres.trim(), apellidos.trim(), fecha_nacimiento, id_representante, idUsuario,
+             grupo_sanguineo || null, discapacidad || null, contacto_emergencia || null, tel_emergencia || null]
         );
         await client.query('COMMIT');
         res.status(201).json({ ok: true, id_estudiante: r.rows[0].id_estudiante, email: finalEmail, password: PASSWORD_DEFAULT });
@@ -210,7 +213,8 @@ router.patch('/:id/activo', requireAuth, async (req, res) => {
 
 // PUT /api/estudiantes/:id -> actualiza un estudiante existente
 router.put('/:id', requireAuth, async (req, res) => {
-    const { cedula, nombres, apellidos, fecha_nacimiento, id_representante, activo } = req.body || {};
+    const { cedula, nombres, apellidos, fecha_nacimiento, id_representante, activo,
+            grupo_sanguineo, discapacidad, contacto_emergencia, tel_emergencia } = req.body || {};
     const errores = validarEstudiante(req.body || {});
     if (errores.length > 0) {
         return res.status(400).json({ error: errores.join(' '), errores });
@@ -223,9 +227,13 @@ router.put('/:id', requireAuth, async (req, res) => {
         const resultado = await client.query(
             `UPDATE estudiantes
              SET cedula = $1, nombres = $2, apellidos = $3,
-                 fecha_nacimiento = $4, id_representante = $5, activo = $6
-             WHERE id_estudiante = $7`,
-            [cedula, nombres, apellidos, fecha_nacimiento, id_representante, activo === true || activo === 'on', req.params.id]
+                 fecha_nacimiento = $4, id_representante = $5, activo = $6,
+                 grupo_sanguineo = $7, discapacidad = $8,
+                 contacto_emergencia = $9, tel_emergencia = $10
+             WHERE id_estudiante = $11`,
+            [cedula, nombres, apellidos, fecha_nacimiento, id_representante, activo === true || activo === 'on',
+             grupo_sanguineo || null, discapacidad || null, contacto_emergencia || null, tel_emergencia || null,
+             req.params.id]
         );
         await client.query('COMMIT');
         if (resultado.rowCount === 0) {

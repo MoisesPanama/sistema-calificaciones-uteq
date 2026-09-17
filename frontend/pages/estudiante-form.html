@@ -42,6 +42,29 @@
       </div>
       <label for="fecha_nacimiento">Fecha de nacimiento</label>
       <input type="date" id="fecha_nacimiento" required>
+      <h3 style="font-size:0.88rem;color:#1e3a8a;margin:0.8rem 0 0.4rem;">Ficha básica (opcional)</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;" for="grupo_sanguineo">Tipo de sangre</label>
+          <select id="grupo_sanguineo" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+            <option value="">-- No indica --</option>
+            <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;" for="discapacidad">Discapacidad/condición</label>
+          <input type="text" id="discapacidad" placeholder="Ninguna" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+        </div>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;" for="contacto_emergencia">Contacto emergencia</label>
+          <input type="text" id="contacto_emergencia" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+        </div>
+        <div>
+          <label style="font-size:0.82rem;font-weight:600;" for="tel_emergencia">Tel. emergencia</label>
+          <input type="text" id="tel_emergencia" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;">
+        </div>
+      </div>
       <label for="rep-buscar">Representante (escribe para buscar; si no existe, créalo abajo)</label>
       <input type="text" id="rep-buscar" placeholder="Nombre, apellido, teléfono o email..." autocomplete="off">
       <input type="hidden" id="id_representante">
@@ -246,6 +269,10 @@
         actualizarEmailPreview();
         document.getElementById('fecha_nacimiento').value =
           estudiante.fecha_nacimiento ? new Date(estudiante.fecha_nacimiento).toISOString().split('T')[0] : '';
+        document.getElementById('grupo_sanguineo').value = estudiante.grupo_sanguineo || '';
+        document.getElementById('discapacidad').value = estudiante.discapacidad || '';
+        document.getElementById('contacto_emergencia').value = estudiante.contacto_emergencia || '';
+        document.getElementById('tel_emergencia').value = estudiante.tel_emergencia || '';
         if (estudiante.id_representante) {
           try {
             const det = await apiGet('/representantes/' + estudiante.id_representante);
@@ -326,7 +353,11 @@
           apellidos,
           fecha_nacimiento: document.getElementById('fecha_nacimiento').value,
           id_representante: document.getElementById('id_representante').value,
-          activo: document.getElementById('activo').checked
+          activo: document.getElementById('activo').checked,
+          grupo_sanguineo: document.getElementById('grupo_sanguineo').value || null,
+          discapacidad: document.getElementById('discapacidad').value || null,
+          contacto_emergencia: document.getElementById('contacto_emergencia').value || null,
+          tel_emergencia: document.getElementById('tel_emergencia').value || null
         };
         try {
           let res;

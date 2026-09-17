@@ -22,6 +22,7 @@
     <main class="main-content">
     <h1 id="bienvenida">Bienvenido</h1>
     <p id="rol"></p>
+    <div id="aviso-clave"></div>
     <p class="alert alert-error" id="error" style="display:none"></p>
     <div class="cards-grid" id="metricas"></div>
     <div id="bloques"></div>
@@ -135,6 +136,11 @@
     (async () => {
       const usuario = await initPage();
       if (!usuario) return;
+      if (usuario.debe_cambiar_clave) {
+        document.getElementById('aviso-clave').innerHTML =
+          `<p class="alert alert-error">Estás usando una clave temporal.
+           <a href="cambiar-clave.html"><strong>Cámbiala aquí</strong></a>.</p>`;
+      }
       try {
         const d = await apiGet('/dashboard/');
         await render(d, usuario);

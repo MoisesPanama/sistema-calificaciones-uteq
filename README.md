@@ -202,6 +202,7 @@ psql -U postgres -d calificaciones_uteq -f database/30_cierre_recuperacion.sql
 psql -U postgres -d calificaciones_uteq -f database/31_notas_coherentes.sql
 psql -U postgres -d calificaciones_uteq -f database/32_matricula_cupos.sql
 psql -U postgres -d calificaciones_uteq -f database/33_sin_general.sql
+psql -U postgres -d calificaciones_uteq -f database/34_familia.sql
 ```
 
 > **Reseed de pruebas (solo BD test, destructivo):**
@@ -329,7 +330,7 @@ sistema-calificaciones-uteq/
 | GET | `/api/consulta/grupo` | Nómina paginada del bloque (`?id_materia=&id_curso=&page=`) |
 | GET | `/api/consulta/materia/:id` | Promedio en una materia con desglose por ciclo/parcial (`?id_estudiante=&id_periodo=`) |
 | GET | `/api/reportes/` | Reporte paginado con la fórmula oficial (misma que consulta/boletín; admin/profesor/representante; estudiante 403, usa su consulta) |
-| PUT | `/api/auth/password` | Cambio de clave propia `{actual, nueva}` |
+| PUT | `/api/auth/password` | Cambio de clave propia `{actual, nueva, confirmacion}` (limpia clave temporal) |
 | GET | `/api/auditoria/` | Panel de auditoría (solo admin, `?page&limit&tabla&categoria&desde&hasta`) |
 | GET | `/api/auditoria/resumen` | Bloques por categoría con totales y último evento (solo admin) |
 | GET | `/api/catalogos/periodo-activo` | Periodo fijo actual |
@@ -360,7 +361,7 @@ sistema-calificaciones-uteq/
 | GET | `/api/preinscripciones/opciones?cedula=&id_periodo=` | Cursos elegibles con cupo + tipo + ventana (público) |
 | POST | `/api/preinscripciones/` | Solicitud pública con PDF (bloquea sin cupo / fuera de ventana) |
 | GET | `/api/preinscripciones/?estado=&tipo=&q=` | Bandeja admin (filtro tipo y búsqueda por cédula) |
-| POST | `/api/preinscripciones/:id/aprobar` | Aprueba con bloqueo de cupo (nuevo o rematrícula por nivel) |
+| POST | `/api/preinscripciones/:id/aprobar` | Aprueba con bloqueo de cupo (nuevo o rematrícula por nivel; crea login del acudiente) |
 | GET | `/api/matriculas/mia` | Matrícula propia (estudiante) o de hijos (representante) + ventana |
 | POST | `/api/actividades/:id/estado` | borrador→publicada→cerrada (reabrir: solo admin) |
 | GET | `/api/entregas/por-actividad/:id` | Entregas con estudiante |

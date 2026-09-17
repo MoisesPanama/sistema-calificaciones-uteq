@@ -31,8 +31,9 @@
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       try {
-        await apiPost('/auth/login', { email, password });
-        location.href = 'dashboard.html';
+        const r = await apiPost('/auth/login', { email, password });
+        // M11: clave temporal -> cambiarla antes de entrar.
+        location.href = (r.usuario && r.usuario.debe_cambiar_clave) ? 'cambiar-clave.html' : 'dashboard.html';
       } catch (err) { showError(err.message); }
     });
   </script>

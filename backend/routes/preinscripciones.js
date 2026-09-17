@@ -136,14 +136,17 @@ router.post('/', (req, res) => {
                      (nombres, apellidos, cedula, fecha_nacimiento,
                       rep_nombres, rep_apellidos, rep_telefono, rep_email,
                       rep_parentesco, rep_documento, tipo,
+                      grupo_sanguineo, discapacidad, contacto_emergencia, tel_emergencia,
                       id_periodo, id_curso,
                       documento_nombre, documento_ruta, documento_mime, documento_tamano)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
                  RETURNING id_solicitud`,
                 [String(b.nombres).trim(), String(b.apellidos).trim(), String(b.cedula).trim(), b.fecha_nacimiento,
                  String(b.rep_nombres).trim(), String(b.rep_apellidos).trim(),
                  b.rep_telefono || null, b.rep_email || null,
                  String(b.rep_parentesco).trim(), String(b.rep_documento).trim(), tipo,
+                 b.grupo_sanguineo || null, b.discapacidad || null,
+                 b.contacto_emergencia || null, b.tel_emergencia || null,
                  idPeriodo, b.id_curso,
                  req.file.originalname.slice(0, 255),
                  path.join('solicitudes', path.basename(req.file.path)),
@@ -240,9 +243,14 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
                 return res.status(409).json({ error: 'El curso ya no tiene cupo disponible.' });
             }
         }
-        // Representante: reutilizar por email/telefono o crear.
+        // Representante: reutilizar por documento, email o telefono;
+        // si no existe se crea (con su usuario para login, M11).
         let idRep = null;
-        if (sol.rep_email) {
+        if (sol.rep_documento) {
+            const rRep = await client.query('SELECT id_representante FROM representantes WHERE cedula = $1', [sol.rep_documento]);
+            if (rRep.rows.length > 0) idRep = rRep.rows[0].id_representante;
+        }
+        if (!idRep && sol.rep_email) {
             const rRep = await client.query('SELECT id_representante FROM representantes WHERE email = $1', [sol.rep_email]);
             if (rRep.rows.length > 0) idRep = rRep.rows[0].id_representante;
         }
@@ -256,6 +264,26 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
                 [sol.rep_nombres, sol.rep_apellidos, sol.rep_telefono, sol.rep_email, sol.rep_parentesco, sol.rep_documento]
             );
             idRep = rRep.rows[0].id_representante;
+        }
+        // El acudiente entra al sistema: si no tiene usuario, se crea.
+        let repEmail = null;
+        let repPassword = null;
+        const rRepUsu = await client.query(
+            'SELECT id_usuario FROM representantes WHERE id_representante = $1', [idRep]
+        );
+        if (!rRepUsu.rows[0]?.id_usuario) {
+            const rolRep = await asegurarRol(client, 'representante');
+            const repEmailGen = sol.rep_email && String(sol.rep_email).includes('@')
+                ? String(sol.rep_email).trim()
+                : generarEmail(sol.rep_nombres, sol.rep_apellidos);
+            const creadoRep = await crearUsuario(
+                client, sol.rep_nombres, sol.rep_apellidos, repEmailGen, rolRep);
+            await client.query(
+                'UPDATE representantes SET id_usuario = $1 WHERE id_representante = $2',
+                [creadoRep.id_usuario, idRep]
+            );
+            repEmail = creadoRep.email;
+            repPassword = 'UTEQ2026';
         }
         // Estudiante: si ya existe por cedula es rematricula.
         let idEstudiante = null;
@@ -281,9 +309,11 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
                 client, sol.nombres, sol.apellidos,
                 generarEmail(sol.nombres, sol.apellidos), rolEst);
             const rEst = await client.query(
-                `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario)
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_estudiante`,
-                [sol.cedula, sol.nombres, sol.apellidos, sol.fecha_nacimiento, idRep, creado.id_usuario]
+                `INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante, id_usuario,
+                                          grupo_sanguineo, discapacidad, contacto_emergencia, tel_emergencia)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id_estudiante`,
+                [sol.cedula, sol.nombres, sol.apellidos, sol.fecha_nacimiento, idRep, creado.id_usuario,
+                 sol.grupo_sanguineo, sol.discapacidad, sol.contacto_emergencia, sol.tel_emergencia]
             );
             idEstudiante = rEst.rows[0].id_estudiante;
             email = creado.email;
@@ -301,7 +331,8 @@ router.post('/:id/aprobar', requireAuth, requireRole('administrador'), async (re
         await client.query('COMMIT');
         res.status(201).json({
             ok: true, mensaje: sol.tipo === 'rematricula' ? 'Rematricula aprobada.' : 'Matricula aprobada.',
-            tipo: sol.tipo, id_estudiante: idEstudiante, email, password
+            tipo: sol.tipo, id_estudiante: idEstudiante, email, password,
+            rep_email: repEmail, rep_password: repPassword
         });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});

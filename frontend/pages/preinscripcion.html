@@ -27,6 +27,18 @@
         <input type="text" id="cedula" required>
         <label for="fecha_nacimiento">Fecha de nacimiento</label>
         <input type="date" id="fecha_nacimiento" required>
+        <label for="grupo_sanguineo">Tipo de sangre (opcional)</label>
+        <select id="grupo_sanguineo">
+          <option value="">-- No indica --</option>
+          <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+        </select>
+        <label for="discapacidad">Discapacidad o condición (opcional)</label>
+        <input type="text" id="discapacidad" placeholder="Ej. ninguna">
+        <label for="contacto_emergencia">Contacto de emergencia (opcional)</label>
+        <input type="text" id="contacto_emergencia" placeholder="Nombre">
+        <label for="tel_emergencia">Teléfono de emergencia (opcional)</label>
+        <input type="text" id="tel_emergencia">
         <div class="form-actions"><button class="btn-primary" id="sig1">Siguiente</button></div>
       </div>
       <div class="wizard-panel" id="paso-2">
@@ -140,6 +152,10 @@
           fd.append('rep_email', document.getElementById('rep-email').value);
           fd.append('rep_parentesco', document.getElementById('rep_parentesco').value);
           fd.append('rep_documento', document.getElementById('rep_documento').value);
+          fd.append('grupo_sanguineo', document.getElementById('grupo_sanguineo').value);
+          fd.append('discapacidad', document.getElementById('discapacidad').value);
+          fd.append('contacto_emergencia', document.getElementById('contacto_emergencia').value);
+          fd.append('tel_emergencia', document.getElementById('tel_emergencia').value);
           fd.append('id_periodo', document.getElementById('sel-periodo').value);
           const idCurso = document.getElementById('sel-curso').value;
           if (!idCurso) { showError('No hay cupos disponibles en tu nivel para este periodo.'); return; }

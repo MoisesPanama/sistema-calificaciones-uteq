@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambiar clave - Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-box">
+    <img src="../img/logo.svg" alt="Logo" class="login-logo">
+    <h2>Cambia tu clave</h2>
+    <h3>Por seguridad, define una clave propia (mínimo 6 caracteres)</h3>
+    <p class="alert alert-error" id="error" style="display:none"></p>
+    <p class="alert-exito" id="ok" style="display:none"></p>
+    <form id="form-clave">
+      <label for="actual">Clave actual (la temporal)</label>
+      <input type="password" id="actual" required autofocus>
+      <label for="nueva">Nueva clave</label>
+      <input type="password" id="nueva" required minlength="6">
+      <label for="confirmacion">Confirma la nueva clave</label>
+      <input type="password" id="confirmacion" required minlength="6">
+      <button type="submit" class="btn-primary">Guardar y entrar</button>
+    </form>
+  </div>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/layout.js"></script>
+  <script>
+    (async () => {
+      // Requiere sesion (recien logueado); sin ella vuelve al login.
+      if (!await initPage()) return;
+      document.getElementById('form-clave').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const actual = document.getElementById('actual').value;
+        const nueva = document.getElementById('nueva').value;
+        const confirmacion = document.getElementById('confirmacion').value;
+        if (nueva !== confirmacion) { showError('La confirmación no coincide.'); return; }
+        try {
+          const r = await apiPut('/auth/password', { actual, nueva, confirmacion });
+          showOk(r.mensaje + ' Entrando…');
+          setTimeout(() => location.href = 'dashboard.html', 800);
+        } catch (err) { showError(err.message); }
+      });
+    })();
+  </script>
+</body>
+</html>

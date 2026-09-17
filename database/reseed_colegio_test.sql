@@ -12,9 +12,11 @@
 -- Deja: 1 admin, 1 psicologo, 3 profesores (2 con carga), 4
 -- materias, 1 periodo activo con ventana abierta, Q1+Q2 con
 -- parciales, 5 cursos (8vo A/B, 9no A/B, 10mo A) con nivel y
--- cupo, ~12 estudiantes por curso con representantes,
--- actividades publicadas y notas variadas (1 de cada 6 bajo
--- <7 para demo de supletorio). Ids estables para los tests:
+-- cupo, 62 estudiantes (15+12+14+10+11, con cupo libre) con
+-- representantes, actividades publicadas y notas variadas
+-- (1 de cada 6 bajo <7 para demo de supletorio), 2 solicitudes
+-- pendientes en bandeja y 1 supletorio validado de muestra.
+-- Ids estables para los tests: estudiante 1 con notas,
 -- estudiante 1 con notas, representante 1 = fernando,
 -- materia 1 = Matematicas, tipos 3..9 igual que antes.
 -- =========================================================
@@ -128,7 +130,7 @@ INSERT INTO profesor_materia_periodo (id_profesor, id_materia, id_periodo, id_cu
     (2, 4, 1, 3);
 
 -- ---------------------------------------------------------
--- 5. Estudiantes (12 por curso = 60) + matriculas
+-- 5. Estudiantes (62: 15+12+14+10+11 por curso, con cupo libre)
 -- ---------------------------------------------------------
 INSERT INTO estudiantes (cedula, nombres, apellidos, fecha_nacimiento, id_representante)
 SELECT '10' || lpad(s::text, 8, '0'),
@@ -142,14 +144,16 @@ SELECT '10' || lpad(s::text, 8, '0'),
        (ARRAY['Garcia', 'Lopez', 'Martinez', 'Sanchez', 'Perez', 'Gomez', 'Rodriguez', 'Fernandez', 'Castro', 'Vargas',
               'Torres', 'Mendoza', 'Herrera', 'Aguilar', 'Cedeno', 'Zambrano', 'Vera', 'Mero', 'Ponce', 'Santana',
               'Moreira', 'Alcivar', 'Sabando', 'Cevallos', 'Bravo', 'Macias', 'Intriago', 'Delgado', 'Roldan', 'Pazmino'])[1 + ((s * 11 - 1) % 30)],
-       DATE '2011-01-05' + ((CASE WHEN s <= 24 THEN 2 WHEN s <= 48 THEN 1 ELSE 0 END) * INTERVAL '1 year') + (((s * 37) % 330) * INTERVAL '1 day'),
+       DATE '2011-01-05' + ((CASE WHEN s <= 27 THEN 2 WHEN s <= 51 THEN 1 ELSE 0 END) * INTERVAL '1 year') + (((s * 37) % 330) * INTERVAL '1 day'),
        -- fernando (id 1) es apoderado de los estudiantes 2 y 5 (para los tests de representante)
        CASE WHEN s IN (2, 5) THEN 1 ELSE 2 + ((s - 1) % 19) END
-FROM generate_series(1, 60) s;
+FROM generate_series(1, 62) s;
 
 INSERT INTO matriculas (id_estudiante, id_periodo, id_curso)
-SELECT e.id_estudiante, 1, 1 + ((e.cedula::bigint - 1000000000 - 1) / 12)
+SELECT e.id_estudiante, 1,
+       CASE WHEN s <= 15 THEN 1 WHEN s <= 27 THEN 2 WHEN s <= 41 THEN 3 WHEN s <= 51 THEN 4 ELSE 5 END
 FROM estudiantes e
+JOIN LATERAL (SELECT (e.cedula::bigint - 1000000000) AS s) q ON TRUE
 WHERE e.cedula LIKE '10%';
 
 -- Detalle por materia asignada al curso (el trigger recalcula al calificar).
@@ -197,3 +201,26 @@ JOIN matriculas m ON m.id_estudiante = e.id_estudiante AND m.id_periodo = 1
 JOIN profesor_materia_periodo pmp ON pmp.id_periodo = 1 AND pmp.id_materia = a.id_materia
     AND (pmp.id_curso IS NULL OR pmp.id_curso = m.id_curso OR m.id_curso IS NULL)
 ON CONFLICT DO NOTHING;
+
+-- ---------------------------------------------------------
+-- 8. Demo para revision: 2 solicitudes pendientes en bandeja
+--    + 1 supletorio validado de muestra (est 6, <7 en Mat).
+-- ---------------------------------------------------------
+INSERT INTO solicitudes_matricula
+    (nombres, apellidos, cedula, fecha_nacimiento,
+     rep_nombres, rep_apellidos, rep_telefono, rep_email,
+     rep_parentesco, rep_documento, tipo, id_periodo, id_curso) VALUES
+    ('Aspirante', 'Demo Uno', '3099999901', '2013-05-06',
+     'Padre', 'Demo Uno', '0990000091', 'demo1@example.com',
+     'padre', '1799999901', 'nuevo', 1, 1),
+    ('Aspirante', 'Demo Dos', '3099999902', '2013-08-11',
+     'Madre', 'Demo Dos', '0990000092', 'demo2@example.com',
+     'madre', '1799999902', 'nuevo', 1, 2);
+
+-- Est 6 es del grupo bajo (<7): supletorio validado 7.50.
+INSERT INTO supletorios
+    (id_estudiante, id_materia, id_periodo, id_curso, nota,
+     instancia, estado, creado_por, validado_por, fecha_validacion) VALUES
+    (6, 1, 1, 1, 7.50, 'supletorio', 'validado', 1, 1, NOW());
+
+SELECT fn_cerrar_recuperacion(6, 1, 1);

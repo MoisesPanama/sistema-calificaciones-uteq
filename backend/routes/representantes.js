@@ -33,7 +33,7 @@ async function crearUsuario(conn, nombres, apellidos, email, idRol) {
         const exists = await conn.query('SELECT id_usuario FROM usuarios WHERE email = $1', [finalEmail]);
         if (exists.rows.length === 0) {
             const r = await conn.query(
-                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol) VALUES ($1, $2, $3, $4, $5) RETURNING id_usuario',
+                'INSERT INTO usuarios (nombres, apellidos, email, password_hash, id_rol, debe_cambiar_clave) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id_usuario',
                 [nombres.trim(), apellidos.trim(), finalEmail, hash, idRol]
             );
             return { id_usuario: r.rows[0].id_usuario, email: finalEmail };
@@ -52,7 +52,8 @@ router.get('/', requireAuth, async (req, res) => {
         const filtro = [`%${q}%`];
         const where = q !== ''
             ? `WHERE (r.nombres ILIKE $1 OR r.apellidos ILIKE $1 OR (r.nombres || ' ' || r.apellidos) ILIKE $1
-                      OR COALESCE(r.telefono, '') ILIKE $1 OR COALESCE(r.email, '') ILIKE $1)`
+                      OR COALESCE(r.telefono, '') ILIKE $1 OR COALESCE(r.email, '') ILIKE $1
+                      OR COALESCE(r.cedula, '') ILIKE $1)`
             : '';
         const countResult = await pool.query(
             `SELECT COUNT(*) AS total FROM representantes r ${where}`,
@@ -60,6 +61,7 @@ router.get('/', requireAuth, async (req, res) => {
         );
         const resultado = await pool.query(
             `SELECT r.id_representante, r.nombres, r.apellidos, r.telefono, r.email,
+                    r.parentesco, r.cedula,
                     (SELECT COUNT(*)::int FROM estudiantes e WHERE e.id_representante = r.id_representante) AS n_estudiantes
              FROM representantes r
              ${where}
@@ -78,7 +80,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
     try {
         const resultado = await pool.query(
-            'SELECT id_representante, nombres, apellidos, telefono, email FROM representantes WHERE id_representante = $1',
+            'SELECT id_representante, nombres, apellidos, telefono, email, parentesco, cedula FROM representantes WHERE id_representante = $1',
             [req.params.id]
         );
         if (resultado.rows.length === 0) {

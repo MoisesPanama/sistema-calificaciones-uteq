@@ -93,20 +93,20 @@ const loginAs = async (email) => {
   await loginAs('elena.romero@uteq.edu.ec');
   const ctx0 = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}`);
   const materia = (ctx0.body.materias || [])[0];
+  const cursoE3 = (ctx0.body.cursos || [])[0];
   // Sin id_materia el contexto devuelve estudiantes=[] por diseno;
-  // se pide de nuevo con la materia para obtener estudiantes y tipos.
+  // se pide de nuevo con materia+curso (M10: siempre curso concreto).
   const ctx = materia
-    ? await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${materia.id_materia}`)
+    ? await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${materia.id_materia}&id_curso=${cursoE3?.id_curso || ''}`)
     : ctx0;
   const estudiante = (ctx.body.estudiantes || [])[0];
   const tipo = (ctx.body.tiposEvaluacion || [])[0];
-  log('Contexto usable', !!(materia && estudiante && tipo),
-    `mat=${materia?.id_materia} est=${estudiante?.id_estudiante} tipo=${tipo?.id_tipo_evaluacion}`);
-  if (materia && estudiante && tipo) {
-    const cursoE3 = (ctx.body.cursos || [])[0];
+  log('Contexto usable', !!(materia && estudiante && tipo && cursoE3),
+    `mat=${materia?.id_materia} cur=${cursoE3?.id_curso} est=${estudiante?.id_estudiante} tipo=${tipo?.id_tipo_evaluacion}`);
+  if (materia && estudiante && tipo && cursoE3) {
     const save = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: materia.id_materia,
-      id_curso: cursoE3?.id_curso,
+      id_curso: cursoE3.id_curso,
       id_parcial: parcial ? parcial.id_parcial : null,
       id_ciclo: ciclo ? ciclo.id_ciclo : null,
       notas: { [estudiante.id_estudiante]: { [tipo.id_tipo_evaluacion]: '8.50' } }
@@ -114,7 +114,7 @@ const loginAs = async (email) => {
     log('Lote con parcial/ciclo', save.status === 200 && save.body.ok, save.body.mensaje || save.body.error);
     const bad = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: materia.id_materia,
-      id_curso: cursoE3?.id_curso,
+      id_curso: cursoE3.id_curso,
       id_parcial: 999999,
       notas: { [estudiante.id_estudiante]: { [tipo.id_tipo_evaluacion]: '8.50' } }
     });
@@ -413,7 +413,7 @@ const loginAs = async (email) => {
       `${(listaAct.body.actividades || []).length} actividades`);
   }
   if (mat15 && idAct15) {
-    const ctxA = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${mat15.id_materia}`);
+    const ctxA = await get(`/calificaciones/contexto?id_periodo=${idPeriodo}&id_materia=${mat15.id_materia}&id_curso=${cur15?.id_curso || ''}`);
     const est15 = (ctxA.body.estudiantes || [])[0];
     const notaAct = await post('/calificaciones/lote', {
       id_periodo: String(idPeriodo), id_materia: mat15.id_materia,
